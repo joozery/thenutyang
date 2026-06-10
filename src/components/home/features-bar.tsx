@@ -10,7 +10,7 @@ export function FeaturesBar() {
   ];
 
   return (
-    <section className="w-full relative z-10 py-8 bg-slate-50">
+    <section className="w-full relative z-10 -mt-8 md:-mt-12 mb-10">
       <div className="container mx-auto px-4 md:px-8">
         <div className="bg-white rounded-xl shadow-[0_4px_20px_rgb(0,0,0,0.05)] border border-slate-100 p-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 divide-x divide-slate-100">

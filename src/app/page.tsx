@@ -11,31 +11,6 @@ export default function Home() {
     <>
       <HeroSection />
       
-      {/* Search / Filter Section */}
-      <section className="bg-slate-100 py-6 border-b border-slate-200 relative z-20">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="flex flex-col md:flex-row bg-white rounded-2xl md:rounded-full p-2 md:p-2 shadow-sm max-w-4xl mx-auto gap-2 md:gap-0">
-            <select className="flex-1 px-4 py-3 md:py-2 bg-transparent border-none focus:outline-none text-slate-700 font-medium rounded-xl md:rounded-none bg-slate-50 md:bg-transparent">
-              <option>ค้นหาจากขนาดยาง</option>
-            </select>
-            <div className="hidden md:block w-px bg-slate-200 mx-2"></div>
-            
-            <select className="flex-1 px-4 py-3 md:py-2 bg-transparent border-none focus:outline-none text-slate-700 font-medium rounded-xl md:rounded-none bg-slate-50 md:bg-transparent">
-              <option>ค้นหาจากยี่ห้อรถยนต์</option>
-            </select>
-            <div className="hidden md:block w-px bg-slate-200 mx-2"></div>
-
-            <select className="flex-1 px-4 py-3 md:py-2 bg-transparent border-none focus:outline-none text-slate-700 font-medium rounded-xl md:rounded-none bg-slate-50 md:bg-transparent">
-              <option>ค้นหาจากยี่ห้อยาง</option>
-            </select>
-            
-            <button className="bg-rose-600 hover:bg-rose-700 text-white px-8 py-3 md:py-2 rounded-xl md:rounded-full font-bold transition-colors w-full md:w-auto mt-2 md:mt-0">
-              ค้นหาเลย
-            </button>
-          </div>
-        </div>
-      </section>
-
       <FeaturesBar />
       <PopularTires />
       
