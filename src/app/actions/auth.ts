@@ -13,30 +13,33 @@ export async function login(
   const username = (formData.get('username') as string ?? '').trim();
   const password = (formData.get('password') as string ?? '');
 
-  await connectDB();
+  try {
+    await connectDB();
 
-  // ถ้ายังไม่มี admin user เลย — redirect ไป setup
-  const count = await AdminUser.countDocuments();
-  if (count === 0) {
-    redirect('/admin/setup');
+    const count = await AdminUser.countDocuments();
+    if (count === 0) redirect('/admin/setup');
+
+    const user = await AdminUser.findOne({ username });
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      return { error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
+    }
+
+    const token = await createSessionToken(user.username);
+    const jar = await cookies();
+    jar.set(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: MAX_AGE,
+      path: '/',
+    });
+
+    redirect('/admin');
+  } catch (err) {
+    if ((err as { digest?: string }).digest?.startsWith('NEXT_REDIRECT')) throw err;
+    console.error('[login]', err);
+    return { error: 'ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง' };
   }
-
-  const user = await AdminUser.findOne({ username });
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    return { error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' };
-  }
-
-  const token = await createSessionToken(user.username);
-  const jar = await cookies();
-  jar.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: MAX_AGE,
-    path: '/',
-  });
-
-  redirect('/admin');
 }
 
 export async function logout() {
