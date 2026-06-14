@@ -1,25 +1,15 @@
-"use client";
+import { cookies } from 'next/headers';
+import { verifySessionToken, COOKIE_NAME } from '@/lib/auth';
+import { AdminLayoutShell } from '@/components/admin/layout-shell';
 
-import { useState } from 'react';
-import { AdminSidebar } from '@/components/admin/sidebar';
-import { AdminHeader } from '@/components/admin/header';
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const jar = await cookies();
+  const token = jar.get(COOKIE_NAME)?.value;
+  const isAuthenticated = token ? await verifySessionToken(token) : false;
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  if (!isAuthenticated) {
+    return <>{children}</>;
+  }
 
-  return (
-    <div className="flex min-h-screen bg-slate-50 font-sans">
-      <AdminSidebar isOpen={isSidebarOpen} />
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <AdminHeader toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+  return <AdminLayoutShell>{children}</AdminLayoutShell>;
 }

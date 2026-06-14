@@ -1,4 +1,7 @@
-import { Menu, Search, Bell, MessageSquare, ChevronDown } from 'lucide-react';
+'use client';
+
+import { Menu, Search, Bell, MessageSquare, ChevronDown, LogOut } from 'lucide-react';
+import { logout } from '@/app/actions/auth';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -49,6 +52,15 @@ export function AdminHeader({ toggleSidebar }: HeaderProps) {
           </div>
           <ChevronDown size={14} className="text-slate-400 ml-1" />
         </div>
+        <form action={logout}>
+          <button
+            type="submit"
+            title="ออกจากระบบ"
+            className="text-slate-400 hover:text-rose-600 transition-colors p-2 hover:bg-rose-50 rounded-lg"
+          >
+            <LogOut size={18} />
+          </button>
+        </form>
       </div>
     </header>
   );
