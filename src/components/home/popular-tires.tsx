@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
 import Image from "next/image";
 
@@ -120,10 +120,10 @@ export function PopularTires() {
                 </div>
                 
                 <div className="flex gap-2">
-                  <Button className="flex-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs py-2 h-auto shadow-sm">ดูรายละเอียด</Button>
-                  <Button variant="outline" className="w-9 h-auto p-0 rounded-lg border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 shrink-0">
+                  <Link href={`/tires/${tire.id}`} className="flex-1 text-center bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs py-2 shadow-sm transition-colors">ดูรายละเอียด</Link>
+                  <Link href={`/booking?tireId=${tire.id}`} className="w-9 flex items-center justify-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 shrink-0 transition-colors">
                     <ShoppingCart className="w-4 h-4" />
-                  </Button>
+                  </Link>
                 </div>
               </div>
 

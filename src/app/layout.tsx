@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 
 const notoSansThai = Noto_Sans_Thai({
   subsets: ["thai", "latin"],
@@ -20,11 +18,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="th" className={`${notoSansThai.variable} font-sans h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-slate-50">
-        <Header />
-        <main className="flex-1 flex flex-col">{children}</main>
-        <Footer />
+    <html lang="th" className={`${notoSansThai.variable} font-sans h-full antialiased`} suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-slate-50" suppressHydrationWarning>
+        {children}
       </body>
     </html>
   );

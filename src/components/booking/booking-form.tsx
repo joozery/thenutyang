@@ -1,0 +1,207 @@
+'use client';
+
+import { useTransition } from 'react';
+import { createBooking } from '@/app/actions/booking';
+import type { Tire } from '@/lib/tires';
+import Image from 'next/image';
+import { BRAND_LOGOS } from '@/lib/tires';
+
+interface Props {
+  tire?: Tire;
+}
+
+export function BookingForm({ tire }: Props) {
+  const [isPending, startTransition] = useTransition();
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(() => createBooking(formData));
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Hidden fields */}
+      {tire && (
+        <>
+          <input type="hidden" name="tireId" value={tire.id} />
+          <input type="hidden" name="tireName" value={`${tire.brand} ${tire.model} ${tire.size}`} />
+          <input type="hidden" name="tirePrice" value={tire.price} />
+        </>
+      )}
+      {!tire && (
+        <>
+          <input type="hidden" name="tireId" value="" />
+          <input type="hidden" name="tireName" value="ไม่ระบุ" />
+          <input type="hidden" name="tirePrice" value="0" />
+        </>
+      )}
+
+      {/* Selected tire preview */}
+      {tire && (
+        <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 flex items-center gap-4">
+          <img src={tire.image} alt={tire.model} className="h-20 w-auto object-contain shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="h-4 mb-1.5 flex items-center">
+              <Image
+                src={BRAND_LOGOS[tire.brand]}
+                alt={tire.brand}
+                width={60}
+                height={16}
+                className={`h-full w-auto object-contain max-w-[60px]
+                  ${['MICHELIN', 'BRIDGESTONE', 'PIRELLI'].includes(tire.brand) ? 'scale-[1.8] origin-left' : 'origin-left'}`}
+              />
+            </div>
+            <p className="font-bold text-slate-800 text-sm mt-2">{tire.model}</p>
+            <p className="text-xs text-slate-500">{tire.size}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-lg font-black text-rose-600">฿{tire.price.toLocaleString()}</p>
+            <p className="text-xs text-slate-400">/เส้น</p>
+          </div>
+        </div>
+      )}
+
+      {/* จำนวน */}
+      {tire && (
+        <div>
+          <label className="block text-sm font-bold text-slate-700 mb-2">จำนวนยาง</label>
+          <div className="flex gap-3">
+            {[1, 2, 4].map(n => (
+              <label key={n} className="flex-1">
+                <input type="radio" name="quantity" value={n} defaultChecked={n === 4} className="peer sr-only" />
+                <div className="text-center py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 cursor-pointer peer-checked:border-rose-600 peer-checked:bg-rose-600 peer-checked:text-white transition-all">
+                  {n} เส้น
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ข้อมูลส่วนตัว */}
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">ข้อมูลลูกค้า</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              ชื่อ-นามสกุล <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="name"
+              required
+              placeholder="สมชาย ใจดี"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              เบอร์โทรศัพท์ <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              required
+              placeholder="081-234-5678"
+              pattern="[0-9]{9,10}"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              LINE ID <span className="text-rose-500">*</span>
+              <span className="ml-2 text-xs text-slate-400 font-normal">(ระบบจะส่งใบเสนอราคาผ่าน LINE)</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
+              <input
+                type="text"
+                name="lineId"
+                required
+                placeholder="yourlineid"
+                className="w-full border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ข้อมูลรถ */}
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">ข้อมูลรถ</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              รุ่นรถ <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="carModel"
+              required
+              placeholder="Toyota Camry / Honda Civic"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">
+              ปีรถ <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="number"
+              name="carYear"
+              required
+              min="1990"
+              max="2030"
+              placeholder="2022"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* นัดหมาย */}
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">นัดหมายเข้ารับบริการ</h3>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+            วันที่ต้องการ <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="date"
+            name="appointmentDate"
+            required
+            min={new Date().toISOString().split('T')[0]}
+            className="w-full md:w-64 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"
+          />
+          <p className="text-xs text-slate-400 mt-1.5">ร้านเปิด จันทร์–อาทิตย์ 08:00–18:00 น.</p>
+        </div>
+      </div>
+
+      {/* หมายเหตุ */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">หมายเหตุ (ถ้ามี)</label>
+        <textarea
+          name="note"
+          rows={3}
+          placeholder="เช่น ต้องการตั้งศูนย์ถ่วงล้อด้วย, ต้องการยางรุ่นอื่นเพิ่มเติม..."
+          className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition resize-none"
+        />
+      </div>
+
+      {/* Submit */}
+      <div className="pt-2">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="w-full bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-rose-200 text-base"
+        >
+          {isPending ? 'กำลังส่งข้อมูล...' : 'ยืนยันการจอง — รับใบเสนอราคาผ่าน LINE'}
+        </button>
+        <p className="text-xs text-slate-400 text-center mt-3">
+          ทีมงานจะติดต่อยืนยันการจองผ่าน LINE ภายใน 30 นาที (ในเวลาทำการ)
+        </p>
+      </div>
+    </form>
+  );
+}
