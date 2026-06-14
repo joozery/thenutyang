@@ -6,7 +6,7 @@ import {
   Home, Users, Car, Package,
   ShoppingBag, Warehouse, FileText, DollarSign,
   UserCircle, CalendarDays, BarChart2, Settings,
-  Settings2, HeadphonesIcon, ChevronRight, ClipboardList
+  Settings2, HeadphonesIcon, ChevronRight, ClipboardList, ShieldCheck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,6 +31,7 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
     { icon: <BarChart2 size={18} />, label: "รายงาน", href: "/admin/reports", active: pathname.startsWith("/admin/reports"), hasSub: true },
     { icon: <Settings size={18} />, label: "การตั้งค่า", href: "/admin/settings", active: pathname.startsWith("/admin/settings"), hasSub: true },
     { icon: <Settings2 size={18} />, label: "ตั้งค่าระบบ", href: "/admin/system", active: pathname === "/admin/system" },
+    { icon: <ShieldCheck size={18} />, label: "จัดการ Admin", href: "/admin/users", active: pathname.startsWith("/admin/users") },
   ];
 
   return (
