@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useActionState } from 'react';
 import { createBooking } from '@/app/actions/booking';
 import type { Tire } from '@/lib/tires';
 import type { CustomerSession } from '@/lib/customer-session';
@@ -13,16 +13,15 @@ interface Props {
 }
 
 export function BookingForm({ tire, customer }: Props) {
-  const [isPending, startTransition] = useTransition();
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    startTransition(() => createBooking(formData));
-  }
+  const [state, formAction, isPending] = useActionState(createBooking, null);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form action={formAction} className="space-y-8">
+      {state?.error && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-rose-600 text-sm font-medium">
+          {state.error}
+        </div>
+      )}
       {/* Hidden fields */}
       <input type="hidden" name="tireId" value={tire?.id ?? ''} />
       <input type="hidden" name="tireName" value={tire ? `${tire.brand} ${tire.model} ${tire.size}` : 'ไม่ระบุ'} />
