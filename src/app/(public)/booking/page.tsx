@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { getTireById } from '@/lib/tires';
 import { BookingForm } from '@/components/booking/booking-form';
+import { cookies } from 'next/headers';
+import { verifyCustomerToken, CUSTOMER_COOKIE } from '@/lib/customer-session';
 
 export const metadata = { title: 'จองยาง / ขอใบเสนอราคา | เดอะนัททายางยนต์' };
 
@@ -12,6 +14,10 @@ export default async function BookingPage({
 }) {
   const { tireId } = await searchParams;
   const tire = tireId ? getTireById(tireId) : undefined;
+
+  const jar = await cookies();
+  const token = jar.get(CUSTOMER_COOKIE)?.value;
+  const customer = token ? await verifyCustomerToken(token) : null;
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -33,7 +39,7 @@ export default async function BookingPage({
             </p>
           </div>
 
-          <BookingForm tire={tire} />
+          <BookingForm tire={tire} customer={customer} />
         </div>
 
         {/* Info box */}

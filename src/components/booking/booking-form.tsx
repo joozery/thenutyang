@@ -3,14 +3,16 @@
 import { useTransition } from 'react';
 import { createBooking } from '@/app/actions/booking';
 import type { Tire } from '@/lib/tires';
+import type { CustomerSession } from '@/lib/customer-session';
 import Image from 'next/image';
 import { BRAND_LOGOS } from '@/lib/tires';
 
 interface Props {
   tire?: Tire;
+  customer?: CustomerSession | null;
 }
 
-export function BookingForm({ tire }: Props) {
+export function BookingForm({ tire, customer }: Props) {
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -22,19 +24,11 @@ export function BookingForm({ tire }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Hidden fields */}
-      {tire && (
-        <>
-          <input type="hidden" name="tireId" value={tire.id} />
-          <input type="hidden" name="tireName" value={`${tire.brand} ${tire.model} ${tire.size}`} />
-          <input type="hidden" name="tirePrice" value={tire.price} />
-        </>
-      )}
-      {!tire && (
-        <>
-          <input type="hidden" name="tireId" value="" />
-          <input type="hidden" name="tireName" value="ไม่ระบุ" />
-          <input type="hidden" name="tirePrice" value="0" />
-        </>
+      <input type="hidden" name="tireId" value={tire?.id ?? ''} />
+      <input type="hidden" name="tireName" value={tire ? `${tire.brand} ${tire.model} ${tire.size}` : 'ไม่ระบุ'} />
+      <input type="hidden" name="tirePrice" value={tire?.price ?? 0} />
+      {customer && (
+        <input type="hidden" name="lineUserId" value={customer.lineUserId} />
       )}
 
       {/* Selected tire preview */}
@@ -108,22 +102,46 @@ export function BookingForm({ tire }: Props) {
               className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"
             />
           </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              LINE ID <span className="text-rose-500">*</span>
-              <span className="ml-2 text-xs text-slate-400 font-normal">(ระบบจะส่งใบเสนอราคาผ่าน LINE)</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
-              <input
-                type="text"
-                name="lineId"
-                required
-                placeholder="yourlineid"
-                className="w-full border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"
-              />
+
+          {/* LINE ID: ซ่อนถ้า login ด้วย LINE แล้ว */}
+          {customer ? (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">LINE</label>
+              <div className="flex items-center gap-3 bg-[#06C755]/10 border border-[#06C755]/30 rounded-xl px-4 py-3">
+                {customer.pictureUrl && (
+                  <img src={customer.pictureUrl} alt={customer.displayName} className="w-8 h-8 rounded-full object-cover" />
+                )}
+                <div>
+                  <p className="text-sm font-bold text-slate-800">{customer.displayName}</p>
+                  <p className="text-xs text-[#06C755]">เชื่อมต่อ LINE แล้ว — ใบเสนอราคาจะถูกส่งทันที</p>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                LINE ID <span className="text-rose-500">*</span>
+                <span className="ml-2 text-xs text-slate-400 font-normal">(ระบบจะส่งใบเสนอราคาผ่าน LINE)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
+                <input
+                  type="text"
+                  name="lineId"
+                  required
+                  placeholder="yourlineid"
+                  className="w-full border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition"
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-1.5">
+                หรือ{' '}
+                <a href="/api/auth/line?returnTo=/booking" className="text-[#06C755] font-bold hover:underline">
+                  เข้าสู่ระบบด้วย LINE
+                </a>
+                {' '}เพื่อรับใบเสนอราคาทันทีโดยไม่ต้องส่ง ref
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -196,7 +214,11 @@ export function BookingForm({ tire }: Props) {
           disabled={isPending}
           className="w-full bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-rose-200 text-base"
         >
-          {isPending ? 'กำลังส่งข้อมูล...' : 'ยืนยันการจอง — รับใบเสนอราคาผ่าน LINE'}
+          {isPending
+            ? 'กำลังส่งข้อมูล...'
+            : customer
+              ? 'ยืนยันการจอง — รับใบเสนอราคาทาง LINE ทันที'
+              : 'ยืนยันการจอง — รับใบเสนอราคาผ่าน LINE'}
         </button>
         <p className="text-xs text-slate-400 text-center mt-3">
           ทีมงานจะติดต่อยืนยันการจองผ่าน LINE ภายใน 30 นาที (ในเวลาทำการ)
