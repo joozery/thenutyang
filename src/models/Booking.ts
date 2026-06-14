@@ -26,7 +26,7 @@ const BookingSchema = new Schema<IBooking>({
   quantity:        { type: Number, required: true, default: 4 },
   name:            { type: String, required: true },
   phone:           { type: String, required: true },
-  lineId:          { type: String, required: true },
+  lineId:          { type: String, default: '' },
   carModel:        { type: String, required: true },
   carYear:         { type: String, required: true },
   appointmentDate: { type: String, required: true },
