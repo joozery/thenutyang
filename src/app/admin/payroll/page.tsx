@@ -24,7 +24,7 @@ export default function PayrollPage() {
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 w-fit">
             <Download size={15} /> ส่งออก
           </button>
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm hover:bg-rose-700 transition-colors w-fit">
+          <button className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-colors w-fit">
             จ่ายเงินเดือนทั้งหมด
           </button>
         </div>
@@ -49,7 +49,7 @@ export default function PayrollPage() {
       <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="font-bold text-slate-900">รายละเอียดเงินเดือน</h2>
-          <select className="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-rose-400">
+          <select className="px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400">
             <option>มิถุนายน 2567</option>
             <option>พฤษภาคม 2567</option>
             <option>เมษายน 2567</option>
@@ -75,7 +75,7 @@ export default function PayrollPage() {
                 <tr key={e.name} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-bold text-sm shrink-0">{e.name[0]}</div>
+                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">{e.name[0]}</div>
                       <div>
                         <p className="font-semibold text-slate-800">{e.name}</p>
                         <p className="text-xs text-slate-400">{e.role}</p>

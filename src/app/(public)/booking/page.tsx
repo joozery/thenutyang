@@ -25,7 +25,7 @@ export default async function BookingPage({
         {/* Back */}
         <Link
           href={tire ? `/tires/${tire.id}` : '/tires'}
-          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-rose-600 transition mb-6"
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-green-600 transition mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           {tire ? `กลับไปดู ${tire.model}` : 'กลับไปดูสินค้า'}

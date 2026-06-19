@@ -6,13 +6,13 @@
 
 @theme inline {
   /* Brand Colors Override */
-  --color-rose-50: #fff0f6;
-  --color-rose-100: #ffd6eb;
-  --color-rose-200: #ffb8da;
-  --color-rose-500: #ff70b8;
-  --color-rose-600: #FF4DA6; /* Primary Brand Pink */
-  --color-rose-700: #e63e91;
-  --color-rose-800: #cc307c;
+  --color-green-50: #f0fff4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a; /* Primary Brand Green */
+  --color-green-700: #15803d;
+  --color-green-800: #166534;
   
   --color-slate-50: #f9f9f9;
   --color-slate-100: #F2F2F2; /* Brand Light Gray */
@@ -141,4 +141,13 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Hide scrollbars globally */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

@@ -26,8 +26,8 @@ export default async function ComingSoonPage({
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 text-center">
-      <div className="w-20 h-20 rounded-full bg-rose-50 flex items-center justify-center mb-6">
-        <Clock className="w-10 h-10 text-rose-400" />
+      <div className="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mb-6">
+        <Clock className="w-10 h-10 text-green-400" />
       </div>
       <h1 className="text-2xl font-bold text-slate-800 mb-2">{label}</h1>
       <p className="text-slate-500 mb-8 max-w-sm">
@@ -35,7 +35,7 @@ export default async function ComingSoonPage({
       </p>
       <Link
         href="/"
-        className="inline-flex items-center gap-2 text-sm font-medium text-rose-600 hover:text-rose-700 transition-colors"
+        className="inline-flex items-center gap-2 text-sm font-medium text-green-600 hover:text-green-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         กลับหน้าหลัก

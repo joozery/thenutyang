@@ -28,9 +28,9 @@ export default async function BookingSuccessPage({
           </p>
 
           {ref && (
-            <div className="mt-5 bg-rose-50 border border-rose-100 rounded-xl p-4">
+            <div className="mt-5 bg-green-50 border border-green-100 rounded-xl p-4">
               <p className="text-xs text-slate-500 mb-1">หมายเลขการจองของคุณ</p>
-              <p className="text-xl font-black text-rose-600 tracking-widest">{ref}</p>
+              <p className="text-xl font-black text-green-600 tracking-widest">{ref}</p>
             </div>
           )}
         </div>
@@ -97,7 +97,7 @@ export default async function BookingSuccessPage({
                   <p className="text-sm font-medium text-slate-800">ส่งหมายเลขการจองในแชท LINE</p>
                   {ref && (
                     <div className="mt-2 flex items-center gap-2">
-                      <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono text-sm font-bold text-rose-600 select-all">
+                      <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-mono text-sm font-bold text-green-600 select-all">
                         {ref}
                       </div>
                       <CopyButton text={ref} />
@@ -128,7 +128,7 @@ export default async function BookingSuccessPage({
           </Link>
           <Link
             href="/tires"
-            className="flex-1 flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-xl transition-colors text-sm"
+            className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors text-sm"
           >
             ดูยางเพิ่มเติม
           </Link>

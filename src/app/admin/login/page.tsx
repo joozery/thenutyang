@@ -10,7 +10,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#0f111a] flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl flex items-center justify-center font-black text-white text-3xl shadow-lg shadow-rose-500/20 mx-auto mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center font-black text-white text-3xl shadow-lg shadow-green-500/20 mx-auto mb-4">
             N
           </div>
           <h1 className="text-white text-xl font-bold">The Nut Admin</h1>
@@ -19,7 +19,7 @@ export default function LoginPage() {
 
         <form action={formAction} className="bg-slate-800/50 rounded-2xl border border-slate-700 p-8 space-y-5">
           {state?.error && (
-            <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl px-4 py-3 text-rose-400 text-sm text-center">
+            <div className="bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-3 text-green-400 text-sm text-center">
               {state.error}
             </div>
           )}
@@ -34,7 +34,7 @@ export default function LoginPage() {
               required
               autoComplete="username"
               placeholder="admin"
-              className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition text-sm"
+              className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition text-sm"
             />
           </div>
 
@@ -48,14 +48,14 @@ export default function LoginPage() {
               required
               autoComplete="current-password"
               placeholder="••••••••"
-              className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition text-sm"
+              className="w-full bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition text-sm"
             />
           </div>
 
           <button
             type="submit"
             disabled={pending}
-            className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors text-sm"
+            className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors text-sm"
           >
             {pending ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
           </button>

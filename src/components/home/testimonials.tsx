@@ -30,13 +30,13 @@ export function Testimonials() {
       <div className="container mx-auto px-4 md:px-8">
         <div className="relative mb-8 text-center md:text-left inline-block">
           <h2 className="text-2xl md:text-3xl font-bold text-slate-900 pb-2">เสียงจากลูกค้าของเรา</h2>
-          <div className="absolute -bottom-1 left-0 w-12 h-1 bg-rose-600 rounded-full hidden md:block"></div>
+          <div className="absolute -bottom-1 left-0 w-12 h-1 bg-green-600 rounded-full hidden md:block"></div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {reviews.map((item) => (
             <div key={item.id} className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-full">
-              <div className="flex gap-1 mb-4 text-rose-500">
+              <div className="flex gap-1 mb-4 text-green-500">
                 <Star className="w-4 h-4 fill-current" />
                 <Star className="w-4 h-4 fill-current" />
                 <Star className="w-4 h-4 fill-current" />
@@ -59,7 +59,7 @@ export function Testimonials() {
         
         {/* Pagination Dots */}
         <div className="flex justify-center gap-2 mt-8">
-          <button className="w-2.5 h-2.5 rounded-full bg-rose-600"></button>
+          <button className="w-2.5 h-2.5 rounded-full bg-green-600"></button>
           <button className="w-2.5 h-2.5 rounded-full bg-slate-300 hover:bg-slate-400 transition-colors"></button>
           <button className="w-2.5 h-2.5 rounded-full bg-slate-300 hover:bg-slate-400 transition-colors"></button>
         </div>

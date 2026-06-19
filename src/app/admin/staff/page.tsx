@@ -24,7 +24,7 @@ export default function StaffPage() {
           <h1 className="text-2xl font-black text-slate-900">พนักงาน</h1>
           <p className="text-sm text-slate-500 mt-1">ทั้งหมด {staff.length} คน</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm hover:bg-rose-700 transition-colors w-fit">
+        <button className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-colors w-fit">
           <Plus size={16} /> เพิ่มพนักงาน
         </button>
       </div>
@@ -49,9 +49,9 @@ export default function StaffPage() {
         <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" placeholder="ค้นหาชื่อพนักงาน..." className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400" />
+            <input type="text" placeholder="ค้นหาชื่อพนักงาน..." className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400" />
           </div>
-          <select className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-rose-400">
+          <select className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400">
             <option>ตำแหน่ง: ทั้งหมด</option>
             <option>ช่างยาง</option>
             <option>ช่างตั้งศูนย์</option>
@@ -113,7 +113,7 @@ export default function StaffPage() {
           <span className="text-xs text-slate-400">แสดง 1–6 จาก 6 รายการ</span>
           <div className="flex gap-1">
             <button className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50"><ChevronLeft size={14} /></button>
-            <button className="w-8 h-8 rounded-lg text-sm font-medium bg-rose-600 text-white">1</button>
+            <button className="w-8 h-8 rounded-lg text-sm font-medium bg-green-600 text-white">1</button>
             <button className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50"><ChevronRight size={14} /></button>
           </div>
         </div>

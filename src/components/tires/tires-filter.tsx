@@ -41,8 +41,8 @@ export function TiresFilter() {
               onClick={() => update('brand', activeBrand === brand ? '' : brand)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all
                 ${activeBrand === brand
-                  ? 'border-rose-600 bg-rose-50 text-rose-600'
-                  : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:text-rose-600'
+                  ? 'border-green-600 bg-green-50 text-green-600'
+                  : 'border-slate-200 text-slate-600 hover:border-green-300 hover:text-green-600'
                 }`}
             >
               <Image
@@ -67,8 +67,8 @@ export function TiresFilter() {
               onClick={() => update('rim', activeRim === rim ? '' : String(rim))}
               className={`px-4 py-1.5 rounded-full border text-xs font-bold transition-all
                 ${activeRim === rim
-                  ? 'border-rose-600 bg-rose-600 text-white'
-                  : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:text-rose-600'
+                  ? 'border-green-600 bg-green-600 text-white'
+                  : 'border-slate-200 text-slate-600 hover:border-green-300 hover:text-green-600'
                 }`}
             >
               {rim}"
@@ -87,8 +87,8 @@ export function TiresFilter() {
               onClick={() => update('category', activeCategory === key ? '' : key)}
               className={`px-4 py-1.5 rounded-full border text-xs font-medium transition-all
                 ${activeCategory === key
-                  ? 'border-rose-600 bg-rose-600 text-white'
-                  : 'border-slate-200 text-slate-600 hover:border-rose-300 hover:text-rose-600'
+                  ? 'border-green-600 bg-green-600 text-white'
+                  : 'border-slate-200 text-slate-600 hover:border-green-300 hover:text-green-600'
                 }`}
             >
               {label}
@@ -100,7 +100,7 @@ export function TiresFilter() {
       {hasFilter && (
         <button
           onClick={clearAll}
-          className="text-xs text-rose-600 hover:underline font-medium"
+          className="text-xs text-green-600 hover:underline font-medium"
         >
           ล้างตัวกรองทั้งหมด
         </button>

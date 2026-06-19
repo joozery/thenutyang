@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import {
   Home, Users, Car, Package,
   ShoppingBag, Warehouse, FileText, DollarSign,
-  UserCircle, CalendarDays, BarChart2, Settings,
-  Settings2, HeadphonesIcon, ChevronRight, ClipboardList, ShieldCheck
+  UserCircle, UserCircle2, CalendarDays, BarChart2, Settings,
+  Settings2, HeadphonesIcon, ChevronRight, ClipboardList, ShieldCheck, Tag
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,8 +20,8 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
     { icon: <Home size={18} />, label: "หน้าหลัก", href: "/admin", active: pathname === "/admin" },
     { icon: <ClipboardList size={18} />, label: "การจอง", href: "/admin/bookings", active: pathname.startsWith("/admin/bookings") },
     { icon: <Users size={18} />, label: "ลูกค้า", href: "/admin/customers", active: pathname === "/admin/customers" },
-    { icon: <Car size={18} />, label: "รถของลูกค้า", href: "/admin/vehicles", active: pathname === "/admin/vehicles" },
     { icon: <Package size={18} />, label: "สินค้า/สต๊อก", href: "/admin/products", active: pathname.startsWith("/admin/products") },
+    { icon: <Tag size={18} />,     label: "แบรนด์",       href: "/admin/brands",   active: pathname.startsWith("/admin/brands") },
     { icon: <ShoppingBag size={18} />, label: "จัดซื้อ", href: "/admin/purchasing", active: pathname === "/admin/purchasing" },
     { icon: <Warehouse size={18} />, label: "คลังสินค้า", href: "/admin/warehouse", active: pathname === "/admin/warehouse" },
     { icon: <FileText size={18} />, label: "บิล/เอกสาร", href: "/admin/documents", active: pathname.startsWith("/admin/documents"), hasSub: true },
@@ -32,6 +32,7 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
     { icon: <Settings size={18} />, label: "การตั้งค่า", href: "/admin/settings", active: pathname.startsWith("/admin/settings"), hasSub: true },
     { icon: <Settings2 size={18} />, label: "ตั้งค่าระบบ", href: "/admin/system", active: pathname === "/admin/system" },
     { icon: <ShieldCheck size={18} />, label: "จัดการ Admin", href: "/admin/users", active: pathname.startsWith("/admin/users") },
+    { icon: <UserCircle2 size={18} />, label: "โปรไฟล์ของฉัน", href: "/admin/profile", active: pathname.startsWith("/admin/profile") },
   ];
 
   return (
@@ -42,9 +43,9 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
       {/* Logo Area */}
       <div className={`flex items-center h-16 border-b border-slate-800/60 ${isOpen ? 'px-6' : 'justify-center'}`}>
          {isOpen ? (
-           <img src="/logo/logothenun.png" alt="The Nut Yangyont" className="h-7 object-contain" />
+           <img src="/เดอะนัท1.png" alt="The Nut Yangyont" className="h-7 object-contain" />
          ) : (
-           <div className="w-10 h-10 bg-gradient-to-br from-rose-500 to-rose-600 rounded-xl flex items-center justify-center font-black text-white text-xl shadow-lg shadow-rose-500/20">N</div>
+           <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center font-black text-white text-xl shadow-lg shadow-green-500/20">N</div>
          )}
       </div>
 
@@ -69,13 +70,13 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
                 title={!isOpen ? item.label : undefined}
                 className={`flex items-center gap-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium group
                   ${item.active 
-                    ? 'bg-rose-500/10 text-rose-500' 
+                    ? 'bg-green-500/10 text-green-500' 
                     : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'
                   }
                   ${isOpen ? 'px-3' : 'justify-center px-0'}
                 `}
               >
-                <div className={`${item.active ? 'text-rose-500' : 'text-slate-400 group-hover:text-slate-100'} transition-colors`}>
+                <div className={`${item.active ? 'text-green-500' : 'text-slate-400 group-hover:text-slate-100'} transition-colors`}>
                   {item.icon}
                 </div>
                 
@@ -83,7 +84,7 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
                   <>
                     <span className="flex-1 whitespace-nowrap">{item.label}</span>
                     {item.hasSub && (
-                      <ChevronRight size={14} className={`${item.active ? 'text-rose-500' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
+                      <ChevronRight size={14} className={`${item.active ? 'text-green-500' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
                     )}
                   </>
                 )}
@@ -98,7 +99,7 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
         <div className={`bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-xl flex items-center gap-3 border border-slate-700/50 cursor-pointer hover:border-slate-600 transition-colors
           ${isOpen ? 'p-3' : 'p-2 justify-center'}
         `}>
-          <div className="bg-rose-500/20 p-2 rounded-lg text-rose-500">
+          <div className="bg-green-500/20 p-2 rounded-lg text-green-500">
             <HeadphonesIcon size={isOpen ? 18 : 20} />
           </div>
           {isOpen && (

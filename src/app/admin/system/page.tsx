@@ -39,12 +39,12 @@ export default function SystemPage() {
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-bold text-slate-900 flex items-center gap-2"><Users size={16} />ผู้ใช้งานระบบ</h2>
-            <button className="text-sm text-rose-600 font-medium hover:underline">+ เพิ่มผู้ใช้</button>
+            <button className="text-sm text-green-600 font-medium hover:underline">+ เพิ่มผู้ใช้</button>
           </div>
           <div className="divide-y divide-slate-50">
             {users.map((u) => (
               <div key={u.email} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer">
-                <div className="w-9 h-9 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-bold text-sm shrink-0">{u.name[0]}</div>
+                <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">{u.name[0]}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-800">{u.name}</p>
                   <p className="text-xs text-slate-400 truncate">{u.email}</p>
@@ -62,11 +62,11 @@ export default function SystemPage() {
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-bold text-slate-900 flex items-center gap-2"><Shield size={16} />สิทธิ์การใช้งาน</h2>
-            <button className="text-sm text-rose-600 font-medium hover:underline">จัดการ</button>
+            <button className="text-sm text-green-600 font-medium hover:underline">จัดการ</button>
           </div>
           <div className="divide-y divide-slate-50">
             {[
-              { role: "ผู้ดูแลระบบ", perms: "เข้าถึงทุกส่วน", users: 1, color: "bg-rose-100 text-rose-700" },
+              { role: "ผู้ดูแลระบบ", perms: "เข้าถึงทุกส่วน", users: 1, color: "bg-green-100 text-green-700" },
               { role: "ผู้จัดการ", perms: "ยกเว้นตั้งค่าระบบ", users: 0, color: "bg-purple-100 text-purple-700" },
               { role: "แคชเชียร์", perms: "POS, บิล, ลูกค้า", users: 1, color: "bg-blue-100 text-blue-700" },
               { role: "ช่าง", perms: "ดูรถ, ดูสินค้า", users: 3, color: "bg-emerald-100 text-emerald-700" },

@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 import { verifyCustomerToken, CUSTOMER_COOKIE } from "@/lib/customer-session";
 import { logoutCustomer } from "@/app/actions/customer-auth";
 
+import { MobileMenu } from "./mobile-menu";
+
 export async function Header() {
   const jar = await cookies();
   const token = jar.get(CUSTOMER_COOKIE)?.value;
@@ -13,22 +15,22 @@ export async function Header() {
   return (
     <header className="w-full border-b bg-white sticky top-0 z-50">
       {/* Top bar */}
-      <div className="w-full bg-rose-700 text-white text-xs py-2 px-4 md:px-8 flex justify-between items-center">
+      <div className="w-full bg-green-700 text-white text-xs py-2 px-4 md:px-8 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1">
-            <span className="bg-rose-800 rounded-full w-5 h-5 flex items-center justify-center">
+            <span className="bg-green-800 rounded-full w-5 h-5 flex items-center justify-center">
               <Truck className="w-3 h-3" />
             </span>
             จัดส่งฟรี ทั่วประเทศ
           </span>
           <span className="hidden md:flex items-center gap-1">
-            <span className="bg-rose-800 rounded-full w-5 h-5 flex items-center justify-center">
+            <span className="bg-green-800 rounded-full w-5 h-5 flex items-center justify-center">
               <ShieldCheck className="w-3 h-3" />
             </span>
             รับประกันคุณภาพยางแท้ทุกเส้น
           </span>
           <span className="hidden lg:flex items-center gap-1">
-            <span className="bg-rose-800 rounded-full w-5 h-5 flex items-center justify-center">
+            <span className="bg-green-800 rounded-full w-5 h-5 flex items-center justify-center">
               <CreditCard className="w-3 h-3" />
             </span>
             ผ่อน 0% สูงสุด 10 เดือน
@@ -50,11 +52,11 @@ export async function Header() {
         <div className="flex items-center">
           <Link href="/" className="block">
             <Image
-              src="/logo/logo.png"
-              alt="นัททายางยนต์"
-              width={240}
-              height={60}
-              className="h-10 md:h-12 w-auto object-contain"
+              src="/เดอะนัท1.png"
+              alt="THENUTTIRE เดอะนัทยางยนต์"
+              width={280}
+              height={80}
+              className="h-12 md:h-14 w-auto object-contain"
               priority
             />
           </Link>
@@ -62,19 +64,16 @@ export async function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-slate-700">
-          <Link href="/" className="text-rose-600 border-b-2 border-rose-600 pb-1">หน้าหลัก</Link>
-          <Link href="/tires" className="hover:text-rose-600 transition">ยางรถยนต์</Link>
-          <Link href="/wheels" className="hover:text-rose-600 transition">แม็ก & ล้อ</Link>
-          <Link href="/accessories" className="hover:text-rose-600 transition">แบตเตอรี่</Link>
-          <Link href="/oil" className="hover:text-rose-600 transition">น้ำมันเครื่อง</Link>
-          <Link href="/promotions" className="hover:text-rose-600 transition">โปรโมชั่น</Link>
-          <Link href="/services" className="hover:text-rose-600 transition">บริการของเรา</Link>
-          <Link href="/articles" className="hover:text-rose-600 transition">บทความ</Link>
-          <Link href="/contact" className="hover:text-rose-600 transition">ติดต่อเรา</Link>
+          <Link href="/" className="text-green-600 border-b-2 border-green-600 pb-1">หน้าหลัก</Link>
+          <Link href="/tires" className="hover:text-green-600 transition">ยางรถยนต์</Link>
+          <Link href="/promotions" className="hover:text-green-600 transition">โปรโมชั่น</Link>
+          <Link href="/services" className="hover:text-green-600 transition">บริการของเรา</Link>
+          <Link href="/articles" className="hover:text-green-600 transition">บทความ</Link>
+          <Link href="/contact" className="hover:text-green-600 transition">ติดต่อเรา</Link>
         </nav>
 
         {/* Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 md:gap-4">
           {customer ? (
             /* ล็อกอินแล้ว — แสดงชื่อ + ปุ่ม logout */
             <div className="hidden md:flex items-center gap-2">
@@ -92,7 +91,7 @@ export async function Header() {
                 <button
                   type="submit"
                   title="ออกจากระบบ"
-                  className="text-slate-400 hover:text-rose-600 transition p-1"
+                  className="text-slate-400 hover:text-green-600 transition p-1"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -111,17 +110,15 @@ export async function Header() {
             </a>
           )}
 
-          <div className="flex items-center gap-3">
-            <button className="text-slate-700 hover:text-rose-600 transition">
+          <div className="flex items-center gap-4 md:gap-5">
+            <button className="hidden md:flex text-slate-700 hover:text-green-600 transition">
               <Search className="w-5 h-5" />
             </button>
-            <button className="text-slate-700 hover:text-rose-600 transition relative">
-              <ShoppingCart className="w-5 h-5" />
-              <span className="absolute -top-2 -right-2 bg-rose-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">0</span>
-            </button>
-            <button className="lg:hidden text-slate-700">
-              <Menu className="w-6 h-6" />
-            </button>
+            <Link href="/cart" className="text-slate-700 hover:text-green-600 transition relative">
+              <ShoppingCart className="w-6 h-6 md:w-5 md:h-5" />
+              <span className="absolute -top-2 -right-2 bg-green-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">0</span>
+            </Link>
+            <MobileMenu />
           </div>
         </div>
       </div>

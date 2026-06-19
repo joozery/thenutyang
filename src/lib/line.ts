@@ -54,14 +54,14 @@ export function buildQuoteFlexMessage(booking: IBooking) {
       header: {
         type: 'box',
         layout: 'vertical',
-        backgroundColor: '#FF4DA6',
+        backgroundColor: '#16a34a',
         paddingAll: '20px',
         paddingBottom: '18px',
         contents: [
           {
             type: 'text',
             text: 'เดอะนัททายางยนต์',
-            color: '#ffe0f0',
+            color: '#bbf7d0',
             size: 'sm',
             weight: 'bold',
           },
@@ -76,7 +76,7 @@ export function buildQuoteFlexMessage(booking: IBooking) {
           {
             type: 'text',
             text: booking.ref,
-            color: '#ffe0f0',
+            color: '#bbf7d0',
             size: 'xs',
             margin: 'xs',
           },
@@ -144,7 +144,7 @@ export function buildQuoteFlexMessage(booking: IBooking) {
                 layout: 'horizontal',
                 contents: [
                   { type: 'text', text: 'ราคารวม', size: 'sm', color: '#444444', flex: 1 },
-                  { type: 'text', text: `฿${totalPrice.toLocaleString()}`, size: 'sm', weight: 'bold', color: '#FF4DA6', align: 'end' },
+                  { type: 'text', text: `฿${totalPrice.toLocaleString()}`, size: 'sm', weight: 'bold', color: '#16a34a', align: 'end' },
                 ],
               },
               {
@@ -199,7 +199,7 @@ export function buildQuoteFlexMessage(booking: IBooking) {
               uri: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://thenutyang.com'}/booking/confirm?ref=${booking.ref}`,
             },
             style: 'primary',
-            color: '#FF4DA6',
+            color: '#16a34a',
             height: 'md',
           },
           {

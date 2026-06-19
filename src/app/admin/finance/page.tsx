@@ -19,12 +19,12 @@ export default function FinancePage() {
           <p className="text-sm text-slate-500 mt-1">ภาพรวมการเงิน — มิถุนายน 2567</p>
         </div>
         <div className="flex gap-2">
-          <select className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-rose-400">
+          <select className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400">
             <option>เดือนนี้</option>
             <option>เดือนที่แล้ว</option>
             <option>3 เดือนล่าสุด</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm hover:bg-rose-700 transition-colors w-fit">
+          <button className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-colors w-fit">
             บันทึกรายการ
           </button>
         </div>
@@ -51,9 +51,9 @@ export default function FinancePage() {
         <div className="bg-white border border-slate-100 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-slate-500 text-sm font-medium">กำไรสุทธิ</span>
-            <div className="bg-rose-50 p-2 rounded-xl text-rose-600"><DollarSign size={18} /></div>
+            <div className="bg-green-50 p-2 rounded-xl text-green-600"><DollarSign size={18} /></div>
           </div>
-          <p className="text-3xl font-black text-rose-600 mb-1">฿279,650</p>
+          <p className="text-3xl font-black text-green-600 mb-1">฿279,650</p>
           <p className="text-slate-400 text-xs flex items-center gap-1"><ArrowUpRight size={12} className="text-emerald-500" />+31.3% จากเดือนที่แล้ว</p>
         </div>
       </div>
@@ -63,7 +63,7 @@ export default function FinancePage() {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-bold text-slate-900">รายการล่าสุด</h2>
-            <button className="text-sm text-rose-600 font-medium hover:underline">ดูทั้งหมด</button>
+            <button className="text-sm text-green-600 font-medium hover:underline">ดูทั้งหมด</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -119,7 +119,7 @@ export default function FinancePage() {
                     <span className="font-bold text-slate-800">฿{cat.amount.toLocaleString()}</span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-1.5">
-                    <div className="bg-rose-500 h-1.5 rounded-full" style={{ width: `${cat.pct}%` }} />
+                    <div className="bg-green-500 h-1.5 rounded-full" style={{ width: `${cat.pct}%` }} />
                   </div>
                 </div>
               ))}

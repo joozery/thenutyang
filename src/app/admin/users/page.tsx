@@ -20,15 +20,19 @@ export default async function AdminUsersPage() {
     id: u._id.toString(),
     username: u.username,
     displayName: u.displayName,
+    email: u.email ?? '',
+    phone: u.phone ?? '',
     role: u.role,
+    isActive: u.isActive !== false,
+    lastLoginAt: u.lastLoginAt instanceof Date ? u.lastLoginAt.toISOString() : null,
     createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt),
   }));
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-black text-slate-900">จัดการ Admin</h1>
-        <p className="text-slate-500 text-sm mt-1">เพิ่มหรือลบบัญชีผู้ดูแลระบบ</p>
+        <p className="text-slate-500 text-sm mt-1">เพิ่ม แก้ไข หรือลบบัญชีผู้ดูแลระบบ</p>
       </div>
       <AdminUsersClient users={serialized} currentUsername={currentUsername} />
     </div>

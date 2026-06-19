@@ -34,6 +34,9 @@ export async function login(
       path: '/',
     });
 
+    // Track last login time
+    await AdminUser.findByIdAndUpdate(user._id, { lastLoginAt: new Date() });
+
     redirect('/admin');
   } catch (err) {
     if ((err as { digest?: string }).digest?.startsWith('NEXT_REDIRECT')) throw err;

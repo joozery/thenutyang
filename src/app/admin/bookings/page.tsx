@@ -56,8 +56,8 @@ export default async function AdminBookingsPage({
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center">
-            <ClipboardList className="w-5 h-5 text-rose-600" />
+          <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+            <ClipboardList className="w-5 h-5 text-green-600" />
           </div>
           <div>
             <h1 className="text-xl font-black text-slate-900">การจอง</h1>
@@ -77,8 +77,8 @@ export default async function AdminBookingsPage({
             href={s === 'all' ? '/admin/bookings' : `/admin/bookings?status=${s}`}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all
               ${activeStatus === s
-                ? 'bg-rose-600 text-white shadow-sm'
-                : 'bg-white border border-slate-200 text-slate-600 hover:border-rose-200 hover:text-rose-600'
+                ? 'bg-green-600 text-white shadow-sm'
+                : 'bg-white border border-slate-200 text-slate-600 hover:border-green-200 hover:text-green-600'
               }`}
           >
             {STATUS_LABEL[s]}

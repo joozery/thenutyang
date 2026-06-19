@@ -16,7 +16,7 @@ export function FeaturesBar() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 divide-x divide-slate-100">
             {features.map((feature, idx) => (
               <div key={idx} className={`flex items-center gap-4 ${idx !== 0 ? 'pl-6' : ''}`}>
-                <div className="text-rose-600 shrink-0">
+                <div className="text-green-600 shrink-0">
                   {feature.icon}
                 </div>
                 <div>
