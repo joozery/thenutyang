@@ -1,0 +1,79 @@
+import connectDB from './mongodb';
+import { LeaveRequest, LeaveType } from '@/models/LeaveRequest';
+
+export type LeaveStatus = 'pending' | 'approved' | 'rejected';
+
+export type LeaveRow = {
+  id: string;
+  employeeId: string;
+  leaveType: LeaveType;
+  startDate: string;  // 'YYYY-MM-DD'
+  endDate: string;    // 'YYYY-MM-DD'
+  days: number;
+  reason: string;
+  status: LeaveStatus;
+  rejReason: string;
+  createdAt: string;
+};
+
+// ประเภทลาที่ "ได้รับเงิน" (ไม่หักเงินเดือน)
+export const PAID_LEAVE_TYPES: LeaveType[] = ['sick', 'vacation'];
+
+function dk(d: unknown): string {
+  if (d instanceof Date) return d.toISOString().slice(0, 10);
+  return String(d ?? '').slice(0, 10);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalize(d: any): LeaveRow {
+  return {
+    id:         String(d._id),
+    employeeId: String(d.employeeId),
+    leaveType:  d.leaveType ?? 'other',
+    startDate:  dk(d.startDate),
+    endDate:    dk(d.endDate),
+    days:       d.days ?? 0,
+    reason:     d.reason ?? '',
+    status:     d.status ?? 'pending',
+    rejReason:  d.rejReason ?? '',
+    createdAt:  d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt ?? ''),
+  };
+}
+
+export async function getLeaveRequests(status?: LeaveStatus): Promise<LeaveRow[]> {
+  await connectDB();
+  const query = status ? { status } : {};
+  const docs = await LeaveRequest.find(query).sort({ createdAt: -1 }).lean();
+  return docs.map(normalize);
+}
+
+// สรุปวันลา "ที่อนุมัติแล้ว" ในรอบเดือน ต่อพนักงาน (แยกได้เงิน/ไม่ได้เงิน)
+export type LeaveSummary = { paidDays: number; unpaidDays: number };
+
+export async function getApprovedLeaveSummary(period: string): Promise<Record<string, LeaveSummary>> {
+  await connectDB();
+  const [y, m] = period.split('-').map(Number);
+  const monthStart = new Date(Date.UTC(y, m - 1, 1));
+  const monthEnd = new Date(Date.UTC(y, m, 0)); // วันสุดท้ายของเดือน (UTC)
+
+  const docs = await LeaveRequest.find({
+    status: 'approved',
+    startDate: { $lte: monthEnd },
+    endDate: { $gte: monthStart },
+  }).lean();
+
+  const map: Record<string, LeaveSummary> = {};
+  for (const raw of docs) {
+    const d = normalize(raw);
+    // นับเฉพาะวันลาที่ตกอยู่ในเดือนนั้น
+    const s = new Date(Math.max(new Date(d.startDate).getTime(), monthStart.getTime()));
+    const e = new Date(Math.min(new Date(d.endDate).getTime(), monthEnd.getTime()));
+    const daysInMonth = Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
+    if (daysInMonth <= 0) continue;
+    const cur = map[d.employeeId] ?? { paidDays: 0, unpaidDays: 0 };
+    if (PAID_LEAVE_TYPES.includes(d.leaveType)) cur.paidDays += daysInMonth;
+    else cur.unpaidDays += daysInMonth;
+    map[d.employeeId] = cur;
+  }
+  return map;
+}

@@ -6,7 +6,8 @@ import {
   Home, Users, Car, Package,
   ShoppingBag, Warehouse, FileText, DollarSign,
   UserCircle, UserCircle2, CalendarDays, BarChart2, Settings,
-  Settings2, HeadphonesIcon, ChevronRight, ClipboardList, ShieldCheck, Tag
+  Settings2, HeadphonesIcon, ChevronRight, ClipboardList, ShieldCheck, Tag,
+  CalendarClock, CalendarOff
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,6 +28,8 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
     { icon: <FileText size={18} />, label: "บิล/เอกสาร", href: "/admin/documents", active: pathname.startsWith("/admin/documents"), hasSub: true },
     { icon: <DollarSign size={18} />, label: "การเงิน", href: "/admin/finance", active: pathname.startsWith("/admin/finance"), hasSub: true },
     { icon: <UserCircle size={18} />, label: "พนักงาน", href: "/admin/staff", active: pathname === "/admin/staff" },
+    { icon: <CalendarClock size={18} />, label: "ลงเวลา", href: "/admin/attendance", active: pathname === "/admin/attendance" },
+    { icon: <CalendarOff size={18} />, label: "การลา", href: "/admin/leave", active: pathname === "/admin/leave" },
     { icon: <CalendarDays size={18} />, label: "เงินเดือน", href: "/admin/payroll", active: pathname === "/admin/payroll" },
     { icon: <BarChart2 size={18} />, label: "รายงาน", href: "/admin/reports", active: pathname.startsWith("/admin/reports"), hasSub: true },
     { icon: <Settings size={18} />, label: "การตั้งค่า", href: "/admin/settings", active: pathname.startsWith("/admin/settings"), hasSub: true },
