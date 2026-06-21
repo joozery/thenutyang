@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition, useState } from 'react';
+import { useTransition, useState, Fragment } from 'react';
 import { sendLineQuote, confirmBooking, markReady, cancelBooking } from '@/app/actions/admin';
 import { MessageCircle, CheckCircle, Package, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -84,8 +84,8 @@ export function BookingsTable({ bookings }: { bookings: Booking[] }) {
           </thead>
           <tbody>
             {bookings.map(b => (
-              <>
-                <tr key={b._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+              <Fragment key={b._id}>
+                <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <td className="px-5 py-3.5">
                     <span className="font-mono text-xs text-green-600 font-bold">{b.ref}</span>
                     <p className="text-[10px] text-slate-400 mt-0.5">
@@ -205,7 +205,7 @@ export function BookingsTable({ bookings }: { bookings: Booking[] }) {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
