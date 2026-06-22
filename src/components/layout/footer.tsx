@@ -13,6 +13,9 @@ export async function Footer() {
   const addressLines = settings?.address 
     ? settings.address.split('\n').filter((l: string) => l.trim())
     : ['123 ถนนกาญจนาภิเษก', 'กรุงเทพฯ 10160'];
+
+  return (
+    <footer className="w-full font-sans">
       {/* Top Pink/Green Bar */}
       <div className="bg-gradient-to-r from-green-700 via-green-600 to-emerald-600 text-white py-6">
         <div className="container mx-auto px-2 md:px-8">
