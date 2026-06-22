@@ -5,34 +5,27 @@ export function Footer() {
   return (
     <footer className="w-full font-sans">
       {/* Top Pink/Green Bar */}
-      <div className="bg-green-600 text-white py-6">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:divide-x divide-green-500/50">
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 justify-center md:justify-start text-center md:text-left">
-              <Truck className="w-8 h-8 opacity-90" strokeWidth={1.5} />
+      <div className="bg-gradient-to-r from-green-700 via-green-600 to-emerald-600 text-white py-6">
+        <div className="container mx-auto px-2 md:px-8">
+          <div className="grid grid-cols-3 gap-2 md:gap-6 md:divide-x divide-green-500/50">
+            <div className="flex flex-col md:flex-row items-center gap-1.5 md:gap-4 justify-start text-center md:text-left">
+              <Truck className="w-5 h-5 md:w-8 md:h-8 opacity-90" strokeWidth={1.5} />
               <div>
-                <h4 className="font-bold text-[11px] md:text-sm">จัดส่งฟรี</h4>
+                <h4 className="font-bold text-[10px] md:text-sm leading-tight">จัดส่งฟรี</h4>
                 <p className="text-[10px] md:text-xs text-green-100 mt-0.5">ทั่วประเทศ</p>
               </div>
             </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 justify-center md:justify-start text-center md:text-left md:pl-8">
-              <ShieldCheck className="w-8 h-8 opacity-90" strokeWidth={1.5} />
+            <div className="flex flex-col md:flex-row items-center gap-1.5 md:gap-4 justify-start text-center md:text-left md:pl-8">
+              <ShieldCheck className="w-5 h-5 md:w-8 md:h-8 opacity-90" strokeWidth={1.5} />
               <div>
-                <h4 className="font-bold text-[11px] md:text-sm">รับประกันยาง</h4>
+                <h4 className="font-bold text-[10px] md:text-sm leading-tight">รับประกันยาง</h4>
                 <p className="text-[10px] md:text-xs text-green-100 mt-0.5">ขาด บวม แตก</p>
               </div>
             </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 justify-center md:justify-start text-center md:text-left md:pl-8">
-              <RefreshCw className="w-8 h-8 opacity-90" strokeWidth={1.5} />
+            <div className="flex flex-col md:flex-row items-center gap-1.5 md:gap-4 justify-start text-center md:text-left md:pl-8">
+              <Shield className="w-5 h-5 md:w-8 md:h-8 opacity-90" strokeWidth={1.5} />
               <div>
-                <h4 className="font-bold text-[11px] md:text-sm">คืนสินค้า 7 วัน</h4>
-                <p className="text-[10px] md:text-xs text-green-100 mt-0.5">ตามที่กำหนด</p>
-              </div>
-            </div>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 justify-center md:justify-start text-center md:text-left md:pl-8">
-              <Shield className="w-8 h-8 opacity-90" strokeWidth={1.5} />
-              <div>
-                <h4 className="font-bold text-[11px] md:text-sm">ปลอดภัย 100%</h4>
+                <h4 className="font-bold text-[10px] md:text-sm leading-tight">ปลอดภัย 100%</h4>
                 <p className="text-[10px] md:text-xs text-green-100 mt-0.5">ชำระเงินปลอดภัย</p>
               </div>
             </div>

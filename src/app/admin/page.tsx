@@ -156,8 +156,8 @@ export default function AdminDashboard() {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         {summaryCards.map((card, idx) => (
-          <div key={idx} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-            <div className={`${card.iconBg} w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${card.iconClass}`}>
+          <div key={idx} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
+            <div className={`${card.iconBg} w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${card.iconClass}`}>
               {card.icon}
             </div>
             <p className="text-xs text-slate-400 font-medium mb-1">{card.title}</p>
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Sales Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-bold text-slate-800">ยอดขาย 6 เดือนล่าสุด</h3>
             <span className="text-xs text-slate-400">จากใบแจ้งหนี้ที่ชำระแล้ว</span>
@@ -199,7 +199,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Category Pie */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
           <h3 className="font-bold text-slate-800 mb-5">สัดส่วนสินค้า</h3>
           {categoryData.length === 0 ? (
             <div className="flex items-center justify-center h-48 text-slate-400 text-sm">ยังไม่มีสินค้า</div>
@@ -220,7 +220,7 @@ export default function AdminDashboard() {
       {/* Tables Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Recent Invoices */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-bold text-slate-800">บิลล่าสุด</h3>
             <a href="/admin/documents" className="text-xs font-semibold text-green-600 hover:text-green-700">ดูทั้งหมด →</a>
@@ -263,7 +263,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Low Stock */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-bold text-slate-800 flex items-center gap-2">
               <AlertTriangle size={16} className="text-amber-500" />

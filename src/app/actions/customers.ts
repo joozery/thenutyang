@@ -1,0 +1,68 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import connectDB from '@/lib/mongodb';
+import { Customer } from '@/models/Customer';
+
+type ActionResult = { error?: string; ok?: boolean };
+
+export type CustomerFormInput = {
+  customerType: 'individual' | 'corporate';
+  firstName: string;
+  lastName: string;
+  companyName: string;
+  phone: string;
+  email: string;
+  address: string;
+  taxId: string;
+  carInfo: string;
+  note: string;
+};
+
+function validate(input: CustomerFormInput): string | null {
+  if (input.customerType === 'corporate' && !input.companyName.trim()) return 'กรุณากรอกชื่อบริษัท';
+  if (input.customerType === 'individual' && !input.firstName.trim()) return 'กรุณากรอกชื่อลูกค้า';
+  return null;
+}
+
+export async function createCustomer(input: CustomerFormInput): Promise<ActionResult> {
+  try {
+    const error = validate(input);
+    if (error) return { error };
+
+    await connectDB();
+    await Customer.create({ ...input, source: 'walkin' });
+    revalidatePath('/admin/customers');
+    return { ok: true };
+  } catch (err) {
+    console.error('[createCustomer]', err);
+    return { error: 'บันทึกไม่สำเร็จ' };
+  }
+}
+
+export async function updateCustomer(id: string, input: CustomerFormInput): Promise<ActionResult> {
+  try {
+    const error = validate(input);
+    if (error) return { error };
+
+    await connectDB();
+    await Customer.findByIdAndUpdate(id, { ...input, updatedAt: new Date() });
+    revalidatePath('/admin/customers');
+    return { ok: true };
+  } catch (err) {
+    console.error('[updateCustomer]', err);
+    return { error: 'บันทึกไม่สำเร็จ' };
+  }
+}
+
+export async function deleteCustomer(id: string): Promise<ActionResult> {
+  try {
+    await connectDB();
+    await Customer.findByIdAndDelete(id);
+    revalidatePath('/admin/customers');
+    return { ok: true };
+  } catch (err) {
+    console.error('[deleteCustomer]', err);
+    return { error: 'ลบไม่สำเร็จ' };
+  }
+}

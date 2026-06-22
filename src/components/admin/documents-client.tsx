@@ -7,7 +7,8 @@ import {
   Search, Plus, FileText, Download, Eye, Clock, CheckCircle,
   XCircle, MoreHorizontal, ChevronLeft, ChevronRight,
   Import, X, Printer, CreditCard, Banknote, ArrowRightLeft,
-  AlertCircle, FileEdit,
+  AlertCircle, FileEdit, LayoutGrid, Calendar, Phone, Car, Tag,
+  Receipt, FileMinus,
 } from 'lucide-react';
 import type { DocRow, DocStats } from '@/lib/documents';
 import { updateDocStatus, importFromBookings, deleteDocument } from '@/app/actions/documents';
@@ -21,9 +22,9 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const TYPE_STYLE: Record<string, string> = {
-  invoice:     'bg-blue-100 text-blue-700',
-  quote:       'bg-purple-100 text-purple-700',
-  credit_note: 'bg-orange-100 text-orange-700',
+  invoice:     'bg-blue-50 text-blue-700 border-blue-200/50',
+  quote:       'bg-purple-50 text-purple-700 border-purple-200/50',
+  credit_note: 'bg-orange-50 text-orange-700 border-orange-200/50',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -37,15 +38,15 @@ const STATUS_LABEL: Record<string, string> = {
   issued:           'ออกแล้ว',
 };
 
-const STATUS_STYLE: Record<string, string> = {
-  paid:             'bg-emerald-100 text-emerald-700',
-  unpaid:           'bg-red-100 text-red-600',
-  cancelled:        'bg-slate-100 text-slate-400',
-  pending_approval: 'bg-amber-100 text-amber-700',
-  accepted:         'bg-blue-100 text-blue-700',
-  rejected:         'bg-slate-100 text-slate-400',
-  expired:          'bg-slate-100 text-slate-400',
-  issued:           'bg-purple-100 text-purple-700',
+const STATUS_STYLE: Record<string, { label: string; className: string; dot: string }> = {
+  paid:             { label: 'ชำระแล้ว', className: 'bg-emerald-50 text-emerald-700 border-emerald-200/50', dot: 'bg-emerald-500' },
+  unpaid:           { label: 'ค้างชำระ', className: 'bg-red-50 text-red-700 border-red-200/50', dot: 'bg-red-500' },
+  cancelled:        { label: 'ยกเลิก', className: 'bg-slate-50 text-slate-500 border-slate-200/50', dot: 'bg-slate-400' },
+  pending_approval: { label: 'รอตอบรับ', className: 'bg-amber-50 text-amber-700 border-amber-200/50', dot: 'bg-amber-500' },
+  accepted:         { label: 'อนุมัติแล้ว', className: 'bg-blue-50 text-blue-700 border-blue-200/50', dot: 'bg-blue-500' },
+  rejected:         { label: 'ปฏิเสธแล้ว', className: 'bg-slate-50 text-slate-500 border-slate-200/50', dot: 'bg-slate-400' },
+  expired:          { label: 'หมดอายุ', className: 'bg-slate-50 text-slate-500 border-slate-200/50', dot: 'bg-slate-400' },
+  issued:           { label: 'ออกแล้ว', className: 'bg-purple-50 text-purple-700 border-purple-200/50', dot: 'bg-purple-500' },
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -73,14 +74,11 @@ function fmtMoney(n: number) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const Icon = status === 'paid' || status === 'accepted' || status === 'issued'
-    ? CheckCircle
-    : status === 'unpaid' || status === 'rejected' || status === 'cancelled' || status === 'expired'
-    ? XCircle
-    : Clock;
+  const st = STATUS_STYLE[status] || { label: status, className: 'bg-slate-50 text-slate-500 border-slate-200/50', dot: 'bg-slate-400' };
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLE[status] ?? 'bg-slate-100 text-slate-500'}`}>
-      <Icon size={10} />{STATUS_LABEL[status] ?? status}
+    <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-full border ${st.className}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`}></span>
+      {STATUS_LABEL[status] ?? status}
     </span>
   );
 }
@@ -103,25 +101,29 @@ function ViewModal({
     : CreditCard;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-green-50 rounded-xl flex items-center justify-center">
-              <FileText size={16} className="text-green-600" />
+            <div className="w-10 h-10 bg-white rounded-lg shadow-sm border border-slate-200/60 flex items-center justify-center">
+              <FileText size={18} className="text-blue-600" />
             </div>
             <div>
-              <p className="font-black text-slate-900 text-sm">{doc.docNumber}</p>
-              <p className="text-xs text-slate-400">{TYPE_LABEL[doc.type]} · {fmtDate(doc.issuedAt)}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-black text-slate-900 text-base">{doc.docNumber}</p>
+                <StatusBadge status={doc.status} />
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5 font-medium">{TYPE_LABEL[doc.type]} · ออกเมื่อ {fmtDate(doc.issuedAt)}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => window.print()} className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="พิมพ์">
-              <Printer size={15} />
-            </button>
-            <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
-              <X size={15} />
+            <Link href={`/admin/documents/${doc.id}/print`} target="_blank" className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors shadow-sm bg-white border border-slate-200/60" title="พิมพ์">
+              <Printer size={16} />
+            </Link>
+            <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors">
+              <X size={16} />
             </button>
           </div>
         </div>
@@ -129,91 +131,119 @@ function ViewModal({
         {/* Body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           {/* Customer */}
-          <div className="bg-slate-50 rounded-xl p-4 space-y-1.5">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">ข้อมูลลูกค้า</p>
-            <p className="font-bold text-slate-800">{doc.customerName}</p>
-            {doc.customerPhone && <p className="text-sm text-slate-500">{doc.customerPhone}</p>}
-            {doc.customerCar   && <p className="text-sm text-slate-500">{doc.customerCar}</p>}
-            {doc.bookingRef    && <p className="text-xs text-slate-400">อ้างอิง Booking: {doc.bookingRef}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="bg-white border border-slate-200/60 shadow-sm rounded-lg p-4 flex items-start gap-3">
+               <div className="p-2.5 bg-blue-50 text-blue-600 rounded-lg shrink-0">
+                 <Search className="w-4 h-4" />
+               </div>
+               <div>
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ข้อมูลลูกค้า</p>
+                 <p className="font-bold text-slate-800 text-sm">{doc.customerName}</p>
+                 {doc.customerPhone && <p className="text-[13px] font-medium text-slate-500 mt-0.5"><Phone className="w-3 h-3 inline mr-1" />{doc.customerPhone}</p>}
+                 {doc.customerAddress && <p className="text-[11px] text-slate-400 mt-1">{doc.customerAddress}</p>}
+                 {doc.customerTaxId && <p className="text-[11px] text-slate-400">เลขผู้เสียภาษี: {doc.customerTaxId}</p>}
+               </div>
+            </div>
+            
+            <div className="bg-white border border-slate-200/60 shadow-sm rounded-lg p-4 flex items-start gap-3">
+               <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
+                 <Car className="w-4 h-4" />
+               </div>
+               <div>
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">ข้อมูลอ้างอิง</p>
+                 {doc.customerCar      && <p className="text-sm font-bold text-slate-800">{doc.customerCar}</p>}
+                 {doc.relatedDocNumber && <p className="text-[13px] font-medium text-slate-500 mt-0.5">สร้างจาก: {doc.relatedDocNumber}</p>}
+                 {doc.bookingRef       && <p className="text-[13px] font-medium text-slate-500 mt-0.5">Booking: {doc.bookingRef}</p>}
+                 {!doc.customerCar && !doc.bookingRef && !doc.relatedDocNumber && <p className="text-xs text-slate-400 italic">ไม่มีข้อมูลอ้างอิง</p>}
+               </div>
+            </div>
           </div>
 
           {/* Line items */}
-          <div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">รายการ</p>
-            <table className="w-full text-sm">
+          <div className="bg-white border border-slate-200/60 shadow-sm rounded-lg overflow-hidden">
+            <div className="bg-slate-50/50 px-4 py-2 border-b border-slate-100">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">รายการสินค้า</p>
+            </div>
+            <table className="w-full text-xs">
               <thead>
-                <tr className="bg-slate-50 text-xs text-slate-400 font-semibold">
-                  <th className="text-left px-3 py-2 rounded-tl-lg">รายการ</th>
-                  <th className="text-center px-3 py-2">จำนวน</th>
-                  <th className="text-right px-3 py-2">ราคา/หน่วย</th>
+                <tr className="bg-white border-b border-slate-100 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                  <th className="text-left px-4 py-2.5">รายการ</th>
+                  <th className="text-center px-4 py-2.5 w-20">จำนวน</th>
+                  <th className="text-right px-4 py-2.5 w-28">ราคา/หน่วย</th>
                   {doc.items.some(i => i.discount > 0) && (
-                    <th className="text-right px-3 py-2">ลด%</th>
+                    <th className="text-right px-4 py-2.5 w-20">ส่วนลด</th>
                   )}
-                  <th className="text-right px-3 py-2 rounded-tr-lg">รวม</th>
+                  <th className="text-right px-4 py-2.5 w-28">รวม</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {doc.items.map((item, i) => (
-                  <tr key={i}>
-                    <td className="px-3 py-2.5 text-slate-800">{item.description}</td>
-                    <td className="px-3 py-2.5 text-center text-slate-600">{item.qty}</td>
-                    <td className="px-3 py-2.5 text-right text-slate-600 tabular-nums">฿{fmtMoney(item.unitPrice)}</td>
+                  <tr key={i} className="hover:bg-slate-50/50">
+                    <td className="px-4 py-2.5 font-medium text-slate-800">{item.description}</td>
+                    <td className="px-4 py-2.5 text-center font-bold text-slate-600">{item.qty}</td>
+                    <td className="px-4 py-2.5 text-right font-medium text-slate-600 tabular-nums">฿{fmtMoney(item.unitPrice)}</td>
                     {doc.items.some(i => i.discount > 0) && (
-                      <td className="px-3 py-2.5 text-right text-emerald-600">{item.discount > 0 ? `${item.discount}%` : '—'}</td>
+                      <td className="px-4 py-2.5 text-right font-bold text-emerald-600">{item.discount > 0 ? `${item.discount}%` : '—'}</td>
                     )}
-                    <td className="px-3 py-2.5 text-right font-semibold tabular-nums">฿{fmtMoney(item.lineTotal)}</td>
+                    <td className="px-4 py-2.5 text-right font-black text-slate-800 tabular-nums">฿{fmtMoney(item.lineTotal)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-
-          {/* Totals */}
-          <div className="border-t border-slate-100 pt-3 space-y-2">
-            {[
-              ['ราคาก่อนหักส่วนลด', fmtMoney(doc.subtotal)],
-              ...(doc.discountTotal > 0 ? [['ส่วนลดรวม', `-฿${fmtMoney(doc.discountTotal)}`, 'text-emerald-600']] : []),
-              doc.vatRate > 0 ? [`VAT ${doc.vatRate}%`, fmtMoney(doc.vatAmount)] : null,
-            ].filter(Boolean).map((row) => {
-              const [label, value, cls] = row as string[];
-              return (
-                <div key={label} className="flex justify-between text-sm">
-                  <span className="text-slate-500">{label}</span>
-                  <span className={`tabular-nums font-semibold ${cls ?? 'text-slate-700'}`}>
-                    {value.startsWith('-') ? value : `฿${value}`}
-                  </span>
+            
+            {/* Totals */}
+            <div className="bg-slate-50/50 border-t border-slate-200 px-4 py-3">
+              <div className="ml-auto w-full md:w-2/5 space-y-1.5">
+                {[
+                  ['ราคาก่อนหักส่วนลด', fmtMoney(doc.subtotal)],
+                  ...(doc.discountTotal > 0 ? [['ส่วนลดรวม', `-฿${fmtMoney(doc.discountTotal)}`, 'text-emerald-600 font-bold']] : []),
+                  doc.vatRate > 0 ? [`VAT ${doc.vatRate}%`, fmtMoney(doc.vatAmount)] : null,
+                ].filter(Boolean).map((row) => {
+                  const [label, value, cls] = row as string[];
+                  return (
+                    <div key={label} className="flex justify-between text-xs">
+                      <span className="text-slate-500 font-medium">{label}</span>
+                      <span className={`tabular-nums font-semibold ${cls ?? 'text-slate-700'}`}>
+                        {value.startsWith('-') ? value : `฿${value}`}
+                      </span>
+                    </div>
+                  );
+                })}
+                <div className="flex justify-between items-center border-t border-slate-200/80 pt-2 mt-2">
+                  <span className="font-black text-slate-800 text-sm">ยอดรวมสุทธิ</span>
+                  <span className="text-xl font-black text-green-600 tabular-nums">฿{fmtMoney(doc.grandTotal)}</span>
                 </div>
-              );
-            })}
-            <div className="flex justify-between items-center border-t border-slate-200 pt-2">
-              <span className="font-bold text-slate-700">ยอดรวมสุทธิ</span>
-              <span className="text-xl font-black text-green-600 tabular-nums">฿{fmtMoney(doc.grandTotal)}</span>
+              </div>
             </div>
           </div>
 
-          {/* Payment & status */}
-          <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <PayIcon size={14} className="text-slate-400" />
-              {PAYMENT_LABEL[doc.paymentMethod]}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Payment */}
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200/60 flex flex-col justify-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">ช่องทางการชำระเงิน</p>
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                <PayIcon size={16} className="text-blue-500" />
+                {PAYMENT_LABEL[doc.paymentMethod]}
+              </div>
             </div>
-            <StatusBadge status={doc.status} />
+            
+            {/* Note */}
+            {doc.note && (
+              <div className="bg-amber-50 rounded-lg p-4 border border-amber-100 flex flex-col justify-center">
+                <p className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest mb-1.5">หมายเหตุ</p>
+                <p className="text-xs font-medium text-amber-800">{doc.note}</p>
+              </div>
+            )}
           </div>
-
-          {doc.note && (
-            <p className="text-xs text-slate-400 bg-amber-50 border border-amber-100 rounded-xl p-3">
-              หมายเหตุ: {doc.note}
-            </p>
-          )}
         </div>
 
         {/* Footer actions */}
-        <div className="px-5 py-4 border-t border-slate-100 flex flex-wrap gap-2 justify-end">
+        <div className="px-5 py-3 border-t border-slate-100 flex flex-wrap gap-2 justify-end bg-slate-50/50">
           {doc.type === 'invoice' && doc.status === 'unpaid' && (
             <button
               onClick={() => onStatusChange(doc.id, 'paid')}
               disabled={isPending}
-              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 disabled:opacity-40"
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 disabled:opacity-40 shadow-sm"
             >
               <CheckCircle size={14} /> รับชำระเงิน
             </button>
@@ -223,14 +253,14 @@ function ViewModal({
               <button
                 onClick={() => onStatusChange(doc.id, 'accepted')}
                 disabled={isPending}
-                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-40"
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-40 shadow-sm"
               >
                 <CheckCircle size={14} /> อนุมัติ
               </button>
               <button
                 onClick={() => onStatusChange(doc.id, 'rejected')}
                 disabled={isPending}
-                className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-50 disabled:opacity-40"
+                className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-50 disabled:opacity-40 bg-white"
               >
                 <XCircle size={14} /> ปฏิเสธ
               </button>
@@ -240,13 +270,29 @@ function ViewModal({
             <button
               onClick={() => onStatusChange(doc.id, 'cancelled')}
               disabled={isPending}
-              className="flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-50 disabled:opacity-40"
+              className="flex items-center gap-1.5 px-4 py-2 border border-red-200 text-red-500 rounded-lg text-sm font-bold hover:bg-red-50 disabled:opacity-40 bg-white"
             >
               <XCircle size={14} /> ยกเลิก
             </button>
           )}
-          <button onClick={onClose} className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50">
-            ปิด
+          {doc.type === 'quote' && (
+            <>
+              <Link
+                href={`/admin/documents/new?from=${doc.id}&type=invoice`}
+                className="flex items-center gap-1.5 px-4 py-2 border border-blue-200 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-50 bg-white shadow-sm"
+              >
+                <Receipt size={14} /> ออกใบเสร็จจากใบนี้
+              </Link>
+              <Link
+                href={`/admin/documents/new?from=${doc.id}&type=credit_note`}
+                className="flex items-center gap-1.5 px-4 py-2 border border-orange-200 text-orange-600 rounded-lg text-sm font-bold hover:bg-orange-50 bg-white shadow-sm"
+              >
+                <FileMinus size={14} /> ออกใบลดหนี้จากใบนี้
+              </Link>
+            </>
+          )}
+          <button onClick={onClose} className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-100 bg-white shadow-sm">
+            ปิดหน้าต่าง
           </button>
         </div>
       </div>
@@ -258,10 +304,10 @@ function ViewModal({
 
 function Toast({ msg, ok, onClose }: { msg: string; ok: boolean; onClose: () => void }) {
   return (
-    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl text-sm font-semibold ${ok ? 'bg-emerald-600 text-white' : 'bg-red-500 text-white'}`}>
-      {ok ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+    <div className={`fixed bottom-8 right-8 z-50 flex items-center gap-3 px-6 py-4 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] text-sm font-bold text-white transition-all transform animate-in slide-in-from-bottom-5 ${ok ? 'bg-slate-900' : 'bg-red-500'}`}>
+      {ok ? <CheckCircle size={20} className="text-green-400" /> : <AlertCircle size={20} />}
       {msg}
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><X size={14} /></button>
+      <button onClick={onClose} className="ml-3 opacity-70 hover:opacity-100 bg-white/10 p-1 rounded-lg transition-colors"><X size={16} /></button>
     </div>
   );
 }
@@ -346,187 +392,255 @@ export function DocumentsClient({
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Page header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900">บิล / เอกสาร</h1>
-          <p className="text-sm text-slate-500 mt-1">เอกสารทั้งหมด {docs.length} ฉบับ</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={handleImport}
-            disabled={isPending}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-          >
-            <Import size={15} /> นำเข้าจาก Booking
-          </button>
-          <Link
-            href="/admin/documents/new"
-            className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-colors"
-          >
-            <Plus size={16} /> สร้างเอกสาร
-          </Link>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'ใบเสร็จเดือนนี้',     value: `${stats.invoiceCountMonth} ใบ`,                      color: 'text-slate-900' },
-          { label: 'ยอดรวมเดือนนี้',       value: `฿${Math.round(stats.invoiceTotalMonth / 1000)}K`,  color: 'text-green-600' },
-          { label: 'ค้างชำระ',             value: `${stats.unpaidCount} บิล`,                           color: 'text-red-600' },
-          { label: 'ใบเสนอราคารอตอบรับ',  value: `${stats.pendingQuoteCount} ใบ`,                      color: 'text-amber-600' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-slate-100 p-4">
-            <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-            <p className="text-xs text-slate-400 mt-1">{s.label}</p>
+    <div className="w-full max-w-[1400px] mx-auto space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <FileText className="w-6 h-6 text-white" />
           </div>
-        ))}
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">บิล / เอกสาร <span className="text-slate-400 font-normal ml-1 text-xl">/ Documents</span></h1>
+            <p className="text-sm text-slate-500 mt-1 font-medium">จัดการใบเสร็จ ใบเสนอราคา และใบลดหนี้</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-lg px-4 py-2.5">
+            <LayoutGrid className="w-4 h-4 text-slate-400" />
+            <span className="text-sm font-semibold text-slate-700">ทั้งหมด <span className="text-blue-600 font-bold ml-1">{docs.length}</span> ฉบับ</span>
+          </div>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+      {/* Action Bar & Stats */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Actions Container */}
+        <div className="lg:w-1/4 flex flex-col gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm flex flex-col gap-3">
+            <Link
+              href="/admin/documents/new"
+              className="flex items-center justify-center gap-2 w-full py-3.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+            >
+              <Plus size={18} /> สร้างเอกสารใหม่
+            </Link>
+            <button
+              onClick={handleImport}
+              disabled={isPending}
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-2 border-dashed border-slate-300 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-400 disabled:opacity-40 transition-colors"
+            >
+              <Import size={18} /> นำเข้าจากระบบจอง (Booking)
+            </button>
+          </div>
+          
+          <div className="bg-gradient-to-br from-[#00B900] to-green-700 p-6 rounded-2xl shadow-lg shadow-green-600/20 text-white relative overflow-hidden flex-1 flex flex-col justify-center">
+            <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+            <div className="relative z-10">
+              <p className="text-green-100 font-medium text-sm mb-1">ยอดรวมใบเสร็จเดือนนี้</p>
+              <p className="text-3xl font-black drop-shadow-sm tracking-tight">฿{fmtMoney(stats.invoiceTotalMonth)}</p>
+              <div className="mt-4 inline-flex items-center gap-1.5 text-xs bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm font-medium">
+                <span>จากใบเสร็จที่ชำระแล้ว</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="lg:w-3/4 grid grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            { label: 'ใบเสร็จรับเงินเดือนนี้', value: `${stats.invoiceCountMonth}`, sub: 'ใบ', icon: <FileText className="w-5 h-5 text-blue-500" />, bg: 'bg-blue-50' },
+            { label: 'บิลค้างชำระทั้งหมด',     value: `${stats.unpaidCount}`, sub: 'บิล', icon: <AlertCircle className="w-5 h-5 text-red-500" />, bg: 'bg-red-50' },
+            { label: 'ใบเสนอราคารอตอบรับ',  value: `${stats.pendingQuoteCount}`, sub: 'ใบ', icon: <Clock className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50' },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+              <div className="flex items-start justify-between mb-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${s.bg}`}>
+                  {s.icon}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <p className="text-4xl font-black text-slate-800 tracking-tight">{s.value}</p>
+                  <p className="text-sm font-bold text-slate-500">{s.sub}</p>
+                </div>
+                <p className="text-sm font-semibold text-slate-500 mt-1">{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Table Area */}
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         {/* Filter bar */}
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row gap-4 bg-slate-50/50 rounded-t-2xl">
+          <div className="relative flex-1 md:max-w-md">
+            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
               placeholder="ค้นหาเลขที่เอกสาร, ชื่อลูกค้า..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-medium"
             />
           </div>
-          <select
-            value={typeFilter}
-            onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400"
-          >
-            <option value="">ประเภท: ทั้งหมด</option>
-            <option value="invoice">ใบเสร็จ</option>
-            <option value="quote">ใบเสนอราคา</option>
-            <option value="credit_note">ใบลดหนี้</option>
-          </select>
-          <select
-            value={statFilter}
-            onChange={e => { setStatFilter(e.target.value); setPage(1); }}
-            className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400"
-          >
-            <option value="">สถานะ: ทั้งหมด</option>
-            <option value="paid">ชำระแล้ว</option>
-            <option value="unpaid">ค้างชำระ</option>
-            <option value="pending_approval">รอตอบรับ</option>
-            <option value="accepted">อนุมัติแล้ว</option>
-            <option value="cancelled">ยกเลิก</option>
-          </select>
+          <div className="flex gap-3">
+            <select
+              value={typeFilter}
+              onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
+            >
+              <option value="">ทุกประเภท</option>
+              <option value="invoice">ใบเสร็จรับเงิน</option>
+              <option value="quote">ใบเสนอราคา</option>
+              <option value="credit_note">ใบลดหนี้</option>
+            </select>
+            <select
+              value={statFilter}
+              onChange={e => { setStatFilter(e.target.value); setPage(1); }}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
+            >
+              <option value="">ทุกสถานะ</option>
+              <option value="paid">ชำระแล้ว</option>
+              <option value="unpaid">ค้างชำระ</option>
+              <option value="pending_approval">รอตอบรับ</option>
+              <option value="accepted">อนุมัติแล้ว</option>
+              <option value="cancelled">ยกเลิก</option>
+            </select>
+          </div>
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto pb-32 min-h-[300px]">
+          <table className="w-full text-left border-collapse whitespace-nowrap md:whitespace-normal">
             <thead>
-              <tr className="text-xs text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
-                <th className="text-left px-4 py-3">เลขที่เอกสาร</th>
-                <th className="text-left px-4 py-3">ประเภท</th>
-                <th className="text-left px-4 py-3">ลูกค้า</th>
-                <th className="text-right px-4 py-3">ยอดเงิน</th>
-                <th className="text-left px-4 py-3">วันที่</th>
-                <th className="text-center px-4 py-3">สถานะ</th>
-                <th className="text-center px-4 py-3">การดำเนินการ</th>
+              <tr className="bg-white border-b border-slate-100">
+                <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider">เอกสาร</th>
+                <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider">ลูกค้า</th>
+                <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell">ยอดเงิน</th>
+                <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">สถานะ</th>
+                <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
-                    <FileText size={32} className="mx-auto mb-2 opacity-30" />
-                    <p>ไม่พบเอกสาร</p>
+                  <td colSpan={5} className="px-6 py-24 text-center">
+                    <div className="w-20 h-20 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
+                      <FileText className="w-10 h-10 text-slate-300" />
+                    </div>
+                    <p className="text-slate-600 font-bold text-lg mb-1">ไม่พบเอกสาร</p>
+                    <p className="text-slate-400 text-sm">ลองเปลี่ยนเงื่อนไขการค้นหาใหม่</p>
                   </td>
                 </tr>
               ) : paginated.map(d => (
                 <tr
                   key={d.id}
-                  className="hover:bg-slate-50/70 transition-colors cursor-pointer"
+                  className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
                   onClick={() => setViewDoc(d)}
                 >
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <FileText size={13} className="text-slate-300 shrink-0" />
-                      <span className="font-bold text-green-600">{d.docNumber}</span>
-                      {d.source === 'booking' && (
-                        <span className="text-[10px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded font-medium">Booking</span>
-                      )}
+                  <td className="px-6 py-5">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[13px] text-slate-800 font-bold bg-slate-100/80 px-2.5 py-1 rounded-md w-fit border border-slate-200/50">{d.docNumber}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${TYPE_STYLE[d.type] ?? 'bg-slate-100 text-slate-500'}`}>
+                          {TYPE_LABEL[d.type]}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium pl-1 flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {fmtDate(d.issuedAt)}
+                        {d.source === 'booking' && (
+                           <span className="ml-1 text-[9px] bg-indigo-50 text-indigo-500 px-1.5 rounded-sm font-bold tracking-wider">BOOKING</span>
+                        )}
+                        {d.relatedDocNumber && (
+                           <span className="ml-1 text-[9px] bg-purple-50 text-purple-500 px-1.5 rounded-sm font-bold tracking-wider" title={`สร้างจาก ${d.relatedDocNumber}`}>จาก {d.relatedDocNumber}</span>
+                        )}
+                      </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${TYPE_STYLE[d.type] ?? 'bg-slate-100 text-slate-500'}`}>
-                      {TYPE_LABEL[d.type]}
-                    </span>
+                  <td className="px-6 py-5">
+                    <div className="flex flex-col">
+                      <p className="text-sm font-bold text-slate-800">{d.customerName}</p>
+                      {d.customerCar && <p className="text-[12px] text-slate-500 flex items-center gap-1.5 mt-1"><Car className="w-3.5 h-3.5 text-slate-400" />{d.customerCar}</p>}
+                    </div>
                   </td>
-                  <td className="px-4 py-3.5">
-                    <p className="font-medium text-slate-800">{d.customerName}</p>
-                    {d.customerCar && <p className="text-xs text-slate-400">{d.customerCar}</p>}
+                  <td className="px-6 py-5 hidden md:table-cell">
+                    <p className={`text-sm font-black tabular-nums ${d.grandTotal < 0 ? 'text-orange-600' : 'text-slate-800'}`}>
+                      {d.grandTotal < 0 ? `-฿${fmtMoney(Math.abs(d.grandTotal))}` : `฿${fmtMoney(d.grandTotal)}`}
+                    </p>
                   </td>
-                  <td className={`px-4 py-3.5 text-right font-bold tabular-nums ${d.grandTotal < 0 ? 'text-orange-600' : 'text-slate-800'}`}>
-                    {d.grandTotal < 0 ? `-฿${fmtMoney(Math.abs(d.grandTotal))}` : `฿${fmtMoney(d.grandTotal)}`}
-                  </td>
-                  <td className="px-4 py-3.5 text-slate-500 text-xs">{fmtDate(d.issuedAt)}</td>
-                  <td className="px-4 py-3.5 text-center" onClick={e => e.stopPropagation()}>
+                  <td className="px-6 py-5 text-center" onClick={e => e.stopPropagation()}>
                     <StatusBadge status={d.status} />
                   </td>
-                  <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-1">
+                  <td className="px-6 py-5" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => setViewDoc(d)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                        title="ดู"
+                        className="p-2.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100/60 hover:bg-blue-600 hover:text-white hover:border-transparent transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20 hover:-translate-y-0.5"
+                        title="ดูรายละเอียด"
                       >
-                        <Eye size={14} />
+                        <Eye size={16} />
                       </button>
-                      <button
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"
-                        title="ดาวน์โหลด"
-                        onClick={() => showToast('ฟีเจอร์ PDF กำลังพัฒนา')}
+                      <Link
+                        href={`/admin/documents/${d.id}/print`}
+                        target="_blank"
+                        className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/60 hover:bg-emerald-600 hover:text-white hover:border-transparent transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/20 hover:-translate-y-0.5"
+                        title="พิมพ์เอกสาร"
                       >
-                        <Download size={14} />
-                      </button>
-                      <div className="relative group">
-                        <button className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
-                          <MoreHorizontal size={14} />
+                        <Printer size={16} />
+                      </Link>
+                      <div className="relative group/menu">
+                        <button className="p-2.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-200 hover:text-slate-700 transition-all duration-200">
+                          <MoreHorizontal size={16} />
                         </button>
-                        <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-100 rounded-xl shadow-lg z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                          <button
-                            onClick={() => handleDelete(d.id)}
-                            className="w-full text-left px-3 py-2.5 text-xs text-red-500 hover:bg-red-50 rounded-xl font-semibold flex items-center gap-2"
-                          >
-                            <XCircle size={12} /> ลบเอกสาร
-                          </button>
+                        <div className="absolute right-0 top-full mt-2 w-40 bg-white border border-slate-100 rounded-xl shadow-xl z-10 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all">
                           {d.type === 'invoice' && d.status === 'unpaid' && (
                             <button
                               onClick={() => handleStatusChange(d.id, 'paid')}
-                              className="w-full text-left px-3 py-2.5 text-xs text-emerald-600 hover:bg-emerald-50 rounded-xl font-semibold flex items-center gap-2"
+                              className="w-full text-left px-4 py-3 text-sm text-emerald-600 hover:bg-emerald-50 rounded-t-xl font-bold flex items-center gap-2 border-b border-slate-50"
                             >
-                              <CheckCircle size={12} /> รับชำระแล้ว
+                              <CheckCircle size={14} /> รับชำระแล้ว
                             </button>
                           )}
                           {d.type === 'quote' && d.status === 'pending_approval' && (
                             <>
                               <button
                                 onClick={() => handleStatusChange(d.id, 'accepted')}
-                                className="w-full text-left px-3 py-2.5 text-xs text-blue-600 hover:bg-blue-50 rounded-xl font-semibold flex items-center gap-2"
+                                className="w-full text-left px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 rounded-t-xl font-bold flex items-center gap-2 border-b border-slate-50"
                               >
-                                <CheckCircle size={12} /> อนุมัติ
+                                <CheckCircle size={14} /> อนุมัติ
                               </button>
                               <button
                                 onClick={() => handleStatusChange(d.id, 'expired')}
-                                className="w-full text-left px-3 py-2.5 text-xs text-slate-500 hover:bg-slate-50 rounded-xl font-semibold flex items-center gap-2"
+                                className="w-full text-left px-4 py-3 text-sm text-slate-500 hover:bg-slate-50 font-bold flex items-center gap-2 border-b border-slate-50"
                               >
-                                <Clock size={12} /> หมดอายุ
+                                <Clock size={14} /> หมดอายุ
                               </button>
                             </>
                           )}
+                          {d.type === 'quote' && (
+                            <>
+                              <Link
+                                href={`/admin/documents/new?from=${d.id}&type=invoice`}
+                                className="w-full text-left px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 font-bold flex items-center gap-2 border-b border-slate-50"
+                              >
+                                <Receipt size={14} /> ออกใบเสร็จจากใบนี้
+                              </Link>
+                              <Link
+                                href={`/admin/documents/new?from=${d.id}&type=credit_note`}
+                                className="w-full text-left px-4 py-3 text-sm text-orange-600 hover:bg-orange-50 font-bold flex items-center gap-2 border-b border-slate-50"
+                              >
+                                <FileMinus size={14} /> ออกใบลดหนี้จากใบนี้
+                              </Link>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleDelete(d.id)}
+                            className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-red-50 rounded-b-xl font-bold flex items-center gap-2"
+                          >
+                            <XCircle size={14} /> ลบเอกสาร
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -538,40 +652,37 @@ export function DocumentsClient({
         </div>
 
         {/* Pagination */}
-        <div className="p-4 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-xs text-slate-400">
-            แสดง {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} จาก {filtered.length} รายการ
-          </span>
-          <div className="flex gap-1">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const n = page <= 3 ? i + 1 : page + i - 2;
-              if (n < 1 || n > totalPages) return null;
-              return (
-                <button
-                  key={n}
-                  onClick={() => setPage(n)}
-                  className={`w-8 h-8 rounded-lg text-sm font-medium ${n === page ? 'bg-green-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                >
-                  {n}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40"
-            >
-              <ChevronRight size={14} />
-            </button>
+        {totalPages > 0 && (
+          <div className="p-4 sm:px-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+            <p className="text-[13px] text-slate-500 font-medium">
+              แสดง <span className="font-bold text-slate-700">{filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}</span> ถึง <span className="font-bold text-slate-700">{Math.min(page * PAGE_SIZE, filtered.length)}</span> จากทั้งหมด <span className="font-bold text-slate-700">{filtered.length}</span> รายการ
+            </p>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              <div className="flex items-center">
+                <span className="text-[13px] font-bold text-slate-700 px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm">
+                  หน้า {page} / {totalPages}
+                </span>
+              </div>
+
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* View Modal */}

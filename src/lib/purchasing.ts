@@ -12,7 +12,6 @@ const STATUS_MAP: Record<string, POStatusThai> = {
 };
 
 export type POItem = {
-  productCode: string;
   productName: string;
   unit:        string;
   qty:         number;
@@ -73,7 +72,6 @@ function normalizeDoc(d: any): PORow {
     dueDate:       d.dueDate instanceof Date   ? d.dueDate.toISOString()   : String(d.dueDate   ?? ''),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items: (d.items ?? []).map((i: any) => ({
-      productCode: i.productCode ?? '',
       productName: i.productName ?? '',
       unit:        i.unit        ?? 'เส้น',
       qty:         i.qty         ?? 0,
@@ -96,6 +94,16 @@ export async function getPurchaseOrders(): Promise<PORow[]> {
   await connectDB();
   const docs = await PurchaseOrder.find().sort({ createdAt: -1 }).lean();
   return docs.map(normalizeDoc);
+}
+
+export async function getPurchaseOrderById(id: string): Promise<PORow | null> {
+  await connectDB();
+  try {
+    const doc = await PurchaseOrder.findById(id).lean();
+    return doc ? normalizeDoc(doc) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getSuppliers(): Promise<SupplierRow[]> {

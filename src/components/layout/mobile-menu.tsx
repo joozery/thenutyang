@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Menu, X, ChevronRight } from 'lucide-react';
 
 export function MobileMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <>
@@ -37,24 +39,27 @@ export function MobileMenu() {
 
           <div className="flex-1 overflow-y-auto py-4">
             <nav className="flex flex-col">
-              <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 border-b border-slate-50 text-slate-700 font-medium hover:bg-slate-50">
-                หน้าหลัก <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
-              <Link href="/tires" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 border-b border-slate-50 text-slate-700 font-medium hover:bg-slate-50">
-                ยางรถยนต์ <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
-              <Link href="/promotions" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 border-b border-slate-50 text-slate-700 font-medium hover:bg-slate-50">
-                โปรโมชั่น <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
-              <Link href="/services" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 border-b border-slate-50 text-slate-700 font-medium hover:bg-slate-50">
-                บริการของเรา <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
-              <Link href="/articles" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 border-b border-slate-50 text-slate-700 font-medium hover:bg-slate-50">
-                บทความ <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
-              <Link href="/contact" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 text-slate-700 font-medium hover:bg-slate-50">
-                ติดต่อเรา <ChevronRight className="w-4 h-4 text-slate-400" />
-              </Link>
+              {[
+                { name: 'หน้าหลัก', href: '/' },
+                { name: 'ยางรถยนต์', href: '/tires' },
+                { name: 'โปรโมชั่น', href: '/promotions' },
+                { name: 'บริการของเรา', href: '/services' },
+                { name: 'ติดต่อเรา', href: '/contact' },
+              ].map((link) => {
+                const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
+                return (
+                  <Link 
+                    key={link.href}
+                    href={link.href} 
+                    onClick={() => setIsOpen(false)} 
+                    className={`flex items-center justify-between px-6 py-4 border-b border-slate-50 font-medium hover:bg-slate-50 ${
+                      isActive ? 'text-green-600 bg-green-50/50' : 'text-slate-700'
+                    }`}
+                  >
+                    {link.name} <ChevronRight className={`w-4 h-4 ${isActive ? 'text-green-600' : 'text-slate-400'}`} />
+                  </Link>
+                );
+              })}
             </nav>
           </div>
           

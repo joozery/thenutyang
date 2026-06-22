@@ -1,8 +1,52 @@
-import { NewDocumentClient } from '@/components/admin/new-document-client';
+import { getCustomers, mergeCustomerSources } from '@/lib/customers';
+import { getCustomerDirectory } from '@/lib/customer-directory';
+import { getAllProductsAdmin } from '@/lib/products';
+import { getDocumentById } from '@/lib/documents';
+import type { DocType } from '@/lib/documents';
+import { NewDocumentClient, type DocPrefill } from '@/components/admin/new-document-client';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'สร้างเอกสาร | Admin' };
 
-export default function NewDocumentPage() {
-  return <NewDocumentClient />;
+const TYPE_LABEL: Record<DocType, string> = {
+  invoice:     'ใบเสร็จ / ใบกำกับภาษี',
+  quote:       'ใบเสนอราคา',
+  credit_note: 'ใบลดหนี้',
+};
+
+export default async function NewDocumentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; type?: string }>;
+}) {
+  const { from, type } = await searchParams;
+
+  const [bookingCustomers, directoryCustomers, products, sourceDoc] = await Promise.all([
+    getCustomers(),
+    getCustomerDirectory(),
+    getAllProductsAdmin(),
+    from ? getDocumentById(from) : Promise.resolve(null),
+  ]);
+  const customers = mergeCustomerSources(bookingCustomers, directoryCustomers);
+
+  let prefill: DocPrefill | undefined;
+  if (sourceDoc) {
+    const targetType: DocType = type === 'invoice' || type === 'credit_note' ? type : 'invoice';
+    prefill = {
+      docType: targetType,
+      customerName:    sourceDoc.customerName,
+      customerPhone:   sourceDoc.customerPhone,
+      customerAddress: sourceDoc.customerAddress,
+      customerTaxId:   sourceDoc.customerTaxId,
+      items: sourceDoc.items.map((i) => ({ description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
+      vatRate:       sourceDoc.vatRate,
+      paymentMethod: sourceDoc.paymentMethod,
+      note:          sourceDoc.note,
+      sourceDocId:        sourceDoc.id,
+      sourceDocNumber:    sourceDoc.docNumber,
+      sourceDocTypeLabel: TYPE_LABEL[sourceDoc.type],
+    };
+  }
+
+  return <NewDocumentClient customers={customers} products={products} prefill={prefill} />;
 }

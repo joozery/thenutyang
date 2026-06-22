@@ -1,11 +1,29 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { getTireById } from '@/lib/tires';
+import { getProductById } from '@/lib/products';
 import { BookingForm } from '@/components/booking/booking-form';
 import { cookies } from 'next/headers';
 import { verifyCustomerToken, CUSTOMER_COOKIE } from '@/lib/customer-session';
 
 export const metadata = { title: 'จองยาง / ขอใบเสนอราคา | เดอะนัททายางยนต์' };
+
+async function resolveTire(tireId?: string) {
+  if (!tireId) return undefined;
+
+  const product = await getProductById(tireId);
+  if (product) {
+    return { id: product.id, brand: product.brand, model: product.model, size: product.size, image: product.image, price: product.priceCash };
+  }
+
+  // legacy mock catalog ids ('1'-'24'), still used by the LINE chatbot carousel
+  const mock = getTireById(tireId);
+  if (mock) {
+    return { id: mock.id, brand: mock.brand, model: mock.model, size: mock.size, image: mock.image, price: mock.price };
+  }
+
+  return undefined;
+}
 
 export default async function BookingPage({
   searchParams,
@@ -13,7 +31,7 @@ export default async function BookingPage({
   searchParams: Promise<{ tireId?: string }>;
 }) {
   const { tireId } = await searchParams;
-  const tire = tireId ? getTireById(tireId) : undefined;
+  const tire = await resolveTire(tireId);
 
   const jar = await cookies();
   const token = jar.get(CUSTOMER_COOKIE)?.value;

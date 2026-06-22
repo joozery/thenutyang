@@ -1,19 +1,30 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { createBooking } from '@/app/actions/booking';
-import type { Tire } from '@/lib/tires';
 import type { CustomerSession } from '@/lib/customer-session';
 import Image from 'next/image';
 import { BRAND_LOGOS } from '@/lib/tires';
 
+type BookingTire = {
+  id: string;
+  brand: string;
+  model: string;
+  size: string;
+  image: string;
+  price: number;
+};
+
+type CustomerType = 'individual' | 'corporate';
+
 interface Props {
-  tire?: Tire;
+  tire?: BookingTire;
   customer?: CustomerSession | null;
 }
 
 export function BookingForm({ tire, customer }: Props) {
   const [state, formAction, isPending] = useActionState(createBooking, null);
+  const [customerType, setCustomerType] = useState<CustomerType>('individual');
 
   return (
     <form action={formAction} className="space-y-8">
@@ -72,19 +83,77 @@ export function BookingForm({ tire, customer }: Props) {
         </div>
       )}
 
+      {!customer && (
+        <div>
+          <a
+            href="/api/auth/line?returnTo=/booking"
+            className="w-full bg-[#00B900] hover:bg-[#009900] text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-[#00B900]/30 hover:shadow-xl hover:-translate-y-0.5 transform duration-200"
+          >
+            <span className="text-xl font-black leading-none">LINE</span>
+            <span className="text-base">เข้าสู่ระบบด้วย LINE</span>
+          </a>
+          <p className="text-xs text-slate-400 text-center mt-2.5">เข้าสู่ระบบเพื่อรับใบเสนอราคาทันทีทาง LINE ไม่ต้องกรอกข้อมูลซ้ำ</p>
+          <div className="flex items-center gap-3 pt-5">
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="text-xs text-slate-400 font-medium">หรือกรอกข้อมูลด้วยตัวเอง</span>
+            <div className="flex-1 h-px bg-slate-100" />
+          </div>
+        </div>
+      )}
+
       {/* ข้อมูลส่วนตัว */}
       <div>
         <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">ข้อมูลลูกค้า</h3>
+
+        <input type="hidden" name="customerType" value={customerType} />
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button
+            type="button" onClick={() => setCustomerType('individual')}
+            className={`py-2.5 rounded-xl border-2 text-sm font-bold transition-colors ${customerType === 'individual' ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 text-slate-500'}`}
+          >
+            บุคคลธรรมดา
+          </button>
+          <button
+            type="button" onClick={() => setCustomerType('corporate')}
+            className={`py-2.5 rounded-xl border-2 text-sm font-bold transition-colors ${customerType === 'corporate' ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 text-slate-500'}`}
+          >
+            นิติบุคคล
+          </button>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {customerType === 'corporate' && (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                ชื่อบริษัท <span className="text-green-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="companyName"
+                required
+                placeholder="บริษัท ... จำกัด"
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              ชื่อ-นามสกุล <span className="text-green-500">*</span>
+              {customerType === 'corporate' ? 'ชื่อผู้ติดต่อ' : 'ชื่อ'} {customerType === 'individual' && <span className="text-green-500">*</span>}
             </label>
             <input
               type="text"
-              name="name"
-              required
-              placeholder="สมชาย ใจดี"
+              name="firstName"
+              required={customerType === 'individual'}
+              placeholder="สมชาย"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">นามสกุล</label>
+            <input
+              type="text"
+              name="lastName"
+              placeholder="ใจดี"
               className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
             />
           </div>
@@ -107,6 +176,9 @@ export function BookingForm({ tire, customer }: Props) {
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1.5">LINE</label>
               <div className="flex items-center gap-3 bg-[#06C755]/10 border border-[#06C755]/30 rounded-xl px-4 py-3">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+                  <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.122.301.079.767.038 1.076-.003.016-.046.284-.046.284s-.142.859-.172 1.034c-.049.289-.228 1.127 1.01.606 1.238-.521 6.678-3.929 8.924-7.069C23.013 14.28 24 12.395 24 10.304zm-14.73 2.946H6.602a.852.852 0 0 1-.852-.853V7.276a.852.852 0 0 1 1.704 0v4.269h1.816a.852.852 0 0 1 0 1.705zm2.768-.853a.853.853 0 0 1-1.705 0V7.276a.853.853 0 0 1 1.705 0v5.121zm4.869 0a.853.853 0 0 1-.853.853h-2.557a.853.853 0 0 1-.853-.853V7.276a.852.852 0 0 1 .853-.853h2.557a.853.853 0 1 1 0 1.705h-1.704v.852h1.704a.853.853 0 0 1 0 1.705h-1.704v.853h1.704a.852.852 0 0 1 .853.852zm3.308-5.121v5.121a.852.852 0 0 1-1.704 0V8.718l-2.457 3.422a.846.846 0 0 1-.689.379.852.852 0 0 1-.852-.853V6.544a.853.853 0 0 1 1.705 0v3.68l2.457-3.422a.846.846 0 0 1 .689-.379.852.852 0 0 1 .851.853z" />
+                </svg>
                 {customer.pictureUrl && (
                   <img src={customer.pictureUrl} alt={customer.displayName} className="w-8 h-8 rounded-full object-cover" />
                 )}
@@ -119,61 +191,48 @@ export function BookingForm({ tire, customer }: Props) {
           ) : (
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                LINE ID <span className="text-green-500">*</span>
-                <span className="ml-2 text-xs text-slate-400 font-normal">(ระบบจะส่งใบเสนอราคาผ่าน LINE)</span>
+                LINE ID <span className="text-xs text-slate-400 font-normal">(ไม่บังคับ)</span>
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">@</span>
                 <input
                   type="text"
                   name="lineId"
-                  required
                   placeholder="yourlineid"
                   className="w-full border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1.5">
-                หรือ{' '}
-                <a href="/api/auth/line?returnTo=/booking" className="text-[#06C755] font-bold hover:underline">
-                  เข้าสู่ระบบด้วย LINE
-                </a>
-                {' '}เพื่อรับใบเสนอราคาทันทีโดยไม่ต้องส่ง ref
+                ไม่มี LINE ก็จองได้ — ทีมงานจะโทรติดต่อกลับตามเบอร์ที่ให้ไว้ หรือเพิ่มเพื่อน LINE ภายหลังเพื่อรับใบเสนอราคาทันที
               </p>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* ข้อมูลรถ */}
-      <div>
-        <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">ข้อมูลรถ</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              รุ่นรถ <span className="text-green-500">*</span>
+              ที่อยู่ <span className="text-xs text-slate-400 font-normal">(ไม่บังคับ — สำหรับออกใบเสนอราคา)</span>
             </label>
-            <input
-              type="text"
-              name="carModel"
-              required
-              placeholder="Toyota Camry / Honda Civic"
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
+            <textarea
+              name="address"
+              rows={2}
+              placeholder="ที่อยู่สำหรับออกเอกสาร"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition resize-none"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              ปีรถ <span className="text-green-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="carYear"
-              required
-              min="1990"
-              max="2030"
-              placeholder="2022"
-              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
-            />
-          </div>
+
+          {customerType === 'corporate' && (
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                เลขที่ผู้เสียภาษี <span className="text-xs text-slate-400 font-normal">(ไม่บังคับ)</span>
+              </label>
+              <input
+                type="text"
+                name="taxId"
+                placeholder="0-0000-00000-00-0"
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -217,7 +276,7 @@ export function BookingForm({ tire, customer }: Props) {
             ? 'กำลังส่งข้อมูล...'
             : customer
               ? 'ยืนยันการจอง — รับใบเสนอราคาทาง LINE ทันที'
-              : 'ยืนยันการจอง — รับใบเสนอราคาผ่าน LINE'}
+              : 'ยืนยันการจอง'}
         </button>
         <p className="text-xs text-slate-400 text-center mt-3">
           ทีมงานจะติดต่อยืนยันการจองผ่าน LINE ภายใน 30 นาที (ในเวลาทำการ)

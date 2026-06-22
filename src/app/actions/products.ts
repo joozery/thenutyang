@@ -14,6 +14,7 @@ type ProductInput = {
   priceCash: number;
   priceCredit: number;
   priceInstallment: number;
+  costPrice: number;
   oldPrice?: number;
   badge?: string;
   image?: string;

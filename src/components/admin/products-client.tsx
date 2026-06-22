@@ -25,7 +25,7 @@ const PAGE_SIZE = 10;
 
 const EMPTY_FORM = {
   brand: '', model: '', size: '', type: '', note: '',
-  priceCash: 0, priceCredit: 0, priceInstallment: 0,
+  priceCash: 0, priceCredit: 0, priceInstallment: 0, costPrice: 0,
   oldPrice: undefined as number | undefined,
   badge: '',
   image: '/yang.png',
@@ -115,7 +115,7 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
     setEditTarget(p);
     setForm({
       brand: p.brand, model: p.model, size: p.size, type: p.type, note: p.note,
-      priceCash: p.priceCash, priceCredit: p.priceCredit, priceInstallment: p.priceInstallment,
+      priceCash: p.priceCash, priceCredit: p.priceCredit, priceInstallment: p.priceInstallment, costPrice: p.costPrice ?? 0,
       oldPrice: p.oldPrice, badge: p.badge ?? '',
       image: p.image || '/yang.png',
       category: p.category as typeof EMPTY_FORM.category,
@@ -273,6 +273,9 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                   </th>
                 )}
                 <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32">ประเภท</th>
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-amber-600 uppercase tracking-wider w-24 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('costPrice')}>
+                  ต้นทุน <SortIcon col="costPrice" sortKey={sortKey} sortDir={sortDir} />
+                </th>
                 <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-700 uppercase tracking-wider w-32 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceCash')}>
                   เงินสด/โอน <SortIcon col="priceCash" sortKey={sortKey} sortDir={sortDir} />
                 </th>
@@ -308,6 +311,9 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                     {p.type ? <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{p.type}</span> : <span className="text-slate-200">—</span>}
                   </td>
                   <td className="px-4 py-3.5 text-right">
+                    <span className="text-xs font-semibold text-amber-600 tabular-nums">{p.costPrice ? fmt(p.costPrice) : '—'}</span>
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
                     <span className="text-sm font-black text-slate-900 tabular-nums">{fmt(p.priceCash)}</span>
                   </td>
                   <td className="px-4 py-3.5 text-right text-slate-400 tabular-nums text-xs">{fmt(p.priceCredit)}</td>
@@ -329,7 +335,7 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={10} className="py-20 text-center text-sm text-slate-400">ไม่พบสินค้าในขนาดนี้</td></tr>
+                <tr><td colSpan={11} className="py-20 text-center text-sm text-slate-400">ไม่พบสินค้าในขนาดนี้</td></tr>
               )}
             </tbody>
           </table>
@@ -450,7 +456,8 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                 <Field label="รูดบัตร"><input type="number" value={form.priceCredit || ''} onChange={e => setForm(f => ({ ...f, priceCredit: +e.target.value }))} className={inputCls} /></Field>
                 <Field label="ผ่อน 0%"><input type="number" value={form.priceInstallment || ''} onChange={e => setForm(f => ({ ...f, priceInstallment: +e.target.value }))} className={inputCls} /></Field>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                <Field label="ราคาต้นทุน (ซื้อเข้า)"><input type="number" value={form.costPrice || ''} onChange={e => setForm(f => ({ ...f, costPrice: +e.target.value }))} className={inputCls} /></Field>
                 <Field label="ราคาเดิม (ถ้ามี)"><input type="number" value={form.oldPrice || ''} onChange={e => setForm(f => ({ ...f, oldPrice: +e.target.value || undefined }))} className={inputCls} /></Field>
                 <Field label="จำนวนสต๊อก"><input type="number" value={form.stock || ''} onChange={e => setForm(f => ({ ...f, stock: +e.target.value }))} className={inputCls} /></Field>
               </div>

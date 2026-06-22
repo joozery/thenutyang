@@ -39,11 +39,11 @@ function qr(items: { label: string; text?: string; uri?: string }[]) {
 }
 
 const mainQR = qr([
-  { label: '🔍 ค้นหายาง', text: 'ค้นหายาง' },
-  { label: '🎉 โปรโมชั่น', text: 'โปรโมชั่น' },
-  { label: '🔧 บริการ', text: 'บริการ' },
-  { label: '📋 จองยาง', text: 'จองยาง' },
-  { label: '📍 ที่อยู่', text: 'ที่อยู่ร้าน' },
+  { label: 'ค้นหายาง', text: 'ค้นหายาง' },
+  { label: 'โปรโมชั่น', text: 'โปรโมชั่น' },
+  { label: 'บริการ', text: 'บริการ' },
+  { label: 'จองคิว', text: 'จองยาง' },
+  { label: 'ที่อยู่ร้าน', text: 'ที่อยู่ร้าน' },
 ]);
 
 export function processMessage(text: string): object[] {
@@ -82,9 +82,9 @@ export function processMessage(text: string): object[] {
           header: {
             type: 'box',
             layout: 'vertical',
-            backgroundColor: '#FF4DA6',
+            backgroundColor: '#0A0D14',
             paddingAll: '16px',
-            contents: [{ type: 'text', text: '🔧 บริการของเรา', color: '#ffffff', weight: 'bold', size: 'lg' }],
+            contents: [{ type: 'text', text: 'บริการของเรา', color: '#00E050', weight: 'bold', size: 'xl' }],
           },
           body: {
             type: 'box',
@@ -107,9 +107,9 @@ export function processMessage(text: string): object[] {
             paddingAll: '12px',
             contents: [{
               type: 'button',
-              action: { type: 'uri', label: 'จองนัดบริการ', uri: `${APP_URL}/booking` },
+              action: { type: 'uri', label: 'จองคิวรับบริการ', uri: `${APP_URL}/booking` },
               style: 'primary',
-              color: '#FF4DA6',
+              color: '#00E050',
               height: 'sm',
             }],
           },
@@ -121,15 +121,15 @@ export function processMessage(text: string): object[] {
     case 'ask_promo': {
       return [{
         type: 'flex',
-        altText: '🎉 โปรโมชั่นเดอะนัททายางยนต์',
+        altText: 'โปรโมชั่นเดอะนัททายางยนต์',
         contents: {
           type: 'bubble',
           header: {
             type: 'box',
             layout: 'vertical',
-            backgroundColor: '#FF4DA6',
+            backgroundColor: '#0A0D14',
             paddingAll: '16px',
-            contents: [{ type: 'text', text: '🎉 โปรโมชั่น', color: '#ffffff', weight: 'bold', size: 'lg' }],
+            contents: [{ type: 'text', text: 'โปรโมชั่นพิเศษ', color: '#00E050', weight: 'bold', size: 'xl' }],
           },
           body: {
             type: 'box',
@@ -138,7 +138,7 @@ export function processMessage(text: string): object[] {
             spacing: 'md',
             contents: [
               promoItem('ซื้อ 3 แถม 1', 'เฉพาะรุ่นที่ร่วมรายการ'),
-              promoItem('ผ่อน 0%', 'สูงสุด 10 เดือน บัตรที่ร่วมรายการ'),
+              promoItem('ผ่อน 0%', 'สูงสุด 4 เดือน บัตรที่ร่วมรายการ'),
               promoItem('ตั้งศูนย์ฟรี', 'เมื่อซื้อยางครบ 4 เส้น'),
               promoItem('ตรวจสภาพรถฟรี', '30 รายการ ทุกการเปลี่ยนยาง'),
               promoItem('ยางแท้ 100%', 'รับประกันคุณภาพทุกเส้น'),
@@ -150,9 +150,9 @@ export function processMessage(text: string): object[] {
             paddingAll: '12px',
             contents: [{
               type: 'button',
-              action: { type: 'uri', label: 'เลือกยางพร้อมรับโปร', uri: `${APP_URL}/tires` },
+              action: { type: 'uri', label: 'เลือกดูสินค้า', uri: `${APP_URL}/tires` },
               style: 'primary',
-              color: '#FF4DA6',
+              color: '#00E050',
               height: 'sm',
             }],
           },
@@ -164,7 +164,7 @@ export function processMessage(text: string): object[] {
     case 'ask_location': {
       return [{
         type: 'text',
-        text: '📍 เดอะนัททายางยนต์\n\n🏠 ที่อยู่: [กรุณาอัปเดตที่อยู่จริง]\n\n⏰ เวลาทำการ:\nจันทร์ – อาทิตย์\n08:00 – 18:00 น.\n\n📞 โทร: [เบอร์โทรร้าน]\n\n🌐 เว็บไซต์: thenutyang.com',
+        text: 'เดอะนัททายางยนต์ (THE NUT TIRE)\n\nที่อยู่: [กรุณาอัปเดตที่อยู่จริง]\n\nเวลาทำการ:\nจันทร์ – อาทิตย์\n08:00 – 18:00 น.\n\nติดต่อ: [เบอร์โทรร้าน]\n\nเว็บไซต์: thenutyang.com',
         ...mainQR,
       }];
     }
@@ -172,15 +172,15 @@ export function processMessage(text: string): object[] {
     case 'ask_booking': {
       return [{
         type: 'flex',
-        altText: 'วิธีจองยางออนไลน์',
+        altText: 'วิธีจองคิวออนไลน์',
         contents: {
           type: 'bubble',
           header: {
             type: 'box',
             layout: 'vertical',
-            backgroundColor: '#FF4DA6',
+            backgroundColor: '#0A0D14',
             paddingAll: '16px',
-            contents: [{ type: 'text', text: '📋 วิธีจองยางออนไลน์', color: '#ffffff', weight: 'bold' }],
+            contents: [{ type: 'text', text: 'ขั้นตอนการจองคิว', color: '#00E050', weight: 'bold', size: 'xl' }],
           },
           body: {
             type: 'box',
@@ -188,10 +188,10 @@ export function processMessage(text: string): object[] {
             paddingAll: '16px',
             spacing: 'md',
             contents: [
-              stepItem('1', 'เลือกยาง', `ค้นหายางที่ต้องการบนเว็บ ${APP_URL}/tires`),
-              stepItem('2', 'กรอกข้อมูล', 'ชื่อ, เบอร์, LINE ID, รุ่นรถ, วันนัด'),
-              stepItem('3', 'ส่งหมายเลขมาที่นี่', 'ส่งหมายเลขการจอง เช่น NTY-20260614-0001'),
-              stepItem('4', 'รับใบเสนอราคาทันที!', 'บอท reply ใบเสนอราคาพร้อมรายละเอียด'),
+              stepItem('1', 'เลือกบริการ', `ค้นหาสินค้าบนเว็บ ${APP_URL}/tires`),
+              stepItem('2', 'กรอกข้อมูล', 'ข้อมูลติดต่อ และวันเวลานัดหมาย'),
+              stepItem('3', 'รับใบเสนอราคา', 'ระบบจะส่งรายละเอียดมาทาง LINE ทันที'),
+              stepItem('4', 'เข้ารับบริการ', 'นำรถเข้ามาที่ร้านตามเวลานัดได้เลย'),
             ],
           },
           footer: {
@@ -200,15 +200,15 @@ export function processMessage(text: string): object[] {
             paddingAll: '12px',
             contents: [{
               type: 'button',
-              action: { type: 'uri', label: '🌐 ไปจองบนเว็บ', uri: `${APP_URL}/tires` },
+              action: { type: 'uri', label: 'จองคิวบนเว็บไซต์', uri: `${APP_URL}/tires` },
               style: 'primary',
-              color: '#FF4DA6',
+              color: '#00E050',
             }],
           },
         },
         ...qr([
-          { label: '🌐 เปิดเว็บ', uri: `${APP_URL}/tires` },
-          { label: '🏠 เมนูหลัก', text: 'เมนู' },
+          { label: 'เปิดเว็บ', uri: `${APP_URL}/tires` },
+          { label: 'เมนูหลัก', text: 'เมนู' },
         ]),
       }];
     }
@@ -216,42 +216,42 @@ export function processMessage(text: string): object[] {
     case 'menu': {
       return [{
         type: 'flex',
-        altText: 'เมนูหลัก เดอะนัททายางยนต์',
+        altText: 'เมนูหลัก THE NUT TIRE',
         contents: {
           type: 'bubble',
           header: {
             type: 'box',
             layout: 'vertical',
-            backgroundColor: '#FF4DA6',
+            backgroundColor: '#0A0D14',
             paddingAll: '20px',
             contents: [
-              { type: 'text', text: 'เดอะนัททายางยนต์ 🔧', color: '#ffffff', weight: 'bold', size: 'lg' },
-              { type: 'text', text: 'ยินดีต้อนรับค่ะ มีอะไรให้ช่วยไหมคะ?', color: '#ffe0f0', size: 'sm', margin: 'xs' },
+              { type: 'text', text: 'THE NUT TIRE', color: '#00E050', weight: 'bold', size: 'xl' },
+              { type: 'text', text: 'ยินดีต้อนรับครับ มีอะไรให้เราดูแลวันนี้?', color: '#ffffff', size: 'sm', margin: 'md' },
             ],
           },
           body: {
             type: 'box',
             layout: 'vertical',
-            paddingAll: '12px',
+            paddingAll: '16px',
             spacing: 'xs',
             contents: [
-              menuRow('🔍', 'ค้นหายางจากขนาด', 'พิมพ์ขนาด เช่น 205/55R16'),
-              menuRow('🏷️', 'ค้นหาจากแบรนด์', 'Michelin, Bridgestone, Yokohama...'),
-              menuRow('🔧', 'บริการและราคา', 'ตั้งศูนย์, ถ่วงล้อ, ปะยาง...'),
-              menuRow('🎉', 'โปรโมชั่น', 'ซื้อ 3 แถม 1, ผ่อน 0%...'),
-              menuRow('📋', 'จองยางออนไลน์', 'รับใบเสนอราคาทาง LINE'),
-              menuRow('📍', 'ที่อยู่และเวลาทำการ', 'จ.-อา. 08:00-18:00 น.'),
+              menuRow('ค้นหายางจากขนาด', 'พิมพ์ขนาด เช่น 205/55R16', 'ค้นหายาง'),
+              menuRow('ค้นหาจากแบรนด์', 'Michelin, Bridgestone...', 'ค้นหาจากแบรนด์'),
+              menuRow('บริการและราคา', 'ตั้งศูนย์, ถ่วงล้อ, ปะยาง...', 'บริการ'),
+              menuRow('โปรโมชั่นพิเศษ', 'ซื้อ 3 แถม 1, ผ่อน 0%...', 'โปรโมชั่น'),
+              menuRow('จองคิวออนไลน์', 'นัดหมายเข้ารับบริการ', 'จองยาง'),
+              menuRow('ที่อยู่และเวลาทำการ', 'จ.-อา. 08:00-18:00 น.', 'ที่อยู่ร้าน'),
             ],
           },
           footer: {
             type: 'box',
             layout: 'vertical',
-            paddingAll: '12px',
+            paddingAll: '16px',
             contents: [{
               type: 'button',
-              action: { type: 'uri', label: 'เลือกซื้อยางออนไลน์', uri: `${APP_URL}/tires` },
+              action: { type: 'uri', label: 'เข้าสู่เว็บไซต์หลัก', uri: `${APP_URL}` },
               style: 'primary',
-              color: '#FF4DA6',
+              color: '#00E050',
             }],
           },
         },
@@ -262,7 +262,7 @@ export function processMessage(text: string): object[] {
     default: {
       return [{
         type: 'text',
-        text: 'ขออภัยค่ะ ไม่เข้าใจข้อความนี้ 😊\n\nลองพิมพ์สิ่งที่ต้องการ เช่น\n• "205/55R16" — ค้นหายางจากขนาด\n• "Michelin" — ค้นหาจากแบรนด์\n• "โปรโมชั่น"\n• "บริการ"\n• "จองยาง"',
+        text: 'ขออภัยครับ ไม่เข้าใจข้อความนี้\n\nสามารถพิมพ์สิ่งที่ต้องการ เช่น\n• "205/55R16"\n• "Michelin"\n• "โปรโมชั่น"\n• "บริการ"\n• "เมนู"',
         ...mainQR,
       }];
     }
@@ -291,8 +291,8 @@ function buildTireCarousel(items: Tire[], query: string): object {
               type: 'box',
               layout: 'horizontal',
               contents: [
-                { type: 'text', text: tire.brand, size: 'xxs', color: '#FF4DA6', weight: 'bold', flex: 1 },
-                ...(tire.badge ? [{ type: 'text', text: `🏷 ${tire.badge}`, size: 'xxs', color: '#FF4DA6', align: 'end' as const, weight: 'bold' as const }] : []),
+                { type: 'text', text: tire.brand, size: 'xxs', color: '#00E050', weight: 'bold', flex: 1 },
+                ...(tire.badge ? [{ type: 'text', text: tire.badge, size: 'xxs', color: '#00E050', align: 'end' as const, weight: 'bold' as const }] : []),
               ],
             },
             { type: 'text', text: tire.model, size: 'sm', weight: 'bold', color: '#111111', wrap: true },
@@ -303,14 +303,14 @@ function buildTireCarousel(items: Tire[], query: string): object {
               layout: 'baseline',
               margin: 'sm',
               contents: [
-                { type: 'text', text: `฿${tire.price.toLocaleString()}`, size: 'xl', weight: 'bold', color: '#FF4DA6', flex: 1 },
+                { type: 'text', text: `฿${tire.price.toLocaleString()}`, size: 'xl', weight: 'bold', color: '#00E050', flex: 1 },
                 ...(tire.oldPrice ? [{ type: 'text', text: `฿${tire.oldPrice.toLocaleString()}`, size: 'xs', color: '#bbbbbb', decoration: 'line-through' as const }] : []),
               ],
             },
             { type: 'text', text: '/เส้น', size: 'xxs', color: '#aaaaaa' },
             {
               type: 'text',
-              text: tire.inStock ? '● มีสินค้า' : '● สั่งได้',
+              text: tire.inStock ? 'มีสินค้า' : 'สั่งได้',
               size: 'xxs',
               color: tire.inStock ? '#22c55e' : '#f59e0b',
               margin: 'xs',
@@ -327,13 +327,14 @@ function buildTireCarousel(items: Tire[], query: string): object {
               type: 'button',
               action: { type: 'uri', label: 'จองเลย', uri: `${APP_URL}/booking?tireId=${tire.id}` },
               style: 'primary',
-              color: '#FF4DA6',
+              color: '#0A0D14',
               height: 'sm',
             },
             {
               type: 'button',
-              action: { type: 'uri', label: 'ดูรายละเอียด', uri: `${APP_URL}/tires/${tire.id}` },
+              action: { type: 'uri', label: 'รายละเอียด', uri: `${APP_URL}/tires/${tire.id}` },
               style: 'link',
+              color: '#00E050',
               height: 'sm',
             },
           ],
@@ -352,7 +353,7 @@ function serviceRow(name: string, price: string) {
     borderColor: '#f5f5f5',
     contents: [
       { type: 'text', text: name, size: 'sm', color: '#333333', flex: 1 },
-      { type: 'text', text: price, size: 'sm', color: '#FF4DA6', weight: 'bold', align: 'end' as const },
+      { type: 'text', text: price, size: 'sm', color: '#00E050', weight: 'bold', align: 'end' as const },
     ],
   };
 }
@@ -360,19 +361,14 @@ function serviceRow(name: string, price: string) {
 function promoItem(title: string, desc: string) {
   return {
     type: 'box',
-    layout: 'horizontal',
-    spacing: 'sm',
+    layout: 'vertical',
+    spacing: 'xs',
+    paddingAll: '12px',
+    backgroundColor: '#F8FAFC',
+    cornerRadius: '8px',
     contents: [
-      { type: 'text', text: '✅', size: 'sm', flex: 0 },
-      {
-        type: 'box',
-        layout: 'vertical',
-        flex: 1,
-        contents: [
-          { type: 'text', text: title, size: 'sm', weight: 'bold', color: '#222222' },
-          { type: 'text', text: desc, size: 'xs', color: '#666666' },
-        ],
-      },
+      { type: 'text', text: title, size: 'sm', weight: 'bold', color: '#0A0D14' },
+      { type: 'text', text: desc, size: 'xs', color: '#64748B' },
     ],
   };
 }
@@ -389,44 +385,55 @@ function stepItem(num: string, title: string, desc: string) {
         width: '24px',
         height: '24px',
         cornerRadius: '12px',
-        backgroundColor: '#FF4DA6',
+        backgroundColor: '#0A0D14',
         justifyContent: 'center',
         alignItems: 'center',
-        contents: [{ type: 'text', text: num, color: '#ffffff', size: 'xs', weight: 'bold', align: 'center' }],
+        contents: [{ type: 'text', text: num, color: '#00E050', size: 'xs', weight: 'bold', align: 'center' }],
       },
       {
         type: 'box',
         layout: 'vertical',
         flex: 1,
         contents: [
-          { type: 'text', text: title, size: 'sm', weight: 'bold', color: '#222222' },
-          { type: 'text', text: desc, size: 'xs', color: '#666666', wrap: true },
+          { type: 'text', text: title, size: 'sm', weight: 'bold', color: '#0A0D14' },
+          { type: 'text', text: desc, size: 'xs', color: '#64748B', wrap: true },
         ],
       },
     ],
   };
 }
 
-function menuRow(icon: string, title: string, desc: string) {
+function menuRow(title: string, desc: string, actionText: string) {
   return {
     type: 'box',
     layout: 'horizontal',
-    paddingAll: '10px',
-    backgroundColor: '#fafafa',
-    cornerRadius: '8px',
+    paddingAll: '14px',
+    backgroundColor: '#F8FAFC',
+    cornerRadius: '12px',
+    borderWidth: '1px',
+    borderColor: '#E2E8F0',
     spacing: 'md',
-    margin: 'xs',
+    margin: 'sm',
+    action: { type: 'message', label: title, text: actionText },
     contents: [
-      { type: 'text', text: icon, size: 'lg', flex: 0 },
       {
         type: 'box',
         layout: 'vertical',
         flex: 1,
         contents: [
-          { type: 'text', text: title, size: 'sm', weight: 'bold', color: '#222222' },
-          { type: 'text', text: desc, size: 'xs', color: '#888888' },
+          { type: 'text', text: title, size: 'sm', weight: 'bold', color: '#0F172A' },
+          { type: 'text', text: desc, size: 'xs', color: '#64748B' },
         ],
       },
+      {
+        type: 'box',
+        layout: 'vertical',
+        flex: 0,
+        justifyContent: 'center',
+        contents: [
+          { type: 'text', text: '>', size: 'md', weight: 'bold', color: '#00E050' }
+        ]
+      }
     ],
   };
 }

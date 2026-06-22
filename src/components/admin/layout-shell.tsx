@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { AdminSidebar } from './sidebar';
 import { AdminHeader } from './header';
 
@@ -13,6 +14,12 @@ interface AdminUser {
 
 export function AdminLayoutShell({ children, adminUser }: { children: React.ReactNode; adminUser: AdminUser }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const pathname = usePathname();
+
+  // หน้าพรีวิวก่อนพิมพ์ (เปิดแท็บใหม่) ไม่ต้องมี sidebar/header ของแอดมิน
+  if (pathname.endsWith('/print')) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans">

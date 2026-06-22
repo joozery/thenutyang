@@ -3,100 +3,118 @@ import { HeroSection } from "@/components/home/hero-section";
 import { FeaturesBar } from "@/components/home/features-bar";
 import { PopularTires } from "@/components/home/popular-tires";
 import { Testimonials } from "@/components/home/testimonials";
-import { News } from "@/components/home/news";
-import { Disc, Settings, Wrench, Droplet, Battery, ClipboardList, Check } from "lucide-react";
+import { Disc, Settings, Wrench, Droplet, Battery, ClipboardList, Check, ShieldCheck, RefreshCw, AlertCircle, Wind, CheckCircle2 } from "lucide-react";
+import { getAllBanners } from "@/lib/banners";
+import { AfterSales } from "@/components/home/after-sales";
+import connectDB from "@/lib/mongodb";
+import { Service } from "@/models/Service";
 
-export default function Home() {
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  const banners = await getAllBanners();
+  const main   = banners.find(b => b.slot === 'main');
+  const promo1 = banners.find(b => b.slot === 'promo1');
+  const promo2 = banners.find(b => b.slot === 'promo2');
+
+  await connectDB();
+  const servicesData = await Service.find().sort({ order: 1, createdAt: -1 }).lean();
+  // We need to stringify and parse to convert MongoDB ObjectIds to strings for passing to Client Components (if any) or just rendering cleanly
+  const services = JSON.parse(JSON.stringify(servicesData));
+
   return (
     <>
       <HeroSection />
       
-      <FeaturesBar />
+      <div className="hidden md:block">
+        <FeaturesBar />
+      </div>
       <PopularTires />
       
       {/* Promotions Banner Section */}
       <section className="container mx-auto px-4 md:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 rounded-2xl overflow-hidden relative bg-[url('/yang/green.png')] bg-cover bg-center bg-no-repeat text-white p-8 md:p-12 min-h-[300px] flex flex-col justify-center">
-            <div className="relative z-10">
-              <h2 className="text-4xl md:text-5xl font-black mb-2">ซื้อ 3 แถม 1</h2>
-              <p className="text-lg md:text-xl font-medium mb-6 text-green-100">เฉพาะรุ่นที่ร่วมรายการ</p>
-              <button className="bg-white text-green-600 font-bold py-2.5 px-8 rounded-full w-fit hover:bg-green-50 transition-colors shadow-sm flex items-center gap-2">ช้อปเลย <span className="text-[10px]">&gt;</span></button>
+          {/* Main Banner */}
+          {main?.published !== false && (
+            <div
+              className="lg:col-span-2 rounded-2xl overflow-hidden relative bg-cover bg-center bg-no-repeat text-white p-8 md:p-12 min-h-[300px] flex flex-col justify-center"
+              style={{ backgroundImage: `url('${main?.bgImage || '/yang/green.png'}')` }}
+            >
+              <div className="relative z-10">
+                <h2 className="text-4xl md:text-5xl font-black mb-2">{main?.title ?? 'ซื้อ 3 แถม 1'}</h2>
+                <p className="text-lg md:text-xl font-medium mb-6 text-green-100">{main?.subtitle}</p>
+                {main?.buttonText && (
+                  <Link href={main.buttonLink || '/'} className="bg-white text-green-600 font-bold py-2.5 px-8 rounded-full w-fit hover:bg-green-50 transition-colors shadow-sm flex items-center gap-2">
+                    {main.buttonText} <span className="text-[10px]">&gt;</span>
+                  </Link>
+                )}
+              </div>
             </div>
-          </div>
-          
+          )}
+
           <div className="flex flex-col gap-6">
-            {/* Promo 1: 0% */}
-            <div className="rounded-2xl bg-[url('/cover/31.png')] bg-cover bg-right text-white p-6 md:p-8 flex-1 relative overflow-hidden flex flex-col justify-center min-h-[160px]">
-              <div className="relative z-10">
-                <h3 className="text-2xl md:text-3xl font-black mb-1 md:mb-2 text-green-500 drop-shadow-md">ผ่อน 0%</h3>
-                <p className="font-medium text-sm md:text-base drop-shadow-md">สูงสุด 10 เดือน</p>
-                <button className="mt-3 md:mt-4 text-xs md:text-sm font-bold bg-white text-green-600 px-4 py-1.5 md:py-2 rounded-full hover:bg-slate-100 transition inline-block w-max">
-                  ดูรายละเอียด
-                </button>
-              </div>
-            </div>
-
-            {/* Promo 2: Free Alignment */}
-            <div className="rounded-2xl bg-[url('/ser.png')] bg-cover bg-right text-white p-6 md:p-8 flex-1 flex flex-col justify-center relative min-h-[160px]">
-              <div className="relative z-10">
-                <h3 className="text-2xl md:text-3xl font-black mb-1 md:mb-2 text-white drop-shadow-md">บริการตั้งศูนย์</h3>
-                <p className="font-medium text-sm md:text-base drop-shadow-md">เริ่มต้น 500.-</p>
-                <button className="mt-3 md:mt-4 text-xs md:text-sm font-bold bg-green-600 text-white px-4 py-1.5 md:py-2 rounded-full hover:bg-green-700 transition inline-block w-max">
-                  จองคิวรับบริการ
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section className="bg-slate-50 py-16">
-        <div className="container mx-auto px-4 md:px-8">
-          <div className="relative mb-8 text-center md:text-left inline-block">
-            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 pb-2">บริการของเรา</h2>
-            <div className="absolute -bottom-1 left-0 w-12 h-1 bg-green-600 rounded-full hidden md:block"></div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {[
-              { icon: "เปลี่ยนยาง", desc: "มาตรฐาน ปลอดภัย", iconNode: <Disc className="w-8 h-8" /> },
-              { icon: "ตั้งศูนย์ - ถ่วงล้อ", desc: "แม่นยำ ด้วยเครื่องมือทันสมัย", iconNode: <Settings className="w-8 h-8" /> },
-              { icon: "ปะยาง - ซ่อมยาง", desc: "รวดเร็ว ปลอดภัย", iconNode: <Wrench className="w-8 h-8" /> },
-              { icon: "เปลี่ยนถ่ายน้ำมันเครื่อง", desc: "น้ำมันเครื่องคุณภาพสูง", iconNode: <Droplet className="w-8 h-8" /> },
-              { icon: "แบตเตอรี่", desc: "แบตเตอรี่คุณภาพ", iconNode: <Battery className="w-8 h-8" /> },
-              { icon: "ตรวจเช็คสภาพรถ", desc: "ฟรีเช็ค 30 รายการ", iconNode: <ClipboardList className="w-8 h-8" /> },
-            ].map((service, idx) => (
-              <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-100 flex flex-col items-center text-center hover:shadow-md transition-shadow hover:border-green-200 group cursor-pointer">
-                <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center text-green-600 mb-4 group-hover:bg-green-100 transition-colors">
-                  {service.iconNode}
+            {/* Promo 1 */}
+            {promo1?.published !== false && (
+              <div
+                className="rounded-2xl bg-cover bg-right text-white p-6 md:p-8 flex-1 relative overflow-hidden flex flex-col justify-center min-h-[160px]"
+                style={{ backgroundImage: `url('${promo1?.bgImage || '/cover/31.png'}')` }}
+              >
+                <div className="relative z-10">
+                  <h3 className="text-2xl md:text-3xl font-black mb-1 md:mb-2 text-green-400 drop-shadow-md">{promo1?.title ?? 'ผ่อน 0%'}</h3>
+                  <p className="font-medium text-sm md:text-base drop-shadow-md">{promo1?.subtitle}</p>
+                  {promo1?.buttonText && (
+                    <Link href={promo1.buttonLink || '/'} className="mt-3 md:mt-4 text-xs md:text-sm font-bold bg-white text-green-600 px-4 py-1.5 md:py-2 rounded-full hover:bg-slate-100 transition inline-block w-max">
+                      {promo1.buttonText}
+                    </Link>
+                  )}
                 </div>
-                <h4 className="font-bold text-slate-800 text-sm mb-1">{service.icon}</h4>
-                <p className="text-xs text-slate-500">{service.desc}</p>
               </div>
-            ))}
-          </div>
-          <div className="flex justify-center mt-10">
-            <button className="bg-green-600 text-white font-bold py-3 px-8 rounded-full hover:bg-green-700 transition-colors shadow-lg shadow-green-200">ดูบริการทั้งหมด</button>
+            )}
+
+            {/* Promo 2 */}
+            {promo2?.published !== false && (
+              <div
+                className="rounded-2xl bg-cover bg-right text-white p-6 md:p-8 flex-1 flex flex-col justify-center relative min-h-[160px]"
+                style={{ backgroundImage: `url('${promo2?.bgImage || '/ser.png'}')` }}
+              >
+                <div className="relative z-10">
+                  <h3 className="text-2xl md:text-3xl font-black mb-1 md:mb-2 text-white drop-shadow-md">{promo2?.title ?? 'บริการตั้งศูนย์'}</h3>
+                  <p className="font-medium text-sm md:text-base drop-shadow-md">{promo2?.subtitle}</p>
+                  {promo2?.buttonText && (
+                    <Link href={promo2.buttonLink || '/'} className="mt-3 md:mt-4 text-xs md:text-sm font-bold bg-green-600 text-white px-4 py-1.5 md:py-2 rounded-full hover:bg-green-700 transition inline-block w-max">
+                      {promo2.buttonText}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
+
+      <AfterSales services={services} />
 
       {/* Brands Section */}
       <section className="bg-white py-12 border-y border-slate-100">
         <div className="container mx-auto px-4 md:px-8">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-xl md:text-2xl font-bold text-slate-800">แบรนด์ยางชั้นนำที่เราจำหน่าย</h2>
-            <button className="text-green-600 font-medium text-sm hover:underline">ดูทั้งหมด →</button>
+            <Link href="/tires" className="text-green-600 font-medium text-sm hover:underline">ดูทั้งหมด →</Link>
           </div>
-          <div className="flex flex-wrap justify-center md:justify-between items-center gap-8 md:gap-4">
-            <img src="/brand/michelin-7-logo-svgrepo-com.svg" alt="Michelin" className="h-12 md:h-20 w-auto object-contain scale-125" />
-            <img src="/brand/bridgestone-26989.svg" alt="Bridgestone" className="h-12 md:h-20 w-auto object-contain scale-125" />
-            <img src="/brand/yokohama-logo.svg" alt="Yokohama" className="h-4 md:h-6 w-auto object-contain" />
-            <img src="/brand/dunlop-sport.svg" alt="Dunlop" className="h-5 md:h-7 w-auto object-contain" />
-            <img src="/brand/goodyear-tire-1.svg" alt="Goodyear" className="h-4 md:h-6 w-auto object-contain" />
-            <img src="/brand/continental-2-1.svg" alt="Continental" className="h-5 md:h-7 w-auto object-contain" />
-            <img src="/brand/pirelli-2.svg" alt="Pirelli" className="h-10 md:h-16 w-auto object-contain" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:flex lg:justify-between items-center gap-4">
+            {[
+              { src: "/brand/michelin-7-logo-svgrepo-com.svg", alt: "Michelin", className: "scale-150" },
+              { src: "/brand/bridgestone-26989.svg", alt: "Bridgestone", className: "scale-150" },
+              { src: "/brand/yokohama-logo.svg", alt: "Yokohama", className: "scale-90" },
+              { src: "/brand/dunlop-sport.svg", alt: "Dunlop", className: "scale-100" },
+              { src: "/brand/goodyear-tire-1.svg", alt: "Goodyear", className: "scale-100" },
+              { src: "/brand/continental-2-1.svg", alt: "Continental", className: "scale-100" },
+              { src: "/brand/pirelli-2.svg", alt: "Pirelli", className: "scale-125" },
+            ].map((brand, idx) => (
+              <Link href={`/tires?brand=${brand.alt}`} key={idx} className="bg-white border border-slate-100 hover:border-green-300 hover:shadow-md transition-all rounded-lg h-24 lg:h-28 w-full lg:w-32 flex items-center justify-center p-4 overflow-hidden group cursor-pointer block">
+                <img src={brand.src} alt={brand.alt} className={`w-full h-full object-contain transition-transform duration-300 group-hover:scale-110 ${brand.className}`} />
+              </Link>
+            ))}
           </div>
         </div>
       </section>
@@ -131,7 +149,6 @@ export default function Home() {
       </section>
 
       <Testimonials />
-      <News />
     </>
   );
 }

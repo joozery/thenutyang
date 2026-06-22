@@ -18,9 +18,13 @@ export type DocRow = {
   type:          DocType;
   source:        'booking' | 'manual';
   bookingRef:    string;
-  customerName:  string;
-  customerPhone: string;
-  customerCar:   string;
+  relatedDocId:     string;
+  relatedDocNumber: string;
+  customerName:    string;
+  customerPhone:   string;
+  customerCar:     string;
+  customerAddress: string;
+  customerTaxId:   string;
   items:         DocItem[];
   subtotal:      number;
   discountTotal: number;
@@ -49,9 +53,13 @@ function normalize(d: any): DocRow {
     type:          d.type          ?? 'invoice',
     source:        d.source        ?? 'manual',
     bookingRef:    d.bookingRef    ?? '',
-    customerName:  d.customerName  ?? '',
-    customerPhone: d.customerPhone ?? '',
-    customerCar:   d.customerCar   ?? '',
+    relatedDocId:     d.relatedDocId ? String(d.relatedDocId) : '',
+    relatedDocNumber: d.relatedDocNumber ?? '',
+    customerName:    d.customerName    ?? '',
+    customerPhone:   d.customerPhone   ?? '',
+    customerCar:     d.customerCar     ?? '',
+    customerAddress: d.customerAddress ?? '',
+    customerTaxId:   d.customerTaxId   ?? '',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items: (d.items ?? []).map((item: any) => ({
       description: item.description ?? '',
@@ -77,6 +85,16 @@ export async function getDocuments(): Promise<DocRow[]> {
   await connectDB();
   const docs = await FinancialDocument.find({}).sort({ createdAt: -1 }).lean();
   return docs.map(normalize);
+}
+
+export async function getDocumentById(id: string): Promise<DocRow | null> {
+  await connectDB();
+  try {
+    const doc = await FinancialDocument.findById(id).lean();
+    return doc ? normalize(doc) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getDocStats(): Promise<DocStats> {

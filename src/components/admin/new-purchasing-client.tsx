@@ -1,15 +1,20 @@
 'use client';
 
 import { useState, useMemo, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, Plus, Trash2, Save, Send,
   Building2, Phone, Mail, User, MapPin,
   Package, Hash, ChevronDown, AlertCircle, CheckCircle,
+  Search, X,
 } from 'lucide-react';
 import type { SupplierRow } from '@/lib/purchasing';
+import type { ProductRow } from '@/lib/products';
 import { createPO, saveDraftPO } from '@/app/actions/purchasing';
 import type { POFormPayload } from '@/app/actions/purchasing';
+import { createSupplier, type SupplierFormInput } from '@/app/actions/suppliers';
+import { PickerModal } from '@/components/admin/picker-modal';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -32,7 +37,6 @@ type POType = 'standard' | 'urgent';
 
 interface LineItem {
   key:         number;
-  productCode: string;
   productName: string;
   unit:        string;
   qty:         number;
@@ -68,9 +72,86 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
   );
 }
 
+const EMPTY_SUPPLIER_FORM: SupplierFormInput = {
+  name: '', address: '', contact: '', phone: '', email: '', taxId: '',
+};
+
+function SupplierModal({
+  onClose, onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (id: string, data: SupplierFormInput) => void;
+}) {
+  const [form, setForm] = useState<SupplierFormInput>(EMPTY_SUPPLIER_FORM);
+  const [error, setError] = useState('');
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function set<K extends keyof SupplierFormInput>(key: K, value: string) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function handleSubmit() {
+    setError('');
+    startTransition(async () => {
+      const res = await createSupplier(form);
+      if (res.error || !res.id) { setError(res.error ?? 'เกิดข้อผิดพลาด'); return; }
+      router.refresh();
+      onCreated(res.id, form);
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h2 className="font-bold text-slate-900">เพิ่มซัพพลายเออร์ใหม่</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">ชื่อซัพพลายเออร์ <span className="text-green-500">*</span></label>
+            <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="บริษัท ... จำกัด" className={inputCls} />
+          </div>
+          <div>
+            <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><User size={11} /> ผู้ติดต่อ</label>
+            <input value={form.contact} onChange={(e) => set('contact', e.target.value)} placeholder="ชื่อผู้ติดต่อ" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Phone size={11} /> เบอร์โทร</label>
+              <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="02-XXX-XXXX" className={inputCls} />
+            </div>
+            <div>
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Mail size={11} /> อีเมล</label>
+              <input value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="email@supplier.com" className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><MapPin size={11} /> ที่อยู่</label>
+            <textarea value={form.address} onChange={(e) => set('address', e.target.value)} rows={2} placeholder="ที่อยู่ซัพพลายเออร์" className={inputCls + ' resize-none'} />
+          </div>
+          <div>
+            <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Hash size={11} /> เลขที่ผู้เสียภาษี</label>
+            <input value={form.taxId} onChange={(e) => set('taxId', e.target.value)} placeholder="0-0000-00000-00-0" className={inputCls} />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">ยกเลิก</button>
+          <button onClick={handleSubmit} disabled={isPending} className="px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50">
+            {isPending ? 'กำลังบันทึก...' : 'บันทึก'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export function NewPurchasingClient({ suppliers }: { suppliers: SupplierRow[] }) {
+export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: SupplierRow[]; products?: ProductRow[] }) {
   const [isPending, startTransition] = useTransition();
 
   // header
@@ -79,16 +160,37 @@ export function NewPurchasingClient({ suppliers }: { suppliers: SupplierRow[] })
 
   // supplier
   const [supplierId, setSupplierId] = useState('');
-  const supplier = suppliers.find(s => s.id === supplierId) ?? null;
+  const [justCreatedSupplier, setJustCreatedSupplier] = useState<SupplierRow | null>(null);
+  const supplier = suppliers.find(s => s.id === supplierId)
+    ?? (justCreatedSupplier?.id === supplierId ? justCreatedSupplier : null);
   const [overrideAddress, setOverrideAddress] = useState('');
   const [overrideContact, setOverrideContact] = useState('');
   const [overridePhone,   setOverridePhone]   = useState('');
   const [overrideEmail,   setOverrideEmail]   = useState('');
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+
+  function handleSupplierCreated(id: string, data: SupplierFormInput) {
+    setJustCreatedSupplier({ id, ...data });
+    setSupplierId(id);
+    setOverrideAddress(data.address);
+    setOverrideContact(data.contact);
+    setOverridePhone(data.phone);
+    setOverrideEmail(data.email);
+    setSupplierModalOpen(false);
+  }
 
   // line items
   const [lines, setLines] = useState<LineItem[]>([
-    { key: 1, productCode: '', productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0 },
+    { key: 1, productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0 },
   ]);
+  const [productPickerLineKey, setProductPickerLineKey] = useState<number | null>(null);
+
+  function selectProduct(key: number, p: ProductRow) {
+    setLines(prev => prev.map(l => l.key === key
+      ? { ...l, productName: `${p.brand} ${p.model} ${p.size}`, unitPrice: p.costPrice || l.unitPrice }
+      : l));
+    setProductPickerLineKey(null);
+  }
 
   // terms
   const [paymentTerm,     setPaymentTerm]     = useState('30');
@@ -119,7 +221,7 @@ export function NewPurchasingClient({ suppliers }: { suppliers: SupplierRow[] })
   };
 
   const addLine = () =>
-    setLines(prev => [...prev, { key: Date.now(), productCode: '', productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0 }]);
+    setLines(prev => [...prev, { key: Date.now(), productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0 }]);
 
   const removeLine = (key: number) =>
     setLines(prev => prev.filter(l => l.key !== key));
@@ -157,7 +259,6 @@ export function NewPurchasingClient({ suppliers }: { suppliers: SupplierRow[] })
       poType,
       dueDate,
       items: lines.map((l, idx) => ({
-        productCode: l.productCode,
         productName: l.productName,
         unit:        l.unit,
         qty:         l.qty,
@@ -310,14 +411,26 @@ export function NewPurchasingClient({ suppliers }: { suppliers: SupplierRow[] })
           <div className="space-y-3">
             <div>
               <Label required>ซัพพลายเออร์</Label>
-              <div className="relative">
-                <select value={supplierId} onChange={e => handleSupplierChange(e.target.value)} className={inputCls + ' appearance-none pr-9'}>
-                  <option value="">-- เลือกซัพพลายเออร์ --</option>
-                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <select value={supplierId} onChange={e => handleSupplierChange(e.target.value)} className={inputCls + ' appearance-none pr-9'}>
+                    <option value="">-- เลือกซัพพลายเออร์ --</option>
+                    {justCreatedSupplier && !suppliers.some(s => s.id === justCreatedSupplier.id) && (
+                      <option value={justCreatedSupplier.id}>{justCreatedSupplier.name}</option>
+                    )}
+                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+                <button
+                  type="button" onClick={() => setSupplierModalOpen(true)}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:border-green-300 hover:text-green-600 hover:bg-green-50 transition-colors"
+                  title="เพิ่มซัพพลายเออร์ใหม่"
+                >
+                  <Plus size={14} /> เพิ่มใหม่
+                </button>
               </div>
-              {supplier && <p className="text-xs text-slate-400 mt-1">เลขที่ผู้เสียภาษี: {supplier.taxId}</p>}
+              {supplier && <p className="text-xs text-slate-400 mt-1">เลขที่ผู้เสียภาษี: {supplier.taxId || '—'}</p>}
             </div>
             {supplierId ? (
               <div className="grid grid-cols-2 gap-3">
@@ -374,7 +487,6 @@ export function NewPurchasingClient({ suppliers }: { suppliers: SupplierRow[] })
             <thead>
               <tr className="bg-slate-50 text-xs text-slate-400 font-semibold border-b border-slate-100">
                 <th className="text-left px-4 py-3 w-8">#</th>
-                <th className="text-left px-3 py-3 w-24">รหัสสินค้า</th>
                 <th className="text-left px-3 py-3">ชื่อสินค้า / รุ่น *</th>
                 <th className="text-center px-3 py-3 w-24">หน่วย</th>
                 <th className="text-center px-3 py-3 w-24">จำนวน *</th>
@@ -391,12 +503,17 @@ export function NewPurchasingClient({ suppliers }: { suppliers: SupplierRow[] })
                   <tr key={line.key} className="group hover:bg-slate-50/50">
                     <td className="px-4 py-2.5 text-xs text-slate-400 font-medium">{idx + 1}</td>
                     <td className="px-3 py-2.5">
-                      <input value={line.productCode} onChange={e => updateLine(line.key, 'productCode', e.target.value)} placeholder="SKU-XXXX"
-                        className="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 placeholder:text-slate-300" />
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <input value={line.productName} onChange={e => updateLine(line.key, 'productName', e.target.value)} placeholder="เช่น Michelin Pilot Sport 4 225/45R17"
-                        className="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 placeholder:text-slate-300" />
+                      <div className="flex gap-1.5">
+                        <input value={line.productName} onChange={e => updateLine(line.key, 'productName', e.target.value)} placeholder="พิมพ์ชื่อสินค้า หรือกดค้นหา"
+                          className="flex-1 px-2.5 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 placeholder:text-slate-300" />
+                        <button
+                          type="button" onClick={() => setProductPickerLineKey(line.key)}
+                          className="shrink-0 w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:border-green-300 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors"
+                          title="ค้นหาสินค้าจากคลัง"
+                        >
+                          <Search size={13} />
+                        </button>
+                      </div>
                     </td>
                     <td className="px-3 py-2.5">
                       <select value={line.unit} onChange={e => updateLine(line.key, 'unit', e.target.value)}
@@ -534,6 +651,39 @@ export function NewPurchasingClient({ suppliers }: { suppliers: SupplierRow[] })
           </div>
         </div>
       </div>
+
+      {supplierModalOpen && (
+        <SupplierModal
+          onClose={() => setSupplierModalOpen(false)}
+          onCreated={handleSupplierCreated}
+        />
+      )}
+
+      {productPickerLineKey !== null && (
+        <PickerModal
+          title="เลือกสินค้า / ยาง"
+          placeholder="ค้นหายี่ห้อ รุ่น หรือขนาดยาง..."
+          items={products}
+          filterFn={(p, q) => `${p.brand} ${p.model} ${p.size}`.toLowerCase().includes(q)}
+          renderItem={(p) => (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">{p.brand} {p.model}</p>
+                <p className="text-xs text-slate-400">{p.size}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-amber-600">
+                  {p.costPrice ? `ต้นทุน ฿${p.costPrice.toLocaleString()}` : 'ยังไม่มีราคาต้นทุน'}
+                </p>
+                <p className="text-[11px] text-slate-400">ราคาขาย ฿{p.priceCash.toLocaleString()}</p>
+                <p className={`text-[10px] font-semibold ${p.stock === 0 ? 'text-red-500' : 'text-slate-400'}`}>สต็อก {p.stock}</p>
+              </div>
+            </div>
+          )}
+          onSelect={(p) => selectProduct(productPickerLineKey, p)}
+          onClose={() => setProductPickerLineKey(null)}
+        />
+      )}
     </div>
   );
 }

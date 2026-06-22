@@ -10,6 +10,7 @@ export interface IProduct {
   priceCash: number;
   priceCredit: number;
   priceInstallment: number;
+  costPrice: number;
   oldPrice?: number;
   badge?: string;
   image: string;
@@ -31,6 +32,7 @@ const ProductSchema = new Schema<IProduct>({
   priceCash:        { type: Number, required: true },
   priceCredit:      { type: Number, required: true },
   priceInstallment: { type: Number, required: true },
+  costPrice:        { type: Number, default: 0 },
   oldPrice:         { type: Number },
   badge:            { type: String },
   image:            { type: String, default: '/yang.png' },

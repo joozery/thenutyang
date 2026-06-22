@@ -14,7 +14,7 @@ export type POFormPayload = {
   poType: 'standard' | 'urgent';
   dueDate: string;
   items: {
-    productCode: string; productName: string; unit: string;
+    productName: string; unit: string;
     qty: number; unitPrice: number; discount: number; lineTotal: number;
   }[];
   paymentTerm:     string;

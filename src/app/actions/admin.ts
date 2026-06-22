@@ -1,8 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { isValidObjectId } from 'mongoose';
 import connectDB from '@/lib/mongodb';
 import { Booking } from '@/models/Booking';
+import { disburseStock, receiveStock } from '@/app/actions/warehouse';
 import {
   pushMessage,
   buildQuoteFlexMessage,
@@ -51,11 +53,23 @@ export async function confirmBooking(ref: string): Promise<ActionResult> {
 export async function markReady(ref: string): Promise<ActionResult> {
   try {
     const booking = await getBooking(ref);
-    await Booking.updateOne({ ref }, { status: 'completed' });
+
+    if (booking.status !== 'completed') {
+      await Booking.updateOne({ ref }, { status: 'completed' });
+
+      // ตัดสต๊อกจริงเมื่องานเสร็จ/ติดตั้งยางแล้ว — ข้ามถ้า tireId ไม่ใช่ Product จริง (เช่น booking จาก LINE chatbot ที่ยังใช้ id เก่า)
+      if (isValidObjectId(booking.tireId)) {
+        const result = await disburseStock(booking.tireId, booking.quantity, booking.ref, `ตัดสต๊อกจากการจอง ${booking.ref}`);
+        if (result.error) console.error(`[markReady] disburseStock failed for ${ref}: ${result.error}`);
+      }
+    }
+
     if (booking.lineUserId) {
       await pushMessage(booking.lineUserId, [buildReadyMessage(booking.toObject())]);
     }
     revalidatePath('/admin/bookings');
+    revalidatePath('/admin/warehouse');
+    revalidatePath('/admin/products');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: String(e) };
@@ -65,11 +79,22 @@ export async function markReady(ref: string): Promise<ActionResult> {
 export async function cancelBooking(ref: string): Promise<ActionResult> {
   try {
     const booking = await getBooking(ref);
+    const wasCompleted = booking.status === 'completed';
+
     await Booking.updateOne({ ref }, { status: 'cancelled' });
+
+    // ถ้างานเสร็จไปแล้ว (ตัดสต๊อกไปแล้ว) แล้วมายกเลิกทีหลัง ต้องคืนสต๊อก
+    if (wasCompleted && isValidObjectId(booking.tireId)) {
+      const result = await receiveStock(booking.tireId, booking.quantity, booking.ref, `คืนสต๊อกจากการยกเลิกการจอง ${booking.ref}`);
+      if (result.error) console.error(`[cancelBooking] receiveStock failed for ${ref}: ${result.error}`);
+    }
+
     if (booking.lineUserId) {
       await pushMessage(booking.lineUserId, [buildCancelMessage(booking.toObject())]);
     }
     revalidatePath('/admin/bookings');
+    revalidatePath('/admin/warehouse');
+    revalidatePath('/admin/products');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: String(e) };

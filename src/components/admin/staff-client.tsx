@@ -118,97 +118,110 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">พนักงาน</h1>
-          <p className="text-sm text-slate-500 mt-1">ทั้งหมด {initialEmployees.length} คน</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">พนักงาน (Staff)</h1>
+          <p className="text-sm text-slate-500 mt-1">จัดการรายชื่อ ข้อมูลส่วนตัว และเงินเดือนของพนักงานทั้งหมด</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-colors w-fit">
-          <Plus size={16} /> เพิ่มพนักงาน
+        <button onClick={openAdd} className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-green-600 transition-colors shadow-md w-full md:w-auto">
+          <Plus size={16} /> เพิ่มพนักงานใหม่
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { icon: <Users size={16} className="text-slate-600" />,     label: 'พนักงานทั้งหมด',   value: String(initialEmployees.length), bg: 'bg-slate-100' },
-          { icon: <BadgeCheck size={16} className="text-emerald-600" />, label: 'กำลังทำงาน',     value: String(activeCount),             bg: 'bg-emerald-50' },
-          { icon: <CalendarOff size={16} className="text-amber-600" />,  label: 'ลาพัก',          value: String(onLeaveCount),            bg: 'bg-amber-50' },
-          { icon: <Wallet size={16} className="text-slate-600" />,     label: 'ค่าแรงรวมเดือนนี้', value: fmtBaht(payroll),                bg: 'bg-slate-100' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-slate-100 p-4 flex items-center gap-3">
-            <div className={`${s.bg} p-2 rounded-lg`}>{s.icon}</div>
-            <div>
-              <p className="text-xl font-black text-slate-900 leading-none">{s.value}</p>
-              <p className="text-xs text-slate-400 mt-1">{s.label}</p>
+          { icon: <Users size={20} className="text-blue-500" />,     label: 'พนักงานทั้งหมด',   value: String(initialEmployees.length), bg: 'from-blue-500/10 to-blue-500/5', border: 'border-blue-100' },
+          { icon: <BadgeCheck size={20} className="text-emerald-500" />, label: 'กำลังทำงาน',     value: String(activeCount),             bg: 'from-emerald-500/10 to-emerald-500/5', border: 'border-emerald-100' },
+          { icon: <CalendarOff size={20} className="text-amber-500" />,  label: 'ลาพัก',          value: String(onLeaveCount),            bg: 'from-amber-500/10 to-amber-500/5', border: 'border-amber-100' },
+          { icon: <Wallet size={20} className="text-purple-500" />,     label: 'ค่าแรงรวมเดือนนี้', value: fmtBaht(payroll),                bg: 'from-purple-500/10 to-purple-500/5', border: 'border-purple-100' },
+        ].map((s, i) => (
+          <div key={i} className={`bg-gradient-to-br ${s.bg} rounded-2xl border ${s.border} p-5 flex flex-col justify-between h-full relative overflow-hidden group hover:shadow-md transition-shadow`}>
+            <div className="absolute -right-4 -top-4 w-16 h-16 rounded-full bg-white/40 blur-xl group-hover:scale-150 transition-transform duration-500"></div>
+            <div className="bg-white w-10 h-10 rounded-xl flex items-center justify-center shadow-sm mb-4 relative z-10">
+              {s.icon}
+            </div>
+            <div className="relative z-10">
+              <p className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-1.5">{s.value}</p>
+              <p className="text-xs font-medium text-slate-500">{s.label}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาชื่อ / รหัส / เบอร์โทร..." className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400" />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-4 items-center">
+          <div className="relative flex-1 w-full">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาชื่อ, รหัส, เบอร์โทร..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-colors shadow-sm" />
           </div>
-          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value as 'all' | EmpRole)} className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400">
-            <option value="all">ตำแหน่ง: ทั้งหมด</option>
-            {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value as 'all' | EmpRole)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-colors shadow-sm cursor-pointer appearance-none">
+              <option value="all">ทุกตำแหน่ง</option>
+              {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm text-left">
             <thead>
-              <tr className="text-xs text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
-                <th className="text-left px-4 py-3">พนักงาน</th>
-                <th className="text-left px-4 py-3">ตำแหน่ง</th>
-                <th className="text-left px-4 py-3">เบอร์โทร</th>
-                <th className="text-left px-4 py-3">วันเริ่มงาน</th>
-                <th className="text-right px-4 py-3">เงินเดือน</th>
-                <th className="text-center px-4 py-3">สถานะ</th>
-                <th className="px-4 py-3"></th>
+              <tr className="bg-white border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                <th className="px-6 py-4">พนักงาน</th>
+                <th className="px-6 py-4">ตำแหน่ง</th>
+                <th className="px-6 py-4">เบอร์ติดต่อ</th>
+                <th className="px-6 py-4">เริ่มงาน</th>
+                <th className="px-6 py-4 text-right">เงินเดือน</th>
+                <th className="px-6 py-4 text-center">สถานะ</th>
+                <th className="px-6 py-4 w-20"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filtered.map(s => (
-                <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-sm shrink-0">
-                        <UserCircle size={22} />
+                <tr key={s.id} className="hover:bg-slate-50/80 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400 shrink-0 border border-slate-200/50 shadow-inner">
+                        <UserCircle size={22} strokeWidth={1.5} />
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-800">{s.name}{s.nickname && <span className="text-slate-400 font-normal"> ({s.nickname})</span>}</p>
-                        <p className="text-xs text-slate-400">{s.empId}</p>
+                        <p className="font-bold text-slate-900">{s.name}{s.nickname && <span className="text-slate-500 font-medium ml-1">({s.nickname})</span>}</p>
+                        <p className="text-[11px] text-slate-400 font-medium mt-0.5 tracking-wider">ID: {s.empId}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5">
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">{ROLE_LABELS[s.role]}</span>
+                  <td className="px-6 py-4">
+                    <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50 shadow-sm">{ROLE_LABELS[s.role]}</span>
                   </td>
-                  <td className="px-4 py-3.5">
-                    {s.phone ? <span className="flex items-center gap-1.5 text-slate-600"><Phone size={13} />{s.phone}</span> : <span className="text-slate-300">—</span>}
+                  <td className="px-6 py-4">
+                    {s.phone ? <span className="flex items-center gap-1.5 text-slate-600 font-medium text-xs"><Phone size={13} className="text-slate-400" />{s.phone}</span> : <span className="text-slate-300">—</span>}
                   </td>
-                  <td className="px-4 py-3.5 text-slate-500">{fmtDate(s.startDate)}</td>
-                  <td className="px-4 py-3.5 text-right font-bold text-slate-800">{fmtBaht(s.baseSalary)}</td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLE[s.status]}`}>{STATUS_LABELS[s.status]}</span>
+                  <td className="px-6 py-4 text-slate-500 text-xs font-medium">{fmtDate(s.startDate)}</td>
+                  <td className="px-6 py-4 text-right">
+                    <span className="font-black text-slate-800">{fmtBaht(s.baseSalary)}</span>
                   </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEdit(s)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"><Edit2 size={14} /></button>
-                      <button onClick={() => setDeleteTarget(s)} className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={14} /></button>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`inline-flex text-[11px] font-bold px-3 py-1 rounded-full border shadow-sm ${STATUS_STYLE[s.status]} ${s.status === 'active' ? 'border-emerald-200' : s.status === 'on_leave' ? 'border-amber-200' : 'border-slate-200'}`}>{STATUS_LABELS[s.status]}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => openEdit(s)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="แก้ไข"><Edit2 size={16} /></button>
+                      <button onClick={() => setDeleteTarget(s)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="ลบ"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="py-20 text-center text-sm text-slate-400">
-                  {initialEmployees.length === 0 ? 'ยังไม่มีพนักงาน — กดปุ่ม "เพิ่มพนักงาน" เพื่อเริ่มต้น' : 'ไม่พบพนักงานที่ค้นหา'}
-                </td></tr>
+                <tr>
+                  <td colSpan={7} className="py-24 text-center">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Users size={24} className="text-slate-300" />
+                    </div>
+                    <p className="text-slate-500 font-medium">{initialEmployees.length === 0 ? 'ยังไม่มีรายชื่อพนักงานในระบบ' : 'ไม่พบข้อมูลที่ค้นหา'}</p>
+                    <p className="text-xs text-slate-400 mt-1">{initialEmployees.length === 0 ? 'คลิก "เพิ่มพนักงานใหม่" เพื่อเริ่มต้น' : 'ลองเปลี่ยนคำค้นหาหรือตัวกรอง'}</p>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -222,62 +235,99 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
       {/* Add/Edit Modal */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-bold text-slate-900 text-sm">{modal === 'add' ? 'เพิ่มพนักงานใหม่' : 'แก้ไขข้อมูลพนักงาน'}</h2>
-              <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><X size={15} /></button>
-            </div>
-            <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
-              {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="ชื่อ-นามสกุล *">
-                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="สมศักดิ์ ทองดี" />
-                </Field>
-                <Field label="ชื่อเล่น">
-                  <input value={form.nickname} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} className={inputCls} placeholder="ศักดิ์" />
-                </Field>
-                <Field label="ตำแหน่ง">
-                  <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as EmpRole }))} className={inputCls}>
-                    {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                </Field>
-                <Field label="สถานะ">
-                  <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as EmployeeRow['status'] }))} className={inputCls}>
-                    {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                </Field>
-                <Field label="เบอร์โทร">
-                  <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} placeholder="081-234-5678" />
-                </Field>
-                <Field label="เลขบัตรประชาชน">
-                  <input value={form.idCard} onChange={e => setForm(f => ({ ...f, idCard: e.target.value }))} className={inputCls} placeholder="1-2345-67890-12-3" />
-                </Field>
-                <Field label="วันเริ่มงาน *">
-                  <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
-                </Field>
-                <Field label="เงินเดือน (บาท)">
-                  <input type="number" value={form.baseSalary || ''} onChange={e => setForm(f => ({ ...f, baseSalary: +e.target.value }))} className={inputCls} />
-                </Field>
-                <Field label="ธนาคาร">
-                  <input value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} className={inputCls} placeholder="กสิกรไทย" />
-                </Field>
-                <Field label="เลขบัญชี">
-                  <input value={form.bankAccount} onChange={e => setForm(f => ({ ...f, bankAccount: e.target.value }))} className={inputCls} placeholder="123-4-56789-0" />
-                </Field>
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={closeModal} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 bg-white z-10">
+              <div>
+                <h2 className="font-black text-lg text-slate-900">{modal === 'add' ? 'เพิ่มพนักงานใหม่' : 'แก้ไขข้อมูลพนักงาน'}</h2>
+                <p className="text-xs text-slate-500 mt-0.5">{modal === 'add' ? 'กรอกข้อมูลพื้นฐานของพนักงานเพื่อเพิ่มเข้าระบบ' : 'อัปเดตข้อมูลส่วนตัวหรือการทำงานของพนักงาน'}</p>
               </div>
-              <Field label="ที่อยู่">
-                <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className={inputCls} />
-              </Field>
-              <Field label="หมายเหตุ">
-                <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} className={inputCls} />
-              </Field>
+              <button onClick={closeModal} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors">
+                <X size={16} strokeWidth={2.5} />
+              </button>
             </div>
-            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
-              <button onClick={closeModal} className="px-4 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">ยกเลิก</button>
+            
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {error && (
+                <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                  {error}
+                </div>
+              )}
+              
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">ข้อมูลส่วนตัว</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="ชื่อ-นามสกุล *">
+                    <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="เช่น สมศักดิ์ ทองดี" />
+                  </Field>
+                  <Field label="ชื่อเล่น">
+                    <input value={form.nickname} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} className={inputCls} placeholder="เช่น ศักดิ์" />
+                  </Field>
+                  <Field label="เบอร์โทรศัพท์">
+                    <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} placeholder="081-234-5678" />
+                  </Field>
+                  <Field label="เลขประจำตัวประชาชน">
+                    <input value={form.idCard} onChange={e => setForm(f => ({ ...f, idCard: e.target.value }))} className={inputCls} placeholder="1-2345-67890-12-3" />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="ที่อยู่ปัจจุบัน">
+                      <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className={`${inputCls} min-h-[80px] resize-none`} placeholder="บ้านเลขที่, ถนน, ซอย, จังหวัด..." />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-100"></div>
+
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">ข้อมูลการทำงาน & การเงิน</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="ตำแหน่ง *">
+                    <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as EmpRole }))} className={inputCls}>
+                      {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="สถานะการทำงาน *">
+                    <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as EmployeeRow['status'] }))} className={inputCls}>
+                      {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="วันที่เริ่มงาน *">
+                    <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="ฐานเงินเดือน (บาท)">
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
+                      <input type="number" value={form.baseSalary || ''} onChange={e => setForm(f => ({ ...f, baseSalary: +e.target.value }))} className={`${inputCls} pl-8`} placeholder="15000" />
+                    </div>
+                  </Field>
+                  <Field label="ธนาคารที่รับเงิน">
+                    <input value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} className={inputCls} placeholder="เช่น กสิกรไทย" />
+                  </Field>
+                  <Field label="เลขที่บัญชี">
+                    <input value={form.bankAccount} onChange={e => setForm(f => ({ ...f, bankAccount: e.target.value }))} className={inputCls} placeholder="123-4-56789-0" />
+                  </Field>
+                  <div className="sm:col-span-2">
+                    <Field label="หมายเหตุ (ถ้ามี)">
+                      <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} className={inputCls} placeholder="ข้อมูลเพิ่มเติมอื่นๆ..." />
+                    </Field>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 z-10">
+              <button onClick={closeModal} className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">
+                ยกเลิก
+              </button>
               <button onClick={handleSave} disabled={!form.name || !form.startDate || isPending}
-                className="px-5 py-2 text-xs font-semibold bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                {isPending ? 'กำลังบันทึก...' : modal === 'add' ? 'เพิ่มพนักงาน' : 'บันทึก'}
+                className="px-6 py-2.5 text-sm font-bold bg-slate-900 text-white rounded-xl hover:bg-green-600 disabled:opacity-50 disabled:hover:bg-slate-900 transition-colors shadow-md flex items-center gap-2">
+                {isPending ? 'กำลังบันทึก...' : (
+                  <>
+                    <BadgeCheck size={16} /> {modal === 'add' ? 'บันทึกพนักงานใหม่' : 'บันทึกการแก้ไข'}
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -310,12 +360,12 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
   );
 }
 
-const inputCls = 'w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-colors';
+const inputCls = 'w-full px-4 py-2.5 text-sm font-medium border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-colors shadow-sm placeholder-slate-300';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-slate-600">{label}</label>
+    <div className="space-y-1.5 flex flex-col">
+      <label className="text-xs font-bold text-slate-600 pl-1">{label}</label>
       {children}
     </div>
   );

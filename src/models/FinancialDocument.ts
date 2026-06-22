@@ -14,10 +14,14 @@ const financialDocSchema = new Schema({
   source:        { type: String, enum: ['booking', 'manual'], default: 'manual' },
   bookingId:     { type: Schema.Types.ObjectId, ref: 'Booking', default: null },
   bookingRef:    { type: String, default: '' },
+  relatedDocId:     { type: Schema.Types.ObjectId, ref: 'FinancialDocument', default: null },
+  relatedDocNumber: { type: String, default: '' },
 
-  customerName:  { type: String, required: true },
-  customerPhone: { type: String, default: '' },
-  customerCar:   { type: String, default: '' },
+  customerName:    { type: String, required: true },
+  customerPhone:   { type: String, default: '' },
+  customerCar:     { type: String, default: '' },
+  customerAddress: { type: String, default: '' },
+  customerTaxId:   { type: String, default: '' },
 
   items:         { type: [itemSchema], default: [] },
 

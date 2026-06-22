@@ -12,6 +12,10 @@ export type DocFormPayload = {
   customerName:  string;
   customerPhone: string;
   customerCar:   string;
+  customerAddress: string;
+  customerTaxId:   string;
+  relatedDocId?:     string;
+  relatedDocNumber?: string;
   items: {
     description: string;
     qty:         number;

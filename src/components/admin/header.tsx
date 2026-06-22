@@ -35,24 +35,22 @@ export function AdminHeader({ toggleSidebar, adminUser }: HeaderProps) {
 
       <div className="flex items-center gap-6">
         {/* Search */}
-        <div className="relative hidden md:block w-80">
+        <form action="/admin/customers" method="GET" className="relative hidden md:block w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
             type="text"
-            placeholder="ค้นหาลูกค้า, เลขบิล, สินค้า..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-green-300 focus:ring-1 focus:ring-green-300 transition-all placeholder:text-slate-400"
+            name="q"
+            placeholder="ค้นหาลูกค้า, รหัส, เบอร์โทร..."
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-all placeholder:text-slate-400"
           />
-        </div>
+        </form>
 
-        {/* Notifications & Messages */}
+        {/* Notifications */}
         <div className="flex items-center gap-3">
-          <button className="relative text-slate-500 hover:text-green-600 transition-colors p-2 hover:bg-green-50 rounded-lg">
+          <Link href="/admin/notifications" className="relative text-slate-500 hover:text-green-600 transition-colors p-2 hover:bg-green-50 rounded-lg">
             <Bell size={20} />
-            <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white translate-x-1/2 -translate-y-1/2">5</span>
-          </button>
-          <button className="text-slate-500 hover:text-green-600 transition-colors p-2 hover:bg-green-50 rounded-lg">
-            <MessageSquare size={20} />
-          </button>
+            <span className="absolute top-1.5 right-1.5 bg-green-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white translate-x-1/2 -translate-y-1/2">1</span>
+          </Link>
         </div>
 
         <div className="h-6 w-px bg-slate-200 mx-2 hidden sm:block"></div>

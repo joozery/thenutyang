@@ -1,4 +1,5 @@
 "use client";
+import Link from 'next/link';
 import { Bell, Shield, Printer, CreditCard, Truck, MessageSquare, ChevronRight } from 'lucide-react';
 
 const settingGroups = [
@@ -6,8 +7,8 @@ const settingGroups = [
     title: "ร้านค้า",
     items: [
       { label: "ข้อมูลร้านค้า", desc: "ชื่อร้าน, ที่อยู่, เบอร์โทร, โลโก้", icon: <Shield size={18} /> },
-      { label: "การพิมพ์ใบเสร็จ", desc: "ตั้งค่าหัวใบเสร็จ, ขนาดกระดาษ", icon: <Printer size={18} /> },
-      { label: "ช่องทางการชำระเงิน", desc: "เงินสด, บัตรเครดิต, QR Code, โอน", icon: <CreditCard size={18} /> },
+      { label: "การพิมพ์ใบเสร็จ", desc: "หัวกระดาษ, ลายเซ็น, ตราประทับสำหรับเอกสาร", icon: <Printer size={18} />, href: "/admin/documents/settings" },
+      { label: "ช่องทางการชำระเงิน", desc: "เงินสด, บัตรเครดิต, QR Code, โอน", icon: <CreditCard size={18} />, href: "/admin/payments" },
     ],
   },
   {
@@ -61,18 +62,29 @@ export default function SettingsPage() {
         <div key={group.title} className="mb-6">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 px-1">{group.title}</h2>
           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden divide-y divide-slate-50">
-            {group.items.map((item) => (
-              <button key={item.label} className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors text-left">
-                <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 shrink-0">
-                  {item.icon}
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-slate-800">{item.label}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
-                </div>
-                <ChevronRight size={16} className="text-slate-300 shrink-0" />
-              </button>
-            ))}
+            {group.items.map((item) => {
+              const content = (
+                <>
+                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 shrink-0">
+                    {item.icon}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-800">{item.label}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
+                  </div>
+                  <ChevronRight size={16} className="text-slate-300 shrink-0" />
+                </>
+              );
+              return item.href ? (
+                <Link key={item.label} href={item.href} className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors text-left">
+                  {content}
+                </Link>
+              ) : (
+                <button key={item.label} className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors text-left">
+                  {content}
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}

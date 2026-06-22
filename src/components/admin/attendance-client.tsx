@@ -101,101 +101,117 @@ export function AttendanceClient({
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">ลงเวลาทำงาน</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">ลงเวลาทำงาน (Attendance)</h1>
           <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5">
-            <CalendarDays size={13} /> บันทึกการเข้างานรายวัน · {employees.length} คน
+            <CalendarDays size={14} className="text-slate-400" /> บันทึกการเข้างานรายวัน · {employees.length} คน
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center w-full lg:w-auto">
           {toast && (
-            <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1 mr-1">
-              <CheckCircle size={13} /> {toast}
-            </span>
+            <div className="bg-emerald-50 text-emerald-600 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm border border-emerald-100 animate-in fade-in slide-in-from-top-2 w-full sm:w-auto justify-center">
+              <CheckCircle size={14} /> {toast}
+            </div>
           )}
-          <input
-            type="date"
-            value={date}
-            onChange={e => changeDate(e.target.value)}
-            className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400"
-          />
-          <button onClick={setAllPresent} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors w-fit">
-            <Users size={15} /> มาครบทุกคน
-          </button>
-          <button onClick={handleSave} disabled={isPending} className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 disabled:opacity-50 transition-colors w-fit">
-            <Save size={15} /> {isPending ? 'กำลังบันทึก...' : 'บันทึกทั้งหมด'}
-          </button>
+          <div className="relative w-full sm:w-auto">
+            <input
+              type="date"
+              value={date}
+              onChange={e => changeDate(e.target.value)}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 shadow-sm transition-colors"
+            />
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button onClick={setAllPresent} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm">
+              <Users size={16} /> มาครบทุกคน
+            </button>
+            <button onClick={handleSave} disabled={isPending} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-green-600 disabled:opacity-50 disabled:hover:bg-slate-900 transition-all shadow-md">
+              <Save size={16} /> {isPending ? 'กำลังบันทึก...' : 'บันทึก'}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         {STATUS_OPTS.map(s => (
-          <div key={s.value} className="bg-white rounded-xl border border-slate-100 p-4">
-            <p className="text-2xl font-black text-slate-900">{counts[s.value] ?? 0}</p>
-            <p className="text-xs text-slate-400 mt-1">{s.label}</p>
+          <div key={s.value} className={`rounded-2xl border ${s.color.split(' ')[2] || 'border-slate-100'} p-4 relative overflow-hidden group hover:shadow-md transition-shadow bg-white flex flex-col justify-between min-h-[90px]`}>
+             {/* subtle background tint */}
+             <div className={`absolute inset-0 opacity-10 ${s.color.split(' ')[0]}`}></div>
+             
+             <div className="relative z-10 flex flex-col items-center justify-center text-center">
+               <p className={`text-3xl font-black tracking-tight leading-none mb-1 ${s.color.split(' ')[1]}`}>{counts[s.value] ?? 0}</p>
+               <p className={`text-[11px] font-bold tracking-wide ${s.color.split(' ')[1]}`}>{s.label}</p>
+             </div>
           </div>
         ))}
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         {employees.length === 0 ? (
-          <div className="py-20 text-center text-sm text-slate-400">
-            ยังไม่มีพนักงาน — <Link href="/admin/staff" className="text-green-600 underline">เพิ่มพนักงานก่อน</Link>
+          <div className="py-24 text-center">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Users size={24} className="text-slate-300" />
+            </div>
+            <p className="text-slate-500 font-medium">ยังไม่มีรายชื่อพนักงานในระบบ</p>
+            <Link href="/admin/staff" className="text-xs text-green-600 hover:text-green-700 font-bold mt-2 inline-block">เพิ่มพนักงานที่นี่</Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm text-left">
               <thead>
-                <tr className="text-xs text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100 bg-slate-50">
-                  <th className="text-left px-4 py-3">พนักงาน</th>
-                  <th className="text-left px-4 py-3 w-40">สถานะ</th>
-                  <th className="text-center px-4 py-3 w-28">เข้า</th>
-                  <th className="text-center px-4 py-3 w-28">ออก</th>
-                  <th className="text-center px-4 py-3 w-24">สาย (นาที)</th>
-                  <th className="text-center px-4 py-3 w-24">OT (นาที)</th>
-                  <th className="text-left px-4 py-3">หมายเหตุ</th>
+                <tr className="bg-white border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                  <th className="px-6 py-4">พนักงาน</th>
+                  <th className="px-6 py-4 w-40">สถานะ</th>
+                  <th className="text-center px-4 py-4 w-28">เวลาเข้า</th>
+                  <th className="text-center px-4 py-4 w-28">เวลาออก</th>
+                  <th className="text-center px-4 py-4 w-24">สาย (นาที)</th>
+                  <th className="text-center px-4 py-4 w-24">OT (นาที)</th>
+                  <th className="text-left px-6 py-4">หมายเหตุ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {employees.map(e => {
                   const r = rows[e.id];
+                  const st = STATUS_OPTS.find(o => o.value === r.status);
                   return (
-                    <tr key={e.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 shrink-0"><UserCircle size={20} /></div>
+                    <tr key={e.id} className="hover:bg-slate-50/80 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400 shrink-0 border border-slate-200/50 shadow-inner">
+                            <UserCircle size={22} strokeWidth={1.5} />
+                          </div>
                           <div>
-                            <p className="font-semibold text-slate-800">{e.name}</p>
-                            <p className="text-xs text-slate-400">{ROLE_LABELS[e.role] ?? e.role}</p>
+                            <p className="font-bold text-slate-900">{e.name}</p>
+                            <p className="text-[11px] font-medium text-slate-400 tracking-wider mt-0.5">{ROLE_LABELS[e.role] ?? e.role}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4">
                         <select
                           value={r.status}
                           onChange={ev => update(e.id, { status: ev.target.value as AttendanceStatus })}
-                          className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-semibold focus:outline-none ${STATUS_OPTS.find(o => o.value === r.status)?.color}`}
+                          className={`w-full px-3 py-2 rounded-xl border text-xs font-bold focus:outline-none focus:ring-2 appearance-none cursor-pointer shadow-sm transition-colors ${st?.color}`}
                         >
                           {STATUS_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-4">
                         <input type="time" value={r.checkIn} onChange={ev => update(e.id, { checkIn: ev.target.value })} disabled={r.status === 'absent' || r.status === 'leave' || r.status === 'holiday'} className={cellCls} />
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-4">
                         <input type="time" value={r.checkOut} onChange={ev => update(e.id, { checkOut: ev.target.value })} disabled={r.status === 'absent' || r.status === 'leave' || r.status === 'holiday'} className={cellCls} />
                       </td>
-                      <td className="px-4 py-3">
-                        <input type="number" min={0} value={r.lateMinutes || ''} onChange={ev => update(e.id, { lateMinutes: +ev.target.value })} disabled={r.status !== 'late'} className={`${cellCls} text-center`} placeholder="0" />
+                      <td className="px-4 py-4">
+                        <input type="number" min={0} value={r.lateMinutes || ''} onChange={ev => update(e.id, { lateMinutes: +ev.target.value })} disabled={r.status !== 'late'} className={`${cellCls} text-center font-bold text-amber-600 disabled:text-transparent disabled:placeholder-transparent placeholder-amber-200`} placeholder="0" />
                       </td>
-                      <td className="px-4 py-3">
-                        <input type="number" min={0} value={r.otMinutes || ''} onChange={ev => update(e.id, { otMinutes: +ev.target.value })} className={`${cellCls} text-center`} placeholder="0" />
+                      <td className="px-4 py-4">
+                        <input type="number" min={0} value={r.otMinutes || ''} onChange={ev => update(e.id, { otMinutes: +ev.target.value })} className={`${cellCls} text-center font-bold text-blue-600 placeholder-slate-300`} placeholder="0" />
                       </td>
-                      <td className="px-4 py-3">
-                        <input value={r.note} onChange={ev => update(e.id, { note: ev.target.value })} className={cellCls} placeholder="—" />
+                      <td className="px-6 py-4">
+                        <input value={r.note} onChange={ev => update(e.id, { note: ev.target.value })} className={`${cellCls} w-full placeholder-slate-300 text-slate-600`} placeholder="หมายเหตุ..." />
                       </td>
                     </tr>
                   );
@@ -209,4 +225,4 @@ export function AttendanceClient({
   );
 }
 
-const cellCls = 'w-full px-2 py-1.5 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 disabled:bg-slate-50 disabled:text-slate-300';
+const cellCls = 'w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 shadow-sm transition-colors disabled:bg-slate-50 disabled:border-slate-100 disabled:text-slate-300 disabled:shadow-none';

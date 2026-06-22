@@ -4,12 +4,16 @@ import { useState, useMemo, useTransition } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft, Plus, Trash2, Send, FileText,
-  User, Phone, Car, Hash, ChevronDown,
+  User, Phone, Hash, ChevronDown,
   AlertCircle, CheckCircle, Receipt, FileEdit, FileMinus,
+  Search, X, Building2, MapPin,
 } from 'lucide-react';
 import { createDocument } from '@/app/actions/documents';
 import type { DocFormPayload } from '@/app/actions/documents';
 import type { DocType, PaymentMethod } from '@/lib/documents';
+import type { UnifiedCustomerRow } from '@/lib/customers';
+import type { ProductRow } from '@/lib/products';
+import { PickerModal } from '@/components/admin/picker-modal';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +39,21 @@ interface LineItem {
   unitPrice:   number;
   discount:    number;
 }
+
+export type DocPrefill = {
+  docType: DocType;
+  customerName:    string;
+  customerPhone:   string;
+  customerAddress: string;
+  customerTaxId:   string;
+  items: { description: string; qty: number; unitPrice: number; discount: number }[];
+  vatRate:       number;
+  paymentMethod: PaymentMethod;
+  note:          string;
+  sourceDocId:        string;
+  sourceDocNumber:    string;
+  sourceDocTypeLabel: string;
+};
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -66,29 +85,66 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export function NewDocumentClient() {
+export function NewDocumentClient({
+  customers = [],
+  products = [],
+  prefill,
+}: {
+  customers?: UnifiedCustomerRow[];
+  products?: ProductRow[];
+  prefill?: DocPrefill;
+}) {
   const [isPending, startTransition] = useTransition();
 
   // doc type
-  const [docType, setDocType] = useState<DocType>('invoice');
+  const [docType, setDocType] = useState<DocType>(prefill?.docType ?? 'invoice');
 
   // customer
-  const [customerName,  setCustomerName]  = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerCar,   setCustomerCar]   = useState('');
+  const [customerName,    setCustomerName]    = useState(prefill?.customerName ?? '');
+  const [customerPhone,   setCustomerPhone]   = useState(prefill?.customerPhone ?? '');
+  const [customerAddress, setCustomerAddress] = useState(prefill?.customerAddress ?? '');
+  const [customerTaxId,   setCustomerTaxId]   = useState(prefill?.customerTaxId ?? '');
+  const [customerSelected, setCustomerSelected] = useState(false);
+  const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+
+  function selectCustomer(c: UnifiedCustomerRow) {
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone);
+    setCustomerAddress(c.address);
+    setCustomerTaxId(c.taxId);
+    setCustomerSelected(true);
+  }
+
+  function clearCustomerSelection() {
+    setCustomerSelected(false);
+    setCustomerName('');
+    setCustomerPhone('');
+    setCustomerAddress('');
+    setCustomerTaxId('');
+  }
 
   // line items
-  const [lines, setLines] = useState<LineItem[]>([
-    { key: 1, description: '', qty: 1, unitPrice: 0, discount: 0 },
-  ]);
+  const [lines, setLines] = useState<LineItem[]>(
+    prefill?.items.length
+      ? prefill.items.map((it, idx) => ({ key: idx + 1, ...it }))
+      : [{ key: 1, description: '', qty: 1, unitPrice: 0, discount: 0 }]
+  );
+  const [productPickerLineKey, setProductPickerLineKey] = useState<number | null>(null);
+
+  function selectProduct(key: number, p: ProductRow) {
+    setLines((prev) => prev.map((l) => l.key === key
+      ? { ...l, description: `${p.brand} ${p.model} ${p.size}`, unitPrice: p.priceCash }
+      : l));
+    setProductPickerLineKey(null);
+  }
 
   // financial
-  const [vatEnabled,     setVatEnabled]     = useState(true);
-  const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>('cash');
+  const [vatEnabled,     setVatEnabled]     = useState(prefill ? prefill.vatRate > 0 : true);
+  const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>(prefill?.paymentMethod ?? 'cash');
 
   // meta
   const [dueDate, setDueDate] = useState('');
-  const [note,    setNote]    = useState('');
+  const [note,    setNote]    = useState(prefill?.note ?? '');
 
   // result / error
   const [result, setResult] = useState<string | null>(null);
@@ -135,7 +191,9 @@ export function NewDocumentClient() {
         type:         docType,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        customerCar:   customerCar.trim(),
+        customerCar:   '',
+        customerAddress: customerAddress.trim(),
+        customerTaxId:   customerTaxId.trim(),
         items: lines.map((l, idx) => ({
           description: l.description,
           qty:         l.qty,
@@ -151,6 +209,7 @@ export function NewDocumentClient() {
         paymentMethod,
         note:          note.trim(),
         dueDate,
+        ...(prefill ? { relatedDocId: prefill.sourceDocId, relatedDocNumber: prefill.sourceDocNumber } : {}),
       };
       const res = await createDocument(payload);
       if (res.error) setError(res.error);
@@ -174,7 +233,7 @@ export function NewDocumentClient() {
           <Link href="/admin/documents" className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50">
             กลับหน้ารายการ
           </Link>
-          <button onClick={() => { setResult(null); setCustomerName(''); setCustomerPhone(''); setCustomerCar(''); setLines([{ key: 1, description: '', qty: 1, unitPrice: 0, discount: 0 }]); setNote(''); setDueDate(''); }}
+          <button onClick={() => { setResult(null); clearCustomerSelection(); setLines([{ key: 1, description: '', qty: 1, unitPrice: 0, discount: 0 }]); setNote(''); setDueDate(''); }}
             className="px-5 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700">
             สร้างเอกสารใหม่
           </button>
@@ -213,6 +272,15 @@ export function NewDocumentClient() {
           </button>
         </div>
       </div>
+
+      {prefill && (
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-sm">
+          <FileEdit size={15} className="text-blue-500 shrink-0" />
+          <span className="text-blue-700 font-medium">
+            ดึงข้อมูลมาจาก <span className="font-bold">{prefill.sourceDocTypeLabel} {prefill.sourceDocNumber}</span> — ตรวจสอบและแก้ไขได้ก่อนบันทึก
+          </span>
+        </div>
+      )}
 
       {/* Row 1: Type selector */}
       <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
@@ -283,15 +351,35 @@ export function NewDocumentClient() {
           <div className="space-y-4">
             <div>
               <Label required>ชื่อลูกค้า</Label>
-              <div className="relative">
-                <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
-                  placeholder="ชื่อ-นามสกุล หรือชื่อบริษัท"
-                  className={inputCls + ' pl-8'}
-                />
-              </div>
+              {customerSelected ? (
+                <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-green-200 bg-green-50">
+                  <span className="text-sm font-semibold text-green-700 flex items-center gap-1.5">
+                    <Search size={13} /> {customerName} <span className="text-[11px] text-green-500 font-normal">(เลือกจากรายชื่อลูกค้า)</span>
+                  </span>
+                  <button type="button" onClick={clearCustomerSelection} className="text-green-600 hover:text-green-800">
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={customerName}
+                      onChange={e => setCustomerName(e.target.value)}
+                      placeholder="พิมพ์ชื่อลูกค้า หรือกดค้นหา"
+                      className={inputCls + ' pl-8'}
+                    />
+                  </div>
+                  <button
+                    type="button" onClick={() => setCustomerPickerOpen(true)}
+                    className="shrink-0 w-11 h-11 rounded-xl border border-slate-200 text-slate-500 hover:border-green-300 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors"
+                    title="ค้นหาลูกค้าจากระบบ"
+                  >
+                    <Search size={16} />
+                  </button>
+                </div>
+              )}
             </div>
             <div>
               <Label>เบอร์โทรศัพท์</Label>
@@ -306,13 +394,26 @@ export function NewDocumentClient() {
               </div>
             </div>
             <div>
-              <Label>รุ่นรถ / ปีรถ</Label>
+              <Label>ที่อยู่ (สำหรับออกเอกสาร)</Label>
               <div className="relative">
-                <Car size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <MapPin size={13} className="absolute left-3 top-3 text-slate-400" />
+                <textarea
+                  value={customerAddress}
+                  onChange={e => setCustomerAddress(e.target.value)}
+                  rows={2}
+                  placeholder="ที่อยู่ลูกค้า"
+                  className={inputCls + ' pl-8 resize-none'}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>เลขที่ผู้เสียภาษี</Label>
+              <div className="relative">
+                <Hash size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  value={customerCar}
-                  onChange={e => setCustomerCar(e.target.value)}
-                  placeholder="เช่น Toyota Camry 2022"
+                  value={customerTaxId}
+                  onChange={e => setCustomerTaxId(e.target.value)}
+                  placeholder="สำหรับลูกค้านิติบุคคล"
                   className={inputCls + ' pl-8'}
                 />
               </div>
@@ -355,12 +456,21 @@ export function NewDocumentClient() {
                   <tr key={line.key} className="group hover:bg-slate-50/50">
                     <td className="px-4 py-2.5 text-xs text-slate-400 font-medium">{idx + 1}</td>
                     <td className="px-3 py-2.5">
-                      <input
-                        value={line.description}
-                        onChange={e => updateLine(line.key, 'description', e.target.value)}
-                        placeholder="เช่น Michelin Pilot Sport 4 225/45R17"
-                        className="w-full px-2.5 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 placeholder:text-slate-300"
-                      />
+                      <div className="flex gap-1.5">
+                        <input
+                          value={line.description}
+                          onChange={e => updateLine(line.key, 'description', e.target.value)}
+                          placeholder="พิมพ์ชื่อรายการ หรือกดค้นหา"
+                          className="flex-1 px-2.5 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 placeholder:text-slate-300"
+                        />
+                        <button
+                          type="button" onClick={() => setProductPickerLineKey(line.key)}
+                          className="shrink-0 w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:border-green-300 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors"
+                          title="ค้นหาสินค้าจากคลัง"
+                        >
+                          <Search size={13} />
+                        </button>
+                      </div>
                     </td>
                     <td className="px-3 py-2.5">
                       <input
@@ -471,6 +581,54 @@ export function NewDocumentClient() {
           </div>
         </div>
       </div>
+
+      {customerPickerOpen && (
+        <PickerModal
+          title="เลือกลูกค้า"
+          placeholder="ค้นหาชื่อ หรือเบอร์โทร..."
+          items={customers}
+          filterFn={(c, q) => c.name.toLowerCase().includes(q) || c.phone.includes(q)}
+          renderItem={(c) => (
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${c.customerType === 'corporate' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+                {c.customerType === 'corporate' ? <Building2 size={15} /> : <User size={15} />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
+                <p className="text-xs text-slate-400">{c.phone || 'ไม่มีเบอร์โทร'}</p>
+              </div>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${c.source === 'online' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
+                {c.source === 'online' ? 'ออนไลน์' : 'หน้าร้าน'}
+              </span>
+            </div>
+          )}
+          onSelect={(c) => { selectCustomer(c); setCustomerPickerOpen(false); }}
+          onClose={() => setCustomerPickerOpen(false)}
+        />
+      )}
+
+      {productPickerLineKey !== null && (
+        <PickerModal
+          title="เลือกสินค้า / ยาง"
+          placeholder="ค้นหายี่ห้อ รุ่น หรือขนาดยาง..."
+          items={products}
+          filterFn={(p, q) => `${p.brand} ${p.model} ${p.size}`.toLowerCase().includes(q)}
+          renderItem={(p) => (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">{p.brand} {p.model}</p>
+                <p className="text-xs text-slate-400">{p.size}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-green-600">฿{p.priceCash.toLocaleString()}</p>
+                <p className={`text-[10px] font-semibold ${p.stock === 0 ? 'text-red-500' : 'text-slate-400'}`}>สต็อก {p.stock}</p>
+              </div>
+            </div>
+          )}
+          onSelect={(p) => selectProduct(productPickerLineKey, p)}
+          onClose={() => setProductPickerLineKey(null)}
+        />
+      )}
     </div>
   );
 }

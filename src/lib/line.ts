@@ -36,7 +36,9 @@ export async function pushMessage(to: string, messages: object[]) {
 
 export function buildQuoteFlexMessage(booking: IBooking) {
   const totalPrice = booking.tirePrice * booking.quantity;
-  const deposit = Math.ceil(totalPrice * 0.3 / 100) * 100;
+  const needsDeposit = booking.depositStatus !== 'not_required';
+  const depositPaid = booking.depositStatus === 'verified';
+  const remaining = depositPaid ? totalPrice - booking.depositAmount : totalPrice;
 
   const appointmentFormatted = new Date(booking.appointmentDate).toLocaleDateString('th-TH', {
     year: 'numeric',
@@ -103,7 +105,7 @@ export function buildQuoteFlexMessage(booking: IBooking) {
               },
               infoRow('ชื่อ', booking.name),
               infoRow('เบอร์โทร', booking.phone),
-              infoRow('รุ่นรถ', `${booking.carModel} ปี ${booking.carYear}`),
+              ...(booking.carModel ? [infoRow('รุ่นรถ', `${booking.carModel} ปี ${booking.carYear}`)] : []),
             ],
           },
           separator(),
@@ -147,12 +149,20 @@ export function buildQuoteFlexMessage(booking: IBooking) {
                   { type: 'text', text: `฿${totalPrice.toLocaleString()}`, size: 'sm', weight: 'bold', color: '#16a34a', align: 'end' },
                 ],
               },
+              ...(needsDeposit ? [{
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: depositPaid ? 'มัดจำ (ชำระแล้ว)' : 'มัดจำที่ต้องชำระ', size: 'xs', color: '#888888', flex: 1 },
+                  { type: 'text', text: `฿${booking.depositAmount.toLocaleString()}`, size: 'xs', color: '#888888', align: 'end' },
+                ],
+              }] : []),
               {
                 type: 'box',
                 layout: 'horizontal',
                 contents: [
-                  { type: 'text', text: 'มัดจำ 30%', size: 'xs', color: '#888888', flex: 1 },
-                  { type: 'text', text: `฿${deposit.toLocaleString()}`, size: 'xs', color: '#888888', align: 'end' },
+                  { type: 'text', text: 'ยอดคงเหลือชำระหน้าร้าน', size: 'xs', color: '#888888', weight: 'bold', flex: 1 },
+                  { type: 'text', text: `฿${remaining.toLocaleString()}`, size: 'xs', color: '#888888', weight: 'bold', align: 'end' },
                 ],
               },
             ],

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, X, Upload, Edit2, Tag } from 'lucide-react';
+import { Plus, Trash2, X, Upload, Edit2, Tag, Image as ImageIcon } from 'lucide-react';
 import { createBrand, updateBrand, deleteBrand } from '@/app/actions/brands';
 import { uploadImage } from '@/app/actions/upload';
 import type { BrandRow } from '@/app/actions/brands';
@@ -63,59 +63,89 @@ export function BrandsClient({ initialBrands }: { initialBrands: BrandRow[] }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5">
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">จัดการแบรนด์</h1>
-          <p className="text-xs text-slate-400 mt-0.5">โลโก้แบรนด์จะใช้ในหน้าเลือกสินค้าและฟิลเพิ่มสินค้า</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">จัดการแบรนด์</h1>
+          <p className="text-slate-500 mt-2 flex items-center gap-2">
+            ข้อมูลแบรนด์และโลโก้ <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00B900]"></span> {initialBrands.length} รายการ
+          </p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 transition-colors shadow-sm">
-          <Plus size={13} /> เพิ่มแบรนด์
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5">
+          <Plus size={16} /> เพิ่มแบรนด์ใหม่
         </button>
       </div>
 
       {/* Stats */}
-      <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3 w-fit">
-        <div className="bg-slate-100 p-2 rounded-lg"><Tag size={16} className="text-slate-600" /></div>
-        <div>
-          <p className="text-[10px] text-slate-400 font-medium">แบรนด์ทั้งหมด</p>
-          <p className="text-lg font-bold text-slate-900 leading-none mt-0.5">
-            {initialBrands.length} <span className="text-xs font-normal text-slate-400">แบรนด์</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gradient-to-br from-green-50 to-emerald-100 border border-green-200/60 rounded-2xl p-6 shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/40 rounded-full blur-xl"></div>
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center">
+              <Tag size={20} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-green-800/70">จำนวนแบรนด์ทั้งหมด</p>
+              <p className="text-3xl font-black text-green-900 mt-0.5 tracking-tight">
+                {initialBrands.length}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="md:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-center shadow-sm">
+          <h3 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <ImageIcon size={16} className="text-slate-400" /> คำแนะนำการตั้งค่าโลโก้
+          </h3>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            แนะนำให้ใช้ภาพโลโก้ที่เป็นพื้นหลังโปร่งใส (PNG, SVG) และตัดขอบให้ชิดตัวอักษรมากที่สุด เพื่อความสวยงามเวลาแสดงบนหน้าเว็บไซต์หลักและในหน้าการค้นหาสินค้า
           </p>
         </div>
       </div>
 
       {/* Brand Grid */}
       {initialBrands.length === 0 ? (
-        <div className="bg-white border border-dashed border-slate-200 rounded-2xl py-20 text-center">
-          <p className="text-slate-400 text-sm">ยังไม่มีแบรนด์ — กด "เพิ่มแบรนด์" เพื่อเริ่มต้น</p>
+        <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl py-24 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <Tag size={24} className="text-slate-300" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800">ยังไม่มีแบรนด์สินค้า</h3>
+          <p className="text-slate-500 mt-2 text-sm text-center max-w-sm">คุณยังไม่ได้เพิ่มแบรนด์สินค้าใดๆ เข้าสู่ระบบ คลิกปุ่ม "เพิ่มแบรนด์ใหม่" ด้านบนเพื่อเริ่มต้นเพิ่มแบรนด์แรกของคุณ</p>
+          <button onClick={openAdd} className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors">
+            เพิ่มแบรนด์แรก
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
           {initialBrands.map(brand => (
             <div key={brand.id}
-              className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col items-center gap-3 hover:shadow-md transition-shadow group relative">
-              {/* Logo */}
-              <div className="w-full h-16 flex items-center justify-center bg-slate-50 rounded-xl overflow-hidden">
+              className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col items-center justify-center gap-4 hover:shadow-xl hover:border-green-300 hover:-translate-y-1 transition-all group relative">
+              
+              {/* Logo container */}
+              <div className="w-full aspect-video flex items-center justify-center rounded-xl overflow-hidden relative">
                 {brand.logo ? (
-                  <img src={brand.logo} alt={brand.name} className="h-full w-full object-contain p-2" />
+                  <img src={brand.logo} alt={brand.name} className="h-full w-full object-contain mix-blend-multiply group-hover:scale-110 transition-transform duration-500" />
                 ) : (
-                  <span className="text-lg font-black text-slate-300">{brand.name.slice(0, 2)}</span>
+                  <div className="w-full h-full bg-slate-50 flex items-center justify-center">
+                    <span className="text-3xl font-black text-slate-300 tracking-tighter">{brand.name.slice(0, 2)}</span>
+                  </div>
                 )}
               </div>
-              <p className="text-xs font-bold text-slate-700 text-center">{brand.name}</p>
+              
+              <div className="w-full text-center">
+                <p className="text-sm font-black text-slate-800 truncate px-2">{brand.name}</p>
+              </div>
 
-              {/* Actions */}
-              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Hover Actions */}
+              <div className="absolute -top-3 -right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 scale-90 group-hover:scale-100">
                 <button onClick={() => openEdit(brand)}
-                  className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-100 text-slate-400 hover:text-slate-900 hover:border-slate-300 transition-colors">
-                  <Edit2 size={11} />
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-900 shadow-md text-white hover:bg-slate-700 transition-colors">
+                  <Edit2 size={13} />
                 </button>
                 <button onClick={() => setDeleteTarget(brand)}
-                  className="p-1.5 rounded-lg bg-white shadow-sm border border-slate-100 text-slate-400 hover:text-red-500 hover:border-red-100 transition-colors">
-                  <Trash2 size={11} />
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-md border border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-200 transition-colors">
+                  <Trash2 size={13} />
                 </button>
               </div>
             </div>
@@ -125,64 +155,87 @@ export function BrandsClient({ initialBrands }: { initialBrands: BrandRow[] }) {
 
       {/* Add / Edit Modal */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-bold text-slate-900 text-sm">{modal === 'add' ? 'เพิ่มแบรนด์ใหม่' : 'แก้ไขแบรนด์'}</h2>
-              <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={15} /></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={closeModal} />
+          <div className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden transform scale-100 transition-transform animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
+                  {modal === 'add' ? <Plus size={18} className="text-green-600" /> : <Edit2 size={18} className="text-slate-600" />}
+                </div>
+                <h2 className="text-lg font-black text-slate-900 tracking-tight">{modal === 'add' ? 'เพิ่มแบรนด์ใหม่' : 'แก้ไขแบรนด์'}</h2>
+              </div>
+              <button onClick={closeModal} className="p-2 rounded-xl hover:bg-slate-200/50 text-slate-400 transition-colors"><X size={18} /></button>
             </div>
 
-            <div className="p-6 space-y-5">
-              {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+            <div className="p-8 space-y-6">
+              {error && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 flex items-start gap-3">
+                  <div className="mt-0.5"><X size={14} className="text-red-500" /></div>
+                  <p className="text-sm text-red-600 font-medium">{error}</p>
+                </div>
+              )}
 
               {/* ชื่อแบรนด์ */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600">ชื่อแบรนด์ *</label>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">ชื่อแบรนด์ <span className="text-red-500">*</span></label>
                 <input
                   value={name}
                   onChange={e => setName(e.target.value.toUpperCase())}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-500 transition-colors font-bold tracking-wider"
-                  placeholder="MICHELIN"
+                  className="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 transition-all font-bold tracking-wider placeholder:font-medium placeholder:text-slate-300 uppercase"
+                  placeholder="เช่น MICHELIN, YOKOHAMA"
                 />
               </div>
 
               {/* Logo Upload */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600">โลโก้แบรนด์</label>
-                <div className="flex items-center gap-3">
-                  {/* Preview */}
-                  <div className="w-20 h-14 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
-                    {logo ? (
-                      <img src={logo} alt="preview" className="w-full h-full object-contain p-1" />
-                    ) : (
-                      <span className="text-slate-300 text-xs font-bold">{name.slice(0, 2) || 'LOGO'}</span>
-                    )}
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">ภาพโลโก้</label>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-4">
+                  <div className="flex items-center gap-4">
+                    {/* Preview */}
+                    <div className="w-24 h-16 rounded-xl border border-slate-200 bg-white shadow-sm flex items-center justify-center shrink-0 overflow-hidden relative group">
+                      {logo ? (
+                        <>
+                          <img src={logo} alt="preview" className="w-full h-full object-contain p-2" />
+                          <button onClick={() => setLogo('')} type="button" className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-slate-300 text-sm font-black tracking-tighter">{name.slice(0, 2) || 'LOGO'}</span>
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" className="hidden" onChange={handleUpload} />
+                      <button type="button" onClick={() => fileRef.current?.click()} disabled={isUploading}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold border border-slate-200 rounded-xl bg-white hover:bg-slate-100 text-slate-700 disabled:opacity-50 transition-all shadow-sm active:scale-95">
+                        <Upload size={16} className="text-slate-400" />
+                        {isUploading ? 'กำลังอัปโหลด...' : 'เลือกไฟล์รูปภาพ'}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+                    <div className="relative flex justify-center"><span className="bg-slate-50 px-2 text-xs text-slate-400 font-medium">หรือใส่ URL รูปภาพ</span></div>
                   </div>
 
-                  <div className="flex-1 space-y-2">
-                    <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" className="hidden" onChange={handleUpload} />
-                    <button type="button" onClick={() => fileRef.current?.click()} disabled={isUploading}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-50 transition-colors">
-                      <Upload size={12} />
-                      {isUploading ? 'กำลังอัปโหลด...' : 'อัปโหลด Logo'}
-                    </button>
-                    <input
-                      value={logo}
-                      onChange={e => setLogo(e.target.value)}
-                      className="w-full px-3 py-1.5 text-[11px] border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900/10 text-slate-500 placeholder:text-slate-300"
-                      placeholder="หรือวาง URL รูปภาพ"
-                    />
-                  </div>
+                  <input
+                    value={logo}
+                    onChange={e => setLogo(e.target.value)}
+                    className="w-full px-4 py-2.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/10 text-slate-600 placeholder:text-slate-300 transition-all"
+                    placeholder="https://example.com/logo.png"
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
-              <button onClick={closeModal} className="px-4 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">ยกเลิก</button>
+            <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+              <button onClick={closeModal} className="px-5 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shadow-sm">ยกเลิก</button>
               <button onClick={handleSave} disabled={!name.trim() || isPending || isUploading}
-                className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                {isPending ? 'กำลังบันทึก...' : modal === 'add' ? 'เพิ่มแบรนด์' : 'บันทึก'}
+                className="px-6 py-2.5 text-sm font-bold bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-md">
+                {isPending ? 'กำลังบันทึก...' : modal === 'add' ? 'เพิ่มแบรนด์' : 'บันทึกการเปลี่ยนแปลง'}
               </button>
             </div>
           </div>
@@ -191,20 +244,22 @@ export function BrandsClient({ initialBrands }: { initialBrands: BrandRow[] }) {
 
       {/* Delete Confirm */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
-            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={20} className="text-slate-600" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => setDeleteTarget(null)} />
+          <div className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-sm p-8 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-50 border-4 border-white shadow-sm rounded-full flex items-center justify-center mx-auto mb-5 -mt-12">
+              <Trash2 size={24} className="text-red-500" />
             </div>
-            <h3 className="font-bold text-slate-900 mb-1">ลบแบรนด์</h3>
-            <p className="text-xs text-slate-500 mb-5">
-              ยืนยันการลบ <span className="font-bold text-slate-800">{deleteTarget.name}</span>?
+            <h3 className="text-xl font-black text-slate-900 mb-2">ยืนยันการลบแบรนด์</h3>
+            <p className="text-sm text-slate-500 mb-8 leading-relaxed">
+              คุณต้องการลบแบรนด์ <br/>
+              <span className="inline-block mt-2 font-black text-lg text-slate-800 bg-slate-100 px-4 py-1.5 rounded-xl">{deleteTarget.name}</span> <br/>
+              ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">ยกเลิก</button>
-              <button onClick={handleDelete} disabled={isPending} className="flex-1 px-4 py-2.5 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-700 disabled:opacity-40 transition-colors">
-                {isPending ? 'กำลังลบ...' : 'ลบเลย'}
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-3 text-sm font-bold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">ยกเลิก</button>
+              <button onClick={handleDelete} disabled={isPending} className="flex-1 px-4 py-3 text-sm font-bold bg-red-500 text-white rounded-xl hover:bg-red-600 shadow-md shadow-red-500/20 disabled:opacity-40 transition-colors">
+                {isPending ? 'กำลังลบ...' : 'ยืนยันการลบ'}
               </button>
             </div>
           </div>

@@ -3,6 +3,8 @@ import { User, Package, Calendar, Car, LogOut, ChevronRight, Bell } from 'lucide
 import { cookies } from 'next/headers';
 import { verifyCustomerToken, CUSTOMER_COOKIE } from '@/lib/customer-session';
 import { logoutCustomer } from '@/app/actions/customer-auth';
+import { getCustomerProfile } from '@/lib/customer-profile';
+import { ProfileForm } from '@/components/account/profile-form';
 
 export const metadata = { title: 'บัญชีของฉัน | THENUTTIRE' };
 
@@ -10,10 +12,11 @@ export default async function AccountPage() {
   const jar = await cookies();
   const token = jar.get(CUSTOMER_COOKIE)?.value;
   const session = token ? await verifyCustomerToken(token) : null;
-  
+
   const isLoggedIn = !!session;
 
   if (isLoggedIn && session) {
+    const profile = await getCustomerProfile(session.lineUserId);
     // ใช้ข้อมูลจาก LINE Session
     const customer = {
       name: session.displayName,
@@ -37,6 +40,8 @@ export default async function AccountPage() {
               <Bell size={20} />
             </button>
           </div>
+
+          <ProfileForm profile={profile} />
 
           {/* Menus */}
           <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">

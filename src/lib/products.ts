@@ -12,12 +12,14 @@ export async function getProducts(filters?: {
   brand?: string;
   rimSize?: number;
   category?: string;
+  size?: string;
 }): Promise<ProductRow[]> {
   await connectDB();
   const query: Record<string, unknown> = { published: true };
-  if (filters?.brand)    query.brand   = filters.brand;
+  if (filters?.brand)    query.brand   = new RegExp(`^${filters.brand}$`, 'i');
   if (filters?.rimSize)  query.rimSize = filters.rimSize;
   if (filters?.category) query.category = filters.category;
+  if (filters?.size)     query.size    = filters.size;
   const docs = await Product.find(query).sort({ brand: 1, model: 1 }).lean();
   return docs.map(normalize);
 }
@@ -37,6 +39,30 @@ export async function getAllProductsAdmin(): Promise<ProductRow[]> {
   await connectDB();
   const docs = await Product.find({}).sort({ brand: 1, size: 1, model: 1 }).lean();
   return docs.map(normalize);
+}
+
+export async function getPopularProducts(
+  limit = 4,
+  rimFilter?: { rimSize?: number; minRimSize?: number }
+): Promise<ProductRow[]> {
+  await connectDB();
+  const match: Record<string, unknown> = { published: true };
+  if (rimFilter?.rimSize)        match.rimSize = rimFilter.rimSize;
+  else if (rimFilter?.minRimSize) match.rimSize = { $gte: rimFilter.minRimSize };
+
+  const badged = await Product.find({ ...match, badge: { $exists: true, $nin: ['', null] } })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+
+  if (badged.length >= limit) return badged.map(normalize);
+
+  const rest = await Product.find({ ...match, _id: { $nin: badged.map(d => d._id) } })
+    .sort({ createdAt: -1 })
+    .limit(limit - badged.length)
+    .lean();
+
+  return [...badged, ...rest].map(normalize);
 }
 
 export function rimFromSize(size: string): number {

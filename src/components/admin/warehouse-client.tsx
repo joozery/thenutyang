@@ -43,12 +43,13 @@ function MoveModal({
   onDone: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [productId, setProductId] = useState('');
+  const initialProduct = products.length === 1 ? products[0] : null;
+  const [productId, setProductId] = useState(initialProduct ? initialProduct.id : '');
   const [qty, setQty] = useState(1);
   const [refNo, setRefNo] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialProduct ? initialProduct.label : '');
 
   const selected = products.find(p => p.id === productId);
 
@@ -95,34 +96,70 @@ function MoveModal({
         </div>
 
         <div className="p-5 space-y-4">
-          {/* Product search */}
-          <div>
+          {/* Product Combobox */}
+          <div className="relative">
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">สินค้า <span className="text-green-500">*</span></label>
-            <div className="relative mb-1.5">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                placeholder="ค้นหาสินค้า..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-green-400"
-              />
+            <div className="relative">
+              <div
+                className="flex items-center w-full border border-slate-200 rounded-xl overflow-hidden focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-500/10 transition-colors bg-white"
+              >
+                <Search size={14} className="ml-3 text-slate-400 shrink-0" />
+                <input
+                  placeholder="ค้นหาสินค้า หรือเลือกลูกศรด้านขวา..."
+                  value={search}
+                  onChange={e => {
+                    setSearch(e.target.value);
+                    setProductId(''); // Reset selection if user types
+                  }}
+                  className="w-full px-3 py-2.5 text-sm text-slate-800 focus:outline-none placeholder:text-slate-300"
+                />
+                {productId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProductId('');
+                      setSearch('');
+                    }}
+                    className="p-1 mr-1 text-slate-400 hover:text-red-500 rounded-md transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              
+              {/* Dropdown list */}
+              {(!productId || (selected && search !== selected.label)) && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                  {filteredProducts.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-slate-500 text-center">ไม่พบสินค้า</div>
+                  ) : (
+                    filteredProducts.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setProductId(p.id);
+                          setSearch(p.label);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-sm border-b border-slate-50 last:border-0 hover:bg-green-50 transition-colors ${productId === p.id ? 'bg-green-50 text-green-700 font-semibold' : 'text-slate-700'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="truncate pr-4">{p.label}</span>
+                          <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${p.stock === 0 ? 'bg-red-100 text-red-600' : p.isLow ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
+                            สต๊อก: {p.stock}
+                          </span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
             </div>
-            <select
-              value={productId}
-              onChange={e => setProductId(e.target.value)}
-              className={inputCls}
-              size={filteredProducts.length > 0 && search ? Math.min(filteredProducts.length + 1, 5) : 1}
-            >
-              <option value="">-- เลือกสินค้า --</option>
-              {filteredProducts.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.label} (สต๊อก: {p.stock})
-                </option>
-              ))}
-            </select>
             {selected && (
-              <p className={`text-xs mt-1 font-medium ${selected.isLow ? 'text-amber-600' : 'text-slate-400'}`}>
-                สต๊อกปัจจุบัน: {selected.stock} ชิ้น {selected.isLow ? '⚠ ใกล้หมด' : ''}
+              <p className={`text-xs mt-2 font-medium flex items-center gap-1 ${selected.isLow ? 'text-amber-600' : 'text-slate-400'}`}>
+                <CheckCircle size={12} className={selected.isLow ? 'text-amber-500' : 'text-emerald-500'} /> 
+                สต๊อกปัจจุบัน: {selected.stock} ชิ้น {selected.isLow ? '(⚠ ใกล้หมด)' : ''}
               </p>
             )}
           </div>

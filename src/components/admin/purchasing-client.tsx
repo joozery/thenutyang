@@ -8,7 +8,7 @@ import {
   MoreHorizontal, ChevronLeft, ChevronRight, X,
   Eye, Ban, Truck, Printer, FileEdit,
 } from 'lucide-react';
-import type { PORow, POStatusThai, POItem } from '@/lib/purchasing';
+import type { PORow, POStatusThai } from '@/lib/purchasing';
 import { receivePO, cancelPO } from '@/app/actions/purchasing';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -31,156 +31,6 @@ const statusStyle: Record<POStatusThai, { color: string; icon: React.ReactNode }
 
 // ── Print Preview Modal ───────────────────────────────────────────────────────
 
-function PrintPreviewModal({ order, onClose }: { order: PORow; onClose: () => void }) {
-  return (
-    <>
-      <style>{`
-        @media print {
-          body > * { display: none !important; }
-          #print-document { display: block !important; position: fixed; inset: 0; z-index: 9999; background: white; }
-          #print-document * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        }
-      `}</style>
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-        <div className="relative z-10 flex flex-col items-center w-full max-h-[95vh]">
-          <div className="flex items-center gap-3 mb-3 bg-white/10 backdrop-blur px-4 py-2 rounded-xl border border-white/20">
-            <span className="text-white text-sm font-semibold">ตัวอย่างก่อนพิมพ์</span>
-            <div className="w-px h-4 bg-white/30" />
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-2 px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700"
-            >
-              <Printer size={15} /> พิมพ์เอกสาร
-            </button>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center">
-              <X size={16} />
-            </button>
-          </div>
-          <div className="overflow-y-auto max-h-[85vh] rounded-xl shadow-2xl">
-            <div id="print-document" style={{ width: '210mm', minHeight: '297mm', background: 'white', padding: '16mm 14mm' }} className="text-slate-800">
-              {/* Header */}
-              <div className="flex justify-between items-start mb-6 pb-5 border-b-2 border-slate-800">
-                <div>
-                  <div className="text-2xl font-black text-slate-900 mb-0.5">THE NUT YANG</div>
-                  <div className="text-xs text-slate-500 leading-relaxed">
-                    ร้านยางรถยนต์ เดอะ นัทยาง<br />
-                    123 ถ.ตัวอย่าง แขวงตัวอย่าง เขตตัวอย่าง กรุงเทพฯ 10000<br />
-                    โทร: 02-XXX-XXXX &nbsp;|&nbsp; อีเมล: info@thenutyang.com
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-2xl font-black text-green-600 mb-1">ใบสั่งซื้อ</div>
-                  <div className="text-sm font-bold text-slate-700">PURCHASE ORDER</div>
-                  <div className="mt-3 bg-slate-50 rounded-lg p-3 text-xs space-y-1 border border-slate-200">
-                    {[
-                      ['เลขที่ PO', order.poNumber],
-                      ['วันที่สั่ง', fmtDate(order.orderDate)],
-                      ['กำหนดรับ', fmtDate(order.dueDate)],
-                      ['สถานะ', order.status],
-                    ].map(([k, v]) => (
-                      <div key={k} className="flex justify-between gap-6">
-                        <span className="text-slate-400">{k}</span>
-                        <span className="font-semibold">{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              {/* Supplier */}
-              <div className="mb-6">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ซัพพลายเออร์</div>
-                <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs space-y-0.5">
-                  <div className="font-bold text-slate-900">{order.supplierSnapshot.name}</div>
-                  {order.supplierSnapshot.taxId && <div className="text-slate-500">เลขที่ผู้เสียภาษี: {order.supplierSnapshot.taxId}</div>}
-                  {order.supplierSnapshot.address && <div className="text-slate-500">{order.supplierSnapshot.address}</div>}
-                  {order.supplierSnapshot.contact && <div className="text-slate-500">ผู้ติดต่อ: {order.supplierSnapshot.contact}</div>}
-                  {order.supplierSnapshot.phone && <div className="text-slate-500">โทร: {order.supplierSnapshot.phone}</div>}
-                </div>
-              </div>
-              {/* Items */}
-              <div className="mb-6">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">รายการสินค้า</div>
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-slate-800 text-white text-xs">
-                      <th className="text-center py-2 px-3 w-8">#</th>
-                      <th className="text-left py-2 px-3">รายการ</th>
-                      <th className="text-center py-2 px-3 w-16">จำนวน</th>
-                      <th className="text-center py-2 px-3 w-16">หน่วย</th>
-                      <th className="text-right py-2 px-3 w-28">ราคา/หน่วย</th>
-                      <th className="text-right py-2 px-3 w-20">ส่วนลด</th>
-                      <th className="text-right py-2 px-3 w-28">รวม</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {order.items.map((item: POItem, idx: number) => (
-                      <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
-                        <td className="text-center py-2 px-3 text-xs text-slate-400 border-b border-slate-100">{idx + 1}</td>
-                        <td className="py-2 px-3 border-b border-slate-100 font-medium">{item.productName}</td>
-                        <td className="text-center py-2 px-3 border-b border-slate-100">{item.qty}</td>
-                        <td className="text-center py-2 px-3 border-b border-slate-100 text-xs text-slate-500">{item.unit}</td>
-                        <td className="text-right py-2 px-3 border-b border-slate-100 tabular-nums">฿{item.unitPrice.toLocaleString()}</td>
-                        <td className="text-right py-2 px-3 border-b border-slate-100 text-xs">{item.discount > 0 ? `${item.discount}%` : '—'}</td>
-                        <td className="text-right py-2 px-3 border-b border-slate-100 font-semibold tabular-nums">฿{item.lineTotal.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                    {Array.from({ length: Math.max(0, 5 - order.items.length) }).map((_, i) => (
-                      <tr key={`e-${i}`} className={(order.items.length + i) % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
-                        {[...Array(7)].map((__, c) => <td key={c} className="py-2 px-3 border-b border-slate-100">&nbsp;</td>)}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {/* Totals */}
-              <div className="flex justify-between gap-8 mb-8">
-                <div className="flex-1">
-                  {order.notes && (
-                    <div>
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">หมายเหตุ</div>
-                      <div className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 border border-slate-200">{order.notes}</div>
-                    </div>
-                  )}
-                </div>
-                <div className="w-56 shrink-0">
-                  <table className="w-full text-sm">
-                    <tbody>
-                      <tr><td className="py-1 text-slate-500 text-xs">ราคารวมสินค้า</td><td className="py-1 text-right tabular-nums font-medium">฿{order.subtotal.toLocaleString()}</td></tr>
-                      <tr><td className="py-1 text-slate-500 text-xs">ส่วนลดรวม</td><td className="py-1 text-right tabular-nums text-emerald-600">-฿{order.totalDiscount.toLocaleString()}</td></tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="py-1 pt-2 text-slate-500 text-xs">ภาษีมูลค่าเพิ่ม 7%</td>
-                        <td className="py-1 pt-2 text-right tabular-nums">฿{order.vat.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>
-                      <tr className="border-t-2 border-slate-800">
-                        <td className="py-2 font-bold text-slate-900">รวมสุทธิ</td>
-                        <td className="py-2 text-right font-black text-green-600 text-base tabular-nums">฿{order.grandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              {/* Signatures */}
-              <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t border-slate-200">
-                {['ผู้สั่งซื้อ', 'ผู้อนุมัติ', 'ผู้รับสินค้า'].map(role => (
-                  <div key={role} className="text-center">
-                    <div className="border-b border-dashed border-slate-400 mb-2 h-10" />
-                    <div className="text-xs font-semibold text-slate-700">{role}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">วันที่ ...... / ...... / ......</div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 pt-3 border-t border-slate-100 text-center text-xs text-slate-400">
-                เอกสารนี้ออกโดยระบบ The Nut Yang · {order.poNumber} · พิมพ์เมื่อ {new Date().toLocaleDateString('th-TH', { dateStyle: 'long' })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ── PO Detail Modal ───────────────────────────────────────────────────────────
 
 function PODetailModal({
@@ -191,8 +41,6 @@ function PODetailModal({
   onReceive: (id: string) => void;
   onCancel: (id: string) => void;
 }) {
-  const [showPrint, setShowPrint] = useState(false);
-
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -207,9 +55,9 @@ function PODetailModal({
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyle[order.status].color}`}>
                 {statusStyle[order.status].icon}{order.status}
               </span>
-              <button onClick={() => setShowPrint(true)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" title="พิมพ์">
+              <Link href={`/admin/purchasing/${order.id}/print`} target="_blank" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" title="พิมพ์">
                 <Printer size={17} />
-              </button>
+              </Link>
               <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"><X size={18} /></button>
             </div>
           </div>
@@ -290,7 +138,6 @@ function PODetailModal({
           )}
         </div>
       </div>
-      {showPrint && <PrintPreviewModal order={order} onClose={() => setShowPrint(false)} />}
     </>
   );
 }
