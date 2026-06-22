@@ -1,7 +1,21 @@
 import Link from "next/link";
-import { Phone, MapPin, Truck, ShieldCheck, Shield, Facebook, Youtube, MessageCircle } from "lucide-react";
+import { Phone, MapPin, Truck, ShieldCheck, Shield, MessageCircle, ArrowUp } from "lucide-react";
 import connectDB from "@/lib/mongodb";
 import ContactSettings from "@/models/ContactSettings";
+
+const FacebookIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <title>Facebook</title>
+    <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54v-2.89h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562v1.875h2.773l-.443 2.89h-2.33v6.989C18.343 21.128 22 16.991 22 12z" />
+  </svg>
+);
+
+const YoutubeIcon = ({ className }: { className?: string }) => (
+  <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <title>YouTube</title>
+    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.546 15.568V8.432L15.818 12l-6.272 3.568z" />
+  </svg>
+);
 
 export async function Footer() {
   await connectDB();
@@ -67,13 +81,13 @@ export async function Footer() {
               
               <div className="flex items-center gap-3 pt-2">
                 <Link href={settings?.facebookUrl || "https://facebook.com"} target="_blank" className="w-8 h-8 rounded-full border border-slate-500 flex items-center justify-center hover:bg-blue-600 hover:border-blue-600 transition-colors">
-                  <Facebook size={14} className="text-white" />
+                  <FacebookIcon className="w-3.5 h-3.5 text-white" />
                 </Link>
                 <Link href={`https://line.me/R/ti/p/${lineId}`} target="_blank" className="w-8 h-8 rounded-full border border-slate-500 flex items-center justify-center hover:bg-[#06C755] hover:border-[#06C755] transition-colors">
                   <MessageCircle size={14} className="text-white" />
                 </Link>
                 <Link href={settings?.youtubeUrl || "https://youtube.com"} target="_blank" className="w-8 h-8 rounded-full border border-slate-500 flex items-center justify-center hover:bg-red-600 hover:border-red-600 transition-colors">
-                  <Youtube size={14} className="text-white" />
+                  <YoutubeIcon className="w-3.5 h-3.5 text-white" />
                 </Link>
               </div>
             </div>
