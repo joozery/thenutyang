@@ -1,9 +1,18 @@
 import Link from "next/link";
-import { Phone, Mail, MapPin, Truck, ShieldCheck, RefreshCw, Shield, ArrowUp } from "lucide-react";
+import { Phone, MapPin, Truck, ShieldCheck, Shield, Facebook, Youtube, MessageCircle } from "lucide-react";
+import connectDB from "@/lib/mongodb";
+import ContactSettings from "@/models/ContactSettings";
 
-export function Footer() {
-  return (
-    <footer className="w-full font-sans">
+export async function Footer() {
+  await connectDB();
+  const settings = await ContactSettings.findOne({}).lean() as any;
+
+  const phoneMain = settings?.phoneMain || '02-123-4567';
+  const lineId = settings?.lineId || '@thenutyangyont';
+  
+  const addressLines = settings?.address 
+    ? settings.address.split('\n').filter((l: string) => l.trim())
+    : ['123 ถนนกาญจนาภิเษก', 'กรุงเทพฯ 10160'];
       {/* Top Pink/Green Bar */}
       <div className="bg-gradient-to-r from-green-700 via-green-600 to-emerald-600 text-white py-6">
         <div className="container mx-auto px-2 md:px-8">
@@ -54,14 +63,14 @@ export function Footer() {
               </div>
               
               <div className="flex items-center gap-3 pt-2">
-                <Link href="#" className="w-8 h-8 rounded-full border border-slate-500 flex items-center justify-center hover:bg-green-600 hover:border-green-600 transition-colors">
-                  <span className="text-[10px] font-bold text-white">fb</span>
+                <Link href={settings?.facebookUrl || "https://facebook.com"} target="_blank" className="w-8 h-8 rounded-full border border-slate-500 flex items-center justify-center hover:bg-blue-600 hover:border-blue-600 transition-colors">
+                  <Facebook size={14} className="text-white" />
                 </Link>
-                <Link href="#" className="w-8 h-8 rounded-full border border-slate-500 flex items-center justify-center hover:bg-green-600 hover:border-green-600 transition-colors">
-                  <span className="text-[10px] font-bold text-white">line</span>
+                <Link href={`https://line.me/R/ti/p/${lineId}`} target="_blank" className="w-8 h-8 rounded-full border border-slate-500 flex items-center justify-center hover:bg-[#06C755] hover:border-[#06C755] transition-colors">
+                  <MessageCircle size={14} className="text-white" />
                 </Link>
-                <Link href="#" className="w-8 h-8 rounded-full border border-slate-500 flex items-center justify-center hover:bg-green-600 hover:border-green-600 transition-colors">
-                  <span className="text-[10px] font-bold text-white">yt</span>
+                <Link href={settings?.youtubeUrl || "https://youtube.com"} target="_blank" className="w-8 h-8 rounded-full border border-slate-500 flex items-center justify-center hover:bg-red-600 hover:border-red-600 transition-colors">
+                  <Youtube size={14} className="text-white" />
                 </Link>
               </div>
             </div>
@@ -72,7 +81,9 @@ export function Footer() {
               <ul className="space-y-3">
                 <li><Link href="/" className="text-slate-400 hover:text-white transition-colors text-xs">หน้าหลัก</Link></li>
                 <li><Link href="/tires" className="text-slate-400 hover:text-white transition-colors text-xs">ยางรถยนต์</Link></li>
-                <li><Link href="/wheels" className="text-slate-400 hover:text-white transition-colors text-xs">แม็ก & ล้อ</Link></li>
+                <li><Link href="/promotions" className="text-slate-400 hover:text-white transition-colors text-xs">โปรโมชั่น</Link></li>
+                <li><Link href="/services" className="text-slate-400 hover:text-white transition-colors text-xs">บริการของเรา</Link></li>
+                <li><Link href="/contact" className="text-slate-400 hover:text-white transition-colors text-xs">ติดต่อเรา</Link></li>
               </ul>
             </div>
             
@@ -80,9 +91,10 @@ export function Footer() {
             <div className="hidden md:block">
               <h3 className="text-sm font-bold mb-6 text-white">บริการของเรา</h3>
               <ul className="space-y-3">
-                <li><Link href="/services" className="text-slate-400 hover:text-white transition-colors text-xs">เปลี่ยนยาง</Link></li>
+                <li><Link href="/services" className="text-slate-400 hover:text-white transition-colors text-xs">เปลี่ยนยางรถยนต์</Link></li>
                 <li><Link href="/services" className="text-slate-400 hover:text-white transition-colors text-xs">ตั้งศูนย์ - ถ่วงล้อ</Link></li>
                 <li><Link href="/services" className="text-slate-400 hover:text-white transition-colors text-xs">ปะยาง - ซ่อมยาง</Link></li>
+                <li><Link href="/services" className="text-slate-400 hover:text-white transition-colors text-xs">เช็คสภาพรถยนต์</Link></li>
               </ul>
             </div>
 
@@ -90,9 +102,9 @@ export function Footer() {
             <div className="hidden md:block">
               <h3 className="text-sm font-bold mb-6 text-white">ช่วยเหลือ</h3>
               <ul className="space-y-3">
-                <li><Link href="#" className="text-slate-400 hover:text-white transition-colors text-xs">วิธีการสั่งซื้อ</Link></li>
-                <li><Link href="#" className="text-slate-400 hover:text-white transition-colors text-xs">การชำระเงิน</Link></li>
-                <li><Link href="#" className="text-slate-400 hover:text-white transition-colors text-xs">การจัดส่ง</Link></li>
+                <li><Link href="/contact" className="text-slate-400 hover:text-white transition-colors text-xs">วิธีการสั่งซื้อ</Link></li>
+                <li><Link href="/contact" className="text-slate-400 hover:text-white transition-colors text-xs">การชำระเงิน</Link></li>
+                <li><Link href="/contact" className="text-slate-400 hover:text-white transition-colors text-xs">สอบถามข้อมูลเพิ่มเติม</Link></li>
               </ul>
             </div>
             
@@ -102,15 +114,19 @@ export function Footer() {
               <ul className="space-y-4 inline-block text-left">
                 <li className="flex items-center gap-3">
                   <span className="text-white"><Phone className="w-4 h-4" /></span>
-                  <span className="text-slate-400 text-xs">02-123-4567</span>
+                  <span className="text-slate-400 text-xs">{phoneMain}</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <span className="text-white font-bold text-xs w-4 h-4 flex items-center justify-center">L</span>
-                  <span className="text-slate-400 text-xs">@thenutyangyont</span>
+                  <span className="text-slate-400 text-xs">{lineId}</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="text-white mt-0.5"><MapPin className="w-4 h-4" /></span>
-                  <span className="text-slate-400 text-xs leading-relaxed">123 ถนนกาญจนาภิเษก<br/>กรุงเทพฯ 10160</span>
+                  <span className="text-slate-400 text-xs leading-relaxed">
+                    {addressLines.map((line: string, i: number) => (
+                      <span key={i}>{line}<br/></span>
+                    ))}
+                  </span>
                 </li>
               </ul>
             </div>
