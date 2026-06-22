@@ -65,6 +65,67 @@ export async function createDocument(
   }
 }
 
+type BookingForDoc = {
+  _id: unknown; ref: string; name: string; phone: string;
+  customerType?: string; companyName?: string;
+  carModel?: string; carYear?: string;
+  address?: string; taxId?: string;
+  tireName: string; tirePrice: number; quantity: number;
+  status?: string; createdAt?: Date; note?: string;
+};
+
+function buildDocFromBooking(b: BookingForDoc, type: DocType, docNumber: string) {
+  const qty        = b.quantity ?? 1;
+  const unitPrice   = b.tirePrice ?? 0;
+  const subtotal    = qty * unitPrice;
+  const vatAmount   = subtotal * 0.07;
+  const grandTotal  = subtotal + vatAmount;
+  const isInvoice   = type === 'invoice';
+  const customerName = b.customerType === 'corporate' && b.companyName ? b.companyName : (b.name ?? '');
+
+  return {
+    docNumber,
+    type,
+    source:          'booking' as const,
+    bookingId:       b._id,
+    bookingRef:      b.ref ?? '',
+    customerName,
+    customerPhone:   b.phone ?? '',
+    customerCar:     `${b.carModel ?? ''} ${b.carYear ?? ''}`.trim(),
+    customerAddress: b.address ?? '',
+    customerTaxId:   b.taxId ?? '',
+    items: [{
+      description: b.tireName ?? '',
+      qty,
+      unitPrice,
+      discount:  0,
+      lineTotal: subtotal,
+    }],
+    subtotal,
+    discountTotal: 0,
+    vatRate:       7,
+    vatAmount,
+    grandTotal,
+    paymentMethod: isInvoice ? 'cash' : 'pending',
+    status:        isInvoice ? 'paid' : 'pending_approval',
+    paidAt:        isInvoice ? (b.createdAt ?? new Date()) : null,
+    issuedAt:      b.createdAt ?? new Date(),
+    note:          b.note ?? '',
+  };
+}
+
+// เรียกทันทีหลังสร้าง Booking ใหม่ — ออกใบเสนอราคาให้อัตโนมัติโดยไม่บล็อกการจองถ้าล้มเหลว
+export async function createQuoteFromBooking(booking: BookingForDoc): Promise<void> {
+  try {
+    await connectDB();
+    const docNumber = await generateDocNumber('quote');
+    await FinancialDocument.create(buildDocFromBooking(booking, 'quote', docNumber));
+    revalidatePath('/admin/documents');
+  } catch (err) {
+    console.error('[createQuoteFromBooking]', err);
+  }
+}
+
 export async function updateDocStatus(
   id: string,
   status: string,
@@ -93,12 +154,7 @@ export async function importFromBookings(): Promise<{
 
     const bookings = await Booking.find({
       status: { $in: ['completed', 'pending', 'confirmed'] },
-    }).lean() as {
-      _id: unknown; ref: string; name: string; phone: string;
-      carModel: string; carYear: string; tireName: string;
-      tirePrice: number; quantity: number; status: string;
-      createdAt: Date; note: string;
-    }[];
+    }).lean() as unknown as BookingForDoc[];
 
     if (bookings.length === 0) return { success: true, imported: 0, skipped: 0 };
 
@@ -112,42 +168,9 @@ export async function importFromBookings(): Promise<{
 
     const docs = [];
     for (const b of toImport) {
-      const isCompleted = b.status === 'completed';
-      const type: DocType = isCompleted ? 'invoice' : 'quote';
+      const type: DocType = b.status === 'completed' ? 'invoice' : 'quote';
       const docNumber     = await generateDocNumber(type);
-      const qty           = b.quantity ?? 1;
-      const unitPrice     = b.tirePrice ?? 0;
-      const subtotal      = qty * unitPrice;
-      const vatAmount     = subtotal * 0.07;
-      const grandTotal    = subtotal + vatAmount;
-
-      docs.push({
-        docNumber,
-        type,
-        source:        'booking',
-        bookingId:     b._id,
-        bookingRef:    b.ref ?? '',
-        customerName:  b.name  ?? '',
-        customerPhone: b.phone ?? '',
-        customerCar:   `${b.carModel ?? ''} ${b.carYear ?? ''}`.trim(),
-        items: [{
-          description: b.tireName ?? '',
-          qty,
-          unitPrice,
-          discount:  0,
-          lineTotal: subtotal,
-        }],
-        subtotal,
-        discountTotal: 0,
-        vatRate:       7,
-        vatAmount,
-        grandTotal,
-        paymentMethod: isCompleted ? 'cash' : 'pending',
-        status:        isCompleted ? 'paid'  : 'pending_approval',
-        paidAt:        isCompleted ? (b.createdAt ?? new Date()) : null,
-        issuedAt:      b.createdAt ?? new Date(),
-        note:          b.note ?? '',
-      });
+      docs.push(buildDocFromBooking(b, type, docNumber));
     }
 
     await FinancialDocument.insertMany(docs);

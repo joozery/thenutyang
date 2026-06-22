@@ -119,7 +119,7 @@ export default async function PromotionsPage() {
           ))}
 
           {/* 2. Static / Evergreen Promotions */}
-          {staticPromotions.map((promo, i) => (
+          {staticPromotions.map((promo: any, i: number) => (
             <div key={`static-${i}`} className="group rounded-2xl overflow-hidden bg-white shadow-lg shadow-slate-200/50 hover:-translate-y-1.5 transition-all duration-300 flex flex-col border border-slate-100">
               <div className={`h-32 bg-gradient-to-br ${promo.bgImage} relative p-5 flex flex-col justify-end`}>
                 <div className="absolute top-4 right-4 opacity-30 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500">

@@ -43,7 +43,7 @@ export default async function OrdersPage() {
   }
 
   await connectDB();
-  const orders = await Booking.find({ lineUserId: session.userId }).sort({ createdAt: -1 }).lean() as (IBooking & { _id: any })[];
+  const orders = await Booking.find({ lineUserId: session.lineUserId }).sort({ createdAt: -1 }).lean() as (IBooking & { _id: any })[];
 
   return (
     <div className="bg-slate-50 min-h-screen py-6 md:py-10">

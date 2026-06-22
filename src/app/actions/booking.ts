@@ -7,6 +7,8 @@ import connectDB from '@/lib/mongodb';
 import { Booking } from '@/models/Booking';
 import { Product } from '@/models/Product';
 import { pushMessage, buildQuoteFlexMessage } from '@/lib/line';
+import { createQuoteFromBooking } from './documents';
+import { upsertCustomerFromBooking } from './customers';
 
 async function generateRef(): Promise<string> {
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -15,16 +17,14 @@ async function generateRef(): Promise<string> {
   return `NTY-${today}-${seq}`;
 }
 
-function getFullName(formData: FormData): string {
+function getCustomerFields(formData: FormData) {
+  const customerType: 'individual' | 'corporate' = (formData.get('customerType') as string) === 'corporate' ? 'corporate' : 'individual';
   const firstName = ((formData.get('firstName') as string) ?? '').trim();
   const lastName  = ((formData.get('lastName')  as string) ?? '').trim();
-  return `${firstName} ${lastName}`.trim();
-}
-
-function getCustomerFields(formData: FormData) {
-  const customerType = (formData.get('customerType') as string) === 'corporate' ? 'corporate' : 'individual';
   return {
-    name:         getFullName(formData),
+    name: `${firstName} ${lastName}`.trim(),
+    firstName,
+    lastName,
     customerType,
     companyName:  customerType === 'corporate' ? ((formData.get('companyName') as string) ?? '').trim() : '',
     address:      ((formData.get('address') as string) ?? '').trim(),
@@ -52,6 +52,8 @@ export async function createBooking(
     const tireId = formData.get('tireId') as string;
     const quantity = Number(formData.get('quantity') ?? 4);
     const depositStatus = await resolveDepositStatus(tireId, quantity);
+    const customerFields = getCustomerFields(formData);
+    const phone = formData.get('phone') as string;
 
     const booking = await Booking.create({
       ref,
@@ -60,13 +62,16 @@ export async function createBooking(
       tirePrice:       Number(formData.get('tirePrice')),
       quantity,
       depositStatus,
-      ...getCustomerFields(formData),
-      phone:           formData.get('phone') as string,
+      ...customerFields,
+      phone,
       lineId:          (formData.get('lineId') as string) || '',
       appointmentDate: formData.get('appointmentDate') as string,
       note:            (formData.get('note') as string) ?? '',
       lineUserId,
     });
+
+    await createQuoteFromBooking(booking.toObject());
+    await upsertCustomerFromBooking({ lineUserId, phone, ...customerFields });
 
     let sent = false;
     if (lineUserId) {
@@ -124,8 +129,11 @@ export async function createCartBooking(
         ...common,
       });
       refs.push(ref);
+      await createQuoteFromBooking(booking.toObject());
       flexMessages.push(buildQuoteFlexMessage(booking.toObject()));
     }
+
+    await upsertCustomerFromBooking(common);
 
     let sent = false;
     if (lineUserId) {

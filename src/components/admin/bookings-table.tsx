@@ -2,8 +2,9 @@
 
 import { useTransition, useState, Fragment } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { sendLineQuote, confirmBooking, markReady, cancelBooking } from '@/app/actions/admin';
-import { CheckCircle, Package, XCircle, ChevronDown, ChevronUp, Calendar, Phone, Car, Tag, ChevronLeft, ChevronRight, Building2, MapPin, Hash } from 'lucide-react';
+import Link from 'next/link';
+import { sendLineQuote, confirmBooking, markReady, cancelBooking, createQuoteForBooking } from '@/app/actions/admin';
+import { CheckCircle, Package, XCircle, ChevronDown, ChevronUp, Calendar, Phone, Car, Tag, ChevronLeft, ChevronRight, Building2, MapPin, Hash, FileEdit, FileText } from 'lucide-react';
 
 const LineIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -32,6 +33,7 @@ type Booking = {
   note: string;
   status: string;
   createdAt: string;
+  quoteDocId?: string | null;
 };
 
 type PaginationData = {
@@ -209,6 +211,27 @@ export function BookingsTable({
                         >
                           <LineIcon className="w-4 h-4" />
                         </button>
+
+                        {/* ใบเสนอราคา */}
+                        {b.quoteDocId ? (
+                          <Link
+                            href={`/admin/documents/${b.quoteDocId}/print`}
+                            target="_blank"
+                            title="ดูใบเสนอราคา"
+                            className="p-2.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100/60 hover:bg-purple-600 hover:text-white hover:border-transparent transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 hover:-translate-y-0.5 active:translate-y-0"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => run(() => createQuoteForBooking(b.ref))}
+                            disabled={isPending}
+                            title="สร้างใบเสนอราคา"
+                            className="p-2.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100/60 hover:bg-purple-600 hover:text-white disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 hover:-translate-y-0.5 active:translate-y-0"
+                          >
+                            <FileEdit className="w-4 h-4" />
+                          </button>
+                        )}
 
                         {/* ยืนยัน */}
                         {b.status === 'pending' && (

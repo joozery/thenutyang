@@ -55,6 +55,45 @@ export async function updateCustomer(id: string, input: CustomerFormInput): Prom
   }
 }
 
+// เรียกตอนจองสำเร็จ (เว็บไซต์ลูกค้า) — sync ข้อมูลเข้า Customer Directory ให้อัตโนมัติ ไม่บล็อกการจองถ้าล้มเหลว
+export async function upsertCustomerFromBooking(input: {
+  lineUserId?: string;
+  customerType: 'individual' | 'corporate';
+  firstName: string;
+  lastName: string;
+  companyName: string;
+  phone: string;
+  address: string;
+  taxId: string;
+}): Promise<void> {
+  try {
+    if (!input.lineUserId && !input.phone) return;
+    await connectDB();
+    const filter = input.lineUserId ? { lineUserId: input.lineUserId } : { phone: input.phone };
+
+    await Customer.findOneAndUpdate(
+      filter,
+      {
+        $set: {
+          customerType: input.customerType,
+          firstName:    input.firstName,
+          lastName:     input.lastName,
+          companyName:  input.companyName,
+          phone:        input.phone,
+          address:      input.address,
+          taxId:        input.taxId,
+          source:       input.lineUserId ? 'online' : 'walkin',
+          updatedAt:    new Date(),
+        },
+      },
+      { upsert: true },
+    );
+    revalidatePath('/admin/customers');
+  } catch (err) {
+    console.error('[upsertCustomerFromBooking]', err);
+  }
+}
+
 export async function deleteCustomer(id: string): Promise<ActionResult> {
   try {
     await connectDB();

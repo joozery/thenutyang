@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { isValidObjectId } from 'mongoose';
 import connectDB from '@/lib/mongodb';
 import { Booking } from '@/models/Booking';
+import { FinancialDocument } from '@/models/FinancialDocument';
 import { disburseStock, receiveStock } from '@/app/actions/warehouse';
+import { createQuoteFromBooking } from '@/app/actions/documents';
 import {
   pushMessage,
   buildQuoteFlexMessage,
@@ -70,6 +72,21 @@ export async function markReady(ref: string): Promise<ActionResult> {
     revalidatePath('/admin/bookings');
     revalidatePath('/admin/warehouse');
     revalidatePath('/admin/products');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+export async function createQuoteForBooking(ref: string): Promise<ActionResult> {
+  try {
+    const booking = await getBooking(ref);
+    const existing = await FinancialDocument.findOne({ bookingId: booking._id }).lean();
+    if (existing) return { ok: false, error: 'มีใบเสนอราคาสำหรับการจองนี้อยู่แล้ว' };
+
+    await createQuoteFromBooking(booking.toObject());
+    revalidatePath('/admin/bookings');
+    revalidatePath('/admin/documents');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: String(e) };

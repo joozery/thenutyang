@@ -1,5 +1,6 @@
 import connectDB from '@/lib/mongodb';
 import { Booking } from '@/models/Booking';
+import { FinancialDocument } from '@/models/FinancialDocument';
 import { BookingsTable } from '@/components/admin/bookings-table';
 import { ClipboardList, LayoutGrid } from 'lucide-react';
 
@@ -39,6 +40,12 @@ export default async function AdminBookingsPage({
     .limit(itemsPerPage)
     .lean();
 
+  const docs = await FinancialDocument.find(
+    { bookingId: { $in: raw.map(b => b._id) } },
+    { bookingId: 1 },
+  ).lean();
+  const quoteDocByBookingId = new Map(docs.map(d => [String(d.bookingId), String(d._id)]));
+
   const bookings = raw.map(b => ({
     _id: b._id.toString(),
     ref: b.ref,
@@ -59,6 +66,7 @@ export default async function AdminBookingsPage({
     note: b.note,
     status: b.status,
     createdAt: (b.createdAt as Date).toISOString(),
+    quoteDocId: quoteDocByBookingId.get(b._id.toString()) ?? null,
   }));
 
   const counts = await Booking.aggregate([
