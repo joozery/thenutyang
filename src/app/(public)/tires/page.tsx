@@ -21,9 +21,12 @@ export default async function TiresPage({
 
   const results = await getProducts({
     brand,
-    rimSize: rim && !exactSize ? Number(rim) : undefined,
+    rimSize: rim && !width ? Number(rim) : undefined,
     category,
-    size: exactSize
+    size: exactSize,
+    width,
+    series,
+    rim
   });
 
   return (

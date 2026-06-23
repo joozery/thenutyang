@@ -13,13 +13,23 @@ export async function getProducts(filters?: {
   rimSize?: number;
   category?: string;
   size?: string;
+  width?: string;
+  series?: string;
+  rim?: string;
 }): Promise<ProductRow[]> {
   await connectDB();
   const query: Record<string, unknown> = { published: true };
   if (filters?.brand)    query.brand   = new RegExp(`^${filters.brand}$`, 'i');
   if (filters?.rimSize)  query.rimSize = filters.rimSize;
   if (filters?.category) query.category = filters.category;
-  if (filters?.size)     query.size    = filters.size;
+  
+  if (filters?.width && filters?.series && filters?.rim) {
+    // Matches: 205/55R16, 265/60-18, 195R14C (if series is 80)
+    query.size = new RegExp(`^${filters.width}(?:/)?(?:${filters.series})?[^0-9]*${filters.rim}`, 'i');
+  } else if (filters?.size) {
+    query.size = filters.size;
+  }
+
   const docs = await Product.find(query).sort({ brand: 1, model: 1 }).lean();
   return docs.map(normalize);
 }

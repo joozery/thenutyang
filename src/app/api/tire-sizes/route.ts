@@ -17,10 +17,12 @@ export async function GET() {
     const rimMap: Record<string, Set<string>> = {};
 
     for (const p of products) {
-      // e.g. "205/55R16"
-      const m = (p.size as string).match(/^(\d+)\/(\d+)R(\d+)/i);
+      // Match "205/55R16", "265/60-18", "195R14C", "205/45ZR17", etc.
+      const m = (p.size as string).match(/^(\d+)(?:\/(\d+))?\s*(?:Z?R|C|-)?\s*(\d+)/i);
       if (!m) continue;
-      const [, width, series, rim] = m;
+      const width = m[1];
+      const series = m[2] || '80'; // Default series is 80 if omitted (e.g. 195R14)
+      const rim = m[3];
       widthSet.add(width);
       if (!seriesMap[width]) seriesMap[width] = new Set();
       seriesMap[width].add(series);
