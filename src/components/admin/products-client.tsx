@@ -460,7 +460,18 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                 </Field>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <Field label="ราคาเงินสด *"><input type="number" value={form.priceCash || ''} onChange={e => { const cash = +e.target.value; setForm(f => ({ ...f, priceCash: cash, ...calcDerivedPrices(cash) })); }} className={inputCls} /></Field>
+                <Field label="ราคาเงินสด *">
+                  <input type="number" value={form.priceCash || ''} onChange={e => { const cash = +e.target.value; setForm(f => ({ ...f, priceCash: cash, ...calcDerivedPrices(cash) })); }} className={inputCls} />
+                  {form.costPrice > 0 && (() => {
+                    const profit = form.priceCash - form.costPrice;
+                    const marginPct = (profit / form.costPrice) * 100;
+                    return (
+                      <p className={`text-[10px] mt-1 font-semibold ${profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        กำไร ฿{profit.toLocaleString()} ({marginPct.toFixed(1)}%)
+                      </p>
+                    );
+                  })()}
+                </Field>
                 <Field label="รูดบัตร">
                   <input type="number" value={form.priceCredit || ''} onChange={e => setForm(f => ({ ...f, priceCredit: +e.target.value }))} className={inputCls} />
                   <p className="text-[10px] text-slate-400 mt-1">คำนวณอัตโนมัติจากราคาเงินสด แก้ไขเองได้</p>
