@@ -27,7 +27,7 @@ const PAGE_SIZE = 10;
 function calcDerivedPrices(cash: number) {
   const priceCredit = cash + cash * 0.03 * 1.07;
   const priceInstallment = cash + cash * 4 * 0.008 * 1.07 + cash * 0.015 * 1.07;
-  return { priceCredit: Math.round(priceCredit), priceInstallment: Math.round(priceInstallment) };
+  return { priceCredit: Math.round(priceCredit * 100) / 100, priceInstallment: Math.round(priceInstallment * 100) / 100 };
 }
 
 const EMPTY_FORM = {
