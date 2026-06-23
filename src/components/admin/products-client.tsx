@@ -23,9 +23,9 @@ const CATEGORIES: Record<string, string> = {
 
 const PAGE_SIZE = 10;
 
-// สูตรจาก Excel: รูดบัตรคิดค่าธรรมเนียม 3%, ผ่อน 0% 4 เดือนคิดดอกเบี้ย 0.8%/เดือน + ค่าธรรมเนียม 1.5% ครั้งเดียว ทั้งสองบวก VAT 7% (x107%) บนค่าธรรมเนียม
+// สูตรจาก Excel: รูดบัตรคิดค่าธรรมเนียม 3% (ไม่บวก VAT), ผ่อน 0% 4 เดือนคิดดอกเบี้ย 0.8%/เดือน + ค่าธรรมเนียม 1.5% ครั้งเดียว บวก VAT 7% (x107%) บนค่าธรรมเนียมผ่อน
 function calcDerivedPrices(cash: number) {
-  const priceCredit = cash + cash * 0.03 * 1.07;
+  const priceCredit = cash + cash * 0.03;
   const priceInstallment = cash + cash * 4 * 0.008 * 1.07 + cash * 0.015 * 1.07;
   return { priceCredit: Math.round(priceCredit * 100) / 100, priceInstallment: Math.round(priceInstallment * 100) / 100 };
 }
