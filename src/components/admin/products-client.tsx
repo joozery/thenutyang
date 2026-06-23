@@ -23,6 +23,13 @@ const CATEGORIES: Record<string, string> = {
 
 const PAGE_SIZE = 10;
 
+// สูตรจาก Excel: รูดบัตรคิดค่าธรรมเนียม 3%, ผ่อน 0% 4 เดือนคิดดอกเบี้ย 0.8%/เดือน + ค่าธรรมเนียม 1.5% ครั้งเดียว ทั้งสองบวก VAT 7% (x107%) บนค่าธรรมเนียม
+function calcDerivedPrices(cash: number) {
+  const priceCredit = cash + cash * 0.03 * 1.07;
+  const priceInstallment = cash + cash * 4 * 0.008 * 1.07 + cash * 0.015 * 1.07;
+  return { priceCredit: Math.round(priceCredit), priceInstallment: Math.round(priceInstallment) };
+}
+
 const EMPTY_FORM = {
   brand: '', model: '', size: '', type: '', note: '',
   priceCash: 0, priceCredit: 0, priceInstallment: 0, costPrice: 0,
@@ -453,9 +460,15 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                 </Field>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <Field label="ราคาเงินสด *"><input type="number" value={form.priceCash || ''} onChange={e => setForm(f => ({ ...f, priceCash: +e.target.value }))} className={inputCls} /></Field>
-                <Field label="รูดบัตร"><input type="number" value={form.priceCredit || ''} onChange={e => setForm(f => ({ ...f, priceCredit: +e.target.value }))} className={inputCls} /></Field>
-                <Field label="ผ่อน 0%"><input type="number" value={form.priceInstallment || ''} onChange={e => setForm(f => ({ ...f, priceInstallment: +e.target.value }))} className={inputCls} /></Field>
+                <Field label="ราคาเงินสด *"><input type="number" value={form.priceCash || ''} onChange={e => { const cash = +e.target.value; setForm(f => ({ ...f, priceCash: cash, ...calcDerivedPrices(cash) })); }} className={inputCls} /></Field>
+                <Field label="รูดบัตร">
+                  <input type="number" value={form.priceCredit || ''} onChange={e => setForm(f => ({ ...f, priceCredit: +e.target.value }))} className={inputCls} />
+                  <p className="text-[10px] text-slate-400 mt-1">คำนวณอัตโนมัติจากราคาเงินสด แก้ไขเองได้</p>
+                </Field>
+                <Field label="ผ่อน 0%">
+                  <input type="number" value={form.priceInstallment || ''} onChange={e => setForm(f => ({ ...f, priceInstallment: +e.target.value }))} className={inputCls} />
+                  <p className="text-[10px] text-slate-400 mt-1">คำนวณอัตโนมัติจากราคาเงินสด แก้ไขเองได้</p>
+                </Field>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <Field label="ราคาต้นทุน (ซื้อเข้า)"><input type="number" value={form.costPrice || ''} onChange={e => setForm(f => ({ ...f, costPrice: +e.target.value }))} className={inputCls} /></Field>
