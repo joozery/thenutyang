@@ -47,10 +47,10 @@ export function QrUploadForm({ currentImage }: { currentImage: string }) {
       </div>
 
       <div className="flex flex-col items-center flex-1 justify-center relative z-10">
-        <div className="w-56 h-56 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden mb-6 group relative">
+        <div className="w-full max-w-[240px] aspect-[3/4] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center overflow-hidden mb-6 group relative">
           {image ? (
             <>
-              <img src={image} alt="QR Code" className="w-full h-full object-contain p-2 bg-white" />
+              <img src={image} alt="QR Code" className="w-full h-full object-contain bg-white" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                  <button type="button" onClick={() => fileRef.current?.click()} className="flex items-center gap-2 px-4 py-2 bg-white text-slate-900 rounded-full font-bold hover:scale-105 transition-transform text-sm shadow-xl">
                    <Upload size={16} /> เปลี่ยนรูป

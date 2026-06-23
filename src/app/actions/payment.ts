@@ -11,15 +11,18 @@ type ActionResult = { error?: string; ok?: boolean; verified?: boolean; verifyRe
 
 export async function uploadDepositSlip(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   try {
-    const ref = formData.get('ref') as string;
-    if (!ref) return { error: 'ไม่พบหมายเลขการจอง' };
+    const orderRef = formData.get('ref') as string;
+    if (!orderRef) return { error: 'ไม่พบหมายเลขการจอง' };
 
     const file = formData.get('file') as File | null;
     if (!file) return { error: 'ไม่พบไฟล์สลิป' };
 
     await connectDB();
-    const booking = await Booking.findOne({ ref });
-    if (!booking) return { error: 'ไม่พบการจองนี้' };
+    // ตะกร้าอาจมีหลายรุ่นยาง (หลาย Booking) ใต้ orderRef เดียว — รวมยอดมัดจำของทุกรายการที่ต้องมัดจำ ชำระทีเดียวจบ
+    const bookings = await Booking.find({ orderRef, depositStatus: { $ne: 'not_required' } });
+    if (bookings.length === 0) return { error: 'ไม่พบการจองนี้ หรือไม่มียอดมัดจำที่ต้องชำระ' };
+
+    const totalDeposit = bookings.reduce((sum, b) => sum + b.depositAmount, 0);
 
     let url: string;
     try {
@@ -29,10 +32,10 @@ export async function uploadDepositSlip(_prev: ActionResult | null, formData: Fo
     }
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const { verified, reason } = await verifySlip(fileBuffer, file.name, file.type, booking.depositAmount);
+    const { verified, reason } = await verifySlip(fileBuffer, file.name, file.type, totalDeposit);
 
-    await Booking.updateOne(
-      { ref },
+    await Booking.updateMany(
+      { orderRef, depositStatus: { $ne: 'not_required' } },
       { depositSlipUrl: url, depositStatus: verified ? 'verified' : 'submitted', depositVerifyNote: reason }
     );
 
@@ -47,19 +50,22 @@ export async function uploadDepositSlip(_prev: ActionResult | null, formData: Fo
 
 export async function uploadBalanceSlip(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
   try {
-    const ref = formData.get('ref') as string;
-    if (!ref) return { error: 'ไม่พบหมายเลขการจอง' };
+    const orderRef = formData.get('ref') as string;
+    if (!orderRef) return { error: 'ไม่พบหมายเลขการจอง' };
 
     const file = formData.get('file') as File | null;
     if (!file) return { error: 'ไม่พบไฟล์สลิป' };
 
     await connectDB();
-    const booking = await Booking.findOne({ ref });
-    if (!booking) return { error: 'ไม่พบการจองนี้' };
-    if (booking.balanceStatus === 'paid') return { error: 'ชำระยอดคงเหลือครบแล้ว' };
+    const bookings = await Booking.find({ orderRef });
+    if (bookings.length === 0) return { error: 'ไม่พบการจองนี้' };
+    if (bookings.every((b) => b.balanceStatus === 'paid')) return { error: 'ชำระยอดคงเหลือครบแล้ว' };
 
-    const totalAmount = booking.tirePrice * booking.quantity;
-    const remaining = booking.depositStatus === 'verified' ? totalAmount - booking.depositAmount : totalAmount;
+    const remaining = bookings.reduce((sum, b) => {
+      const totalAmount = b.tirePrice * b.quantity;
+      const itemRemaining = b.depositStatus === 'verified' ? totalAmount - b.depositAmount : totalAmount;
+      return sum + itemRemaining;
+    }, 0);
     if (remaining <= 0) return { error: 'ไม่มียอดคงเหลือต้องชำระ' };
 
     let url: string;
@@ -72,8 +78,8 @@ export async function uploadBalanceSlip(_prev: ActionResult | null, formData: Fo
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const { verified, reason } = await verifySlip(fileBuffer, file.name, file.type, remaining);
 
-    await Booking.updateOne(
-      { ref },
+    await Booking.updateMany(
+      { orderRef },
       verified
         ? { balanceSlipUrl: url, balanceVerifyNote: reason, balanceStatus: 'paid', balancePaymentMethod: 'transfer', balancePaidAt: new Date() }
         : { balanceSlipUrl: url, balanceVerifyNote: reason }

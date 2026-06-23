@@ -32,6 +32,75 @@ export async function getBookingByRef(ref: string) {
   };
 }
 
+export type OrderBooking = {
+  orderRef: string;
+  items: { ref: string; tireName: string; quantity: number; tirePrice: number; totalAmount: number }[];
+  totalAmount: number;
+  depositAmount: number;
+  depositStatus: 'pending' | 'submitted' | 'verified' | 'not_required';
+  depositVerifyNote: string;
+  depositSlipUrl: string;
+  remainingAmount: number;
+  balanceStatus: 'unpaid' | 'paid';
+  balanceVerifyNote: string;
+  balanceSlipUrl: string;
+};
+
+// รวมทุก Booking (ต่อรุ่นยาง) ในตะกร้าเดียวกันเป็น "ออเดอร์เดียว" — ยอดมัดจำ/ยอดคงเหลือรวม ชำระทีเดียวจบ
+export async function getBookingsByOrderRef(orderRef: string): Promise<OrderBooking | null> {
+  await connectDB();
+  const { Booking } = await import('@/models/Booking');
+  const docs = await Booking.find({ orderRef }).lean() as Record<string, unknown>[];
+  if (docs.length === 0) return null;
+
+  const items = docs.map((d) => {
+    const tirePrice = d.tirePrice as number;
+    const quantity = d.quantity as number;
+    return {
+      ref: d.ref as string,
+      tireName: d.tireName as string,
+      quantity,
+      tirePrice,
+      totalAmount: tirePrice * quantity,
+    };
+  });
+  const totalAmount = items.reduce((sum, i) => sum + i.totalAmount, 0);
+
+  const needsDepositDocs = docs.filter((d) => (d.depositStatus as string) !== 'not_required');
+  const depositAmount = needsDepositDocs.reduce((sum, d) => sum + ((d.depositAmount as number) ?? 0), 0);
+  const depositStatus: OrderBooking['depositStatus'] =
+    needsDepositDocs.length === 0 ? 'not_required'
+    : needsDepositDocs.some((d) => d.depositStatus === 'pending') ? 'pending'
+    : needsDepositDocs.some((d) => d.depositStatus === 'submitted') ? 'submitted'
+    : 'verified';
+  const depositVerifyNote = (needsDepositDocs[0]?.depositVerifyNote as string) ?? '';
+  const depositSlipUrl = (needsDepositDocs[0]?.depositSlipUrl as string) ?? '';
+
+  const balanceStatus: 'unpaid' | 'paid' = docs.every((d) => d.balanceStatus === 'paid') ? 'paid' : 'unpaid';
+  const balanceVerifyNote = (docs.find((d) => d.balanceVerifyNote)?.balanceVerifyNote as string) ?? '';
+  const balanceSlipUrl = (docs.find((d) => d.balanceSlipUrl)?.balanceSlipUrl as string) ?? '';
+
+  const remainingAmount = balanceStatus === 'paid' ? 0 : items.reduce((sum, item, i) => {
+    const d = docs[i];
+    const itemDepositAmount = d.depositStatus === 'verified' ? (d.depositAmount as number) : 0;
+    return sum + (item.totalAmount - itemDepositAmount);
+  }, 0);
+
+  return {
+    orderRef,
+    items,
+    totalAmount,
+    depositAmount,
+    depositStatus,
+    depositVerifyNote,
+    depositSlipUrl,
+    remainingAmount,
+    balanceStatus,
+    balanceVerifyNote,
+    balanceSlipUrl,
+  };
+}
+
 export type PaymentReviewRow = {
   ref: string;
   name: string;

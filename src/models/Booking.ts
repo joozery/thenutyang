@@ -2,6 +2,7 @@ import mongoose, { Schema, model, models } from 'mongoose';
 
 export interface IBooking {
   ref: string;
+  orderRef: string;
   tireId: string;
   tireName: string;
   tirePrice: number;
@@ -11,8 +12,12 @@ export interface IBooking {
   companyName: string;
   phone: string;
   lineId: string;
+  carBrand: string;
   carModel: string;
   carYear: string;
+  licensePlate: string;
+  mileageBefore: number | null;
+  mileageAfter: number | null;
   address: string;
   taxId: string;
   appointmentDate: string;
@@ -33,6 +38,7 @@ export interface IBooking {
 
 const BookingSchema = new Schema<IBooking>({
   ref:             { type: String, required: true, unique: true },
+  orderRef:        { type: String, required: true, index: true },
   tireId:          { type: String, required: true },
   tireName:        { type: String, required: true },
   tirePrice:       { type: Number, required: true },
@@ -42,8 +48,12 @@ const BookingSchema = new Schema<IBooking>({
   companyName:     { type: String, default: '' },
   phone:           { type: String, required: true },
   lineId:          { type: String, default: '' },
+  carBrand:        { type: String, default: '' },
   carModel:        { type: String, default: '' },
   carYear:         { type: String, default: '' },
+  licensePlate:    { type: String, default: '' },
+  mileageBefore:   { type: Number, default: null },
+  mileageAfter:    { type: Number, default: null },
   address:         { type: String, default: '' },
   taxId:           { type: String, default: '' },
   appointmentDate: { type: String, required: true },

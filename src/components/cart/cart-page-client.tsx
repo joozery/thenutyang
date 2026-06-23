@@ -1,20 +1,31 @@
 'use client';
 
+import { useActionState } from 'react';
 import Link from 'next/link';
-import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
+import { createCartBooking } from '@/app/actions/booking';
 import type { CustomerSession } from '@/lib/customer-session';
 import type { CustomerProfile } from '@/lib/customer-profile';
+import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 import { useCart } from './cart-context';
 import { CartCheckoutForm } from './cart-checkout-form';
+import { CartOrderSummary } from './cart-order-summary';
+
+const FORM_ID = 'cart-checkout-form';
 
 export function CartPageClient({
   customer,
   profile,
+  carBrands,
+  carModels,
 }: {
   customer?: CustomerSession | null;
   profile?: CustomerProfile | null;
+  carBrands: CarBrandRow[];
+  carModels: CarModelRow[];
 }) {
-  const { items, removeItem, setQuantity, totalPrice } = useCart();
+  const { items } = useCart();
+  const [state, formAction, isPending] = useActionState(createCartBooking, null);
 
   if (items.length === 0) {
     return (
@@ -30,45 +41,18 @@ export function CartPageClient({
   }
 
   return (
-    <div className="container mx-auto px-4 md:px-8 py-8 max-w-3xl">
+    <div className="container mx-auto px-4 md:px-8 py-8 max-w-6xl">
       <h1 className="text-2xl font-black text-slate-900 mb-6">ตะกร้าของคุณ ({items.length} รายการ)</h1>
 
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-100 mb-6">
-        {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-4 p-4">
-            <img src={item.image} alt={item.model} className="w-16 h-16 object-contain shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-slate-800 text-sm truncate">{item.brand} {item.model}</p>
-              <p className="text-xs text-slate-400">{item.size}</p>
-              <p className="text-sm font-black text-green-600 mt-1">฿{item.price.toLocaleString()}</p>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-start">
+        <div className="lg:col-span-2">
+          <CartCheckoutForm formId={FORM_ID} formAction={formAction} customer={customer} profile={profile} carBrands={carBrands} carModels={carModels} />
+        </div>
 
-            <div className="flex items-center gap-2 border border-slate-200 rounded-lg">
-              <button type="button" onClick={() => setQuantity(item.id, item.quantity - 1)}
-                className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-green-600 transition">
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-sm font-bold text-slate-800 w-6 text-center">{item.quantity}</span>
-              <button type="button" onClick={() => setQuantity(item.id, item.quantity + 1)}
-                className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-green-600 transition">
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <button type="button" onClick={() => removeItem(item.id)}
-              className="text-slate-300 hover:text-red-500 transition p-1 shrink-0" aria-label="ลบ">
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-
-        <div className="flex items-center justify-between p-4 bg-slate-50">
-          <span className="text-sm font-bold text-slate-700">ราคารวม</span>
-          <span className="text-xl font-black text-green-600">฿{totalPrice.toLocaleString()}</span>
+        <div className="lg:col-span-1 lg:sticky lg:top-6">
+          <CartOrderSummary formId={FORM_ID} customer={customer} error={state?.error} isPending={isPending} />
         </div>
       </div>
-
-      <CartCheckoutForm customer={customer} profile={profile} />
     </div>
   );
 }

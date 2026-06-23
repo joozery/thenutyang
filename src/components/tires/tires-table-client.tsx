@@ -60,7 +60,7 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
       .filter(p => {
         const matchSize  = sizeTab === 'all' || p.size === sizeTab;
         const matchBrand = !brandFilter || p.brand === brandFilter;
-        const matchSearch = !q || p.brand.toLowerCase().includes(q) || p.model.toLowerCase().includes(q);
+        const matchSearch = !q || String(p.brand || '').toLowerCase().includes(q) || String(p.model || '').toLowerCase().includes(q) || String(p.size || '').toLowerCase().includes(q);
         return matchSize && matchBrand && matchSearch;
       })
       .sort((a, b) => {
@@ -107,18 +107,19 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
 
         {/* Brand filter + search */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center px-4 py-3 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2 flex-wrap flex-1">
+          <div className="flex items-center gap-2 flex-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">ยี่ห้อ:</span>
-            <button onClick={() => setBrandFilter('')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${!brandFilter ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}>
-              ทั้งหมด
-            </button>
-            {availableBrands.map(b => (
-              <button key={b} onClick={() => setBrandFilter(b === brandFilter ? '' : b)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${brandFilter === b ? `${getBrandColor(b)} shadow-sm` : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
-                {b}
-              </button>
-            ))}
+            <select
+              value={brandFilter}
+              onChange={e => { setBrandFilter(e.target.value); setPage(1); }}
+              className="text-xs bg-white border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-500 transition-colors w-48 font-semibold cursor-pointer appearance-none"
+            >
+              <option value="">ทั้งหมด ({availableBrands.length} ยี่ห้อ)</option>
+              {availableBrands.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="text-slate-400 -ml-7 pointer-events-none" />
           </div>
           <div className="relative shrink-0">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -153,9 +154,7 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
                 <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceInstallment')}>
                   ผ่อน 0% 4ด. <SortIcon col="priceInstallment" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-16 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('stock')}>
-                  สต๊อก <SortIcon col="stock" sortKey={sortKey} sortDir={sortDir} />
-                </th>
+
                 <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-12">ปี</th>
                 <th className="px-4 py-3 w-20"></th>
               </tr>
@@ -183,11 +182,7 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
                   </td>
                   <td className="px-4 py-3.5 text-right text-slate-400 tabular-nums text-xs">{fmt(p.priceCredit)}</td>
                   <td className="px-4 py-3.5 text-right text-slate-500 tabular-nums text-xs font-semibold bg-slate-50/60">{fmt(p.priceInstallment)}</td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-md tabular-nums ${p.stock === 0 ? 'bg-red-50 text-red-500' : p.stock <= 6 ? 'bg-amber-50 text-amber-600' : 'text-slate-500 bg-slate-50'}`}>
-                      {p.stock}
-                    </span>
-                  </td>
+
                   <td className="px-4 py-3.5 text-center">
                     <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">'{p.year}</span>
                   </td>
@@ -236,9 +231,6 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
               
               <div className="flex items-center justify-between pt-2 border-t border-slate-50">
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${p.stock === 0 ? 'bg-red-50 text-red-500' : p.stock <= 6 ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>
-                    สต๊อก: {p.stock}
-                  </span>
                   <span className="text-[10px] font-mono font-bold text-slate-400">ปี '{p.year}</span>
                 </div>
                 <div className="flex items-center gap-2">

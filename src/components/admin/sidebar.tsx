@@ -31,6 +31,7 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
         { icon: <ClipboardList size={20} />, label: "การจอง", href: "/admin/bookings", active: pathname.startsWith("/admin/bookings") },
         { icon: <QrCode size={20} />, label: "การชำระเงิน", href: "/admin/payments", active: pathname.startsWith("/admin/payments") },
         { icon: <Users size={20} />, label: "ลูกค้า", href: "/admin/customers", active: pathname === "/admin/customers" },
+        { icon: <Car size={20} />, label: "ยี่ห้อ/รุ่นรถ", href: "/admin/car-data", active: pathname.startsWith("/admin/car-data") },
         { icon: <FileText size={20} />, label: "บิล/เอกสาร", href: "/admin/documents", active: pathname.startsWith("/admin/documents"), hasSub: true },
       ]
     },

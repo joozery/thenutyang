@@ -52,8 +52,8 @@ export function BalancePayment({ bookingRef, qrImage, remainingAmount, initialPa
         <input type="hidden" name="ref" value={bookingRef} />
 
         {qrImage ? (
-          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 mx-auto w-fit">
-            <img src={qrImage} alt="QR Code ชำระเงิน" className="w-72 h-72 object-contain bg-white rounded-xl shadow-sm" />
+          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 mx-auto w-fit flex justify-center">
+            <img src={qrImage} alt="QR Code ชำระเงิน" className="w-auto h-auto max-w-full max-h-[360px] object-contain bg-white rounded-xl shadow-sm" />
           </div>
         ) : (
           <p className="text-sm text-slate-400 text-center py-6">ยังไม่ได้ตั้งค่า QR Code รับเงิน กรุณาติดต่อร้าน</p>

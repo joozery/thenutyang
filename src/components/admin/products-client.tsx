@@ -89,7 +89,7 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
       .filter(p => {
         const matchSize  = sizeTab === 'all' || p.size === sizeTab;
         const matchBrand = !brandFilter || p.brand === brandFilter;
-        const matchSearch = !q || p.brand.toLowerCase().includes(q) || p.model.toLowerCase().includes(q);
+        const matchSearch = !q || String(p.brand || '').toLowerCase().includes(q) || String(p.model || '').toLowerCase().includes(q) || String(p.size || '').toLowerCase().includes(q);
         return matchSize && matchBrand && matchSearch;
       })
       .sort((a, b) => {
@@ -236,18 +236,19 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
 
         {/* Brand filter + search */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center px-4 py-3 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2 flex-wrap flex-1">
+          <div className="flex items-center gap-2 flex-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">ยี่ห้อ:</span>
-            <button onClick={() => setBrandFilter('')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${!brandFilter ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}>
-              ทั้งหมด
-            </button>
-            {availableBrands.map(b => (
-              <button key={b} onClick={() => setBrandFilter(b === brandFilter ? '' : b)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${brandFilter === b ? `${getBrandColor(b)} shadow-sm` : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
-                {b}
-              </button>
-            ))}
+            <select
+              value={brandFilter}
+              onChange={e => { setBrandFilter(e.target.value); setPage(1); }}
+              className="text-xs bg-white border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-500 transition-colors w-48 font-semibold cursor-pointer appearance-none"
+            >
+              <option value="">ทั้งหมด ({availableBrands.length} ยี่ห้อ)</option>
+              {availableBrands.map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="text-slate-400 -ml-7 pointer-events-none" />
           </div>
           <div className="relative shrink-0">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />

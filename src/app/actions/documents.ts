@@ -66,13 +66,30 @@ export async function createDocument(
 }
 
 type BookingForDoc = {
-  _id: unknown; ref: string; name: string; phone: string;
+  _id: unknown; ref: string; orderRef?: string; name: string; phone: string;
   customerType?: string; companyName?: string;
-  carModel?: string; carYear?: string;
+  carBrand?: string; carModel?: string; carYear?: string;
+  licensePlate?: string; mileageBefore?: number | null; mileageAfter?: number | null;
   address?: string; taxId?: string;
   tireName: string; tirePrice: number; quantity: number;
   status?: string; createdAt?: Date; note?: string;
 };
+
+// รวมข้อมูลรถ (ยี่ห้อ/รุ่น/ทะเบียน/เลขไมล์) เป็นข้อความเดียว ใช้แสดงในช่อง customerCar ของเอกสาร
+function formatCarInfo(b: BookingForDoc): string {
+  const parts: string[] = [];
+  const brandModel = `${b.carBrand ?? ''} ${b.carModel ?? ''}`.trim();
+  if (brandModel) parts.push(brandModel);
+  if (b.licensePlate) parts.push(`ทะเบียน ${b.licensePlate}`);
+  if (b.mileageBefore != null) {
+    parts.push(
+      b.mileageAfter != null
+        ? `ไมล์ ${b.mileageBefore.toLocaleString()} → ${b.mileageAfter.toLocaleString()}`
+        : `ไมล์ ${b.mileageBefore.toLocaleString()}`
+    );
+  }
+  return parts.join(' • ');
+}
 
 function buildDocFromBooking(b: BookingForDoc, type: DocType, docNumber: string) {
   const qty        = b.quantity ?? 1;
@@ -88,10 +105,10 @@ function buildDocFromBooking(b: BookingForDoc, type: DocType, docNumber: string)
     type,
     source:          'booking' as const,
     bookingId:       b._id,
-    bookingRef:      b.ref ?? '',
+    bookingRef:      b.orderRef ?? b.ref ?? '',
     customerName,
     customerPhone:   b.phone ?? '',
-    customerCar:     `${b.carModel ?? ''} ${b.carYear ?? ''}`.trim(),
+    customerCar:     formatCarInfo(b),
     customerAddress: b.address ?? '',
     customerTaxId:   b.taxId ?? '',
     items: [{
@@ -123,6 +140,57 @@ export async function createQuoteFromBooking(booking: BookingForDoc): Promise<vo
     revalidatePath('/admin/documents');
   } catch (err) {
     console.error('[createQuoteFromBooking]', err);
+  }
+}
+
+function buildMultiDocFromBookings(bookings: BookingForDoc[], type: DocType, docNumber: string) {
+  const items = bookings.map((b) => {
+    const qty       = b.quantity ?? 1;
+    const unitPrice = b.tirePrice ?? 0;
+    return { description: b.tireName ?? '', qty, unitPrice, discount: 0, lineTotal: qty * unitPrice };
+  });
+  const subtotal   = items.reduce((sum, i) => sum + i.lineTotal, 0);
+  const vatAmount  = subtotal * 0.07;
+  const grandTotal = subtotal + vatAmount;
+  const primary    = bookings[0];
+  const isInvoice  = type === 'invoice';
+  const customerName = primary.customerType === 'corporate' && primary.companyName ? primary.companyName : (primary.name ?? '');
+
+  return {
+    docNumber,
+    type,
+    source:          'booking' as const,
+    bookingId:       primary._id,
+    bookingRef:      primary.orderRef ?? primary.ref ?? '',
+    customerName,
+    customerPhone:   primary.phone ?? '',
+    customerCar:     formatCarInfo(primary),
+    customerAddress: primary.address ?? '',
+    customerTaxId:   primary.taxId ?? '',
+    items,
+    subtotal,
+    discountTotal: 0,
+    vatRate:       7,
+    vatAmount,
+    grandTotal,
+    paymentMethod: isInvoice ? 'cash' : 'pending',
+    status:        isInvoice ? 'paid' : 'pending_approval',
+    paidAt:        isInvoice ? (primary.createdAt ?? new Date()) : null,
+    issuedAt:      primary.createdAt ?? new Date(),
+    note:          primary.note ?? '',
+  };
+}
+
+// เหมือน createQuoteFromBooking แต่รวมหลาย Booking (จากตะกร้าเดียวกัน) เป็นใบเสนอราคาใบเดียว หลายรายการสินค้า
+export async function createQuoteFromBookings(bookings: BookingForDoc[]): Promise<void> {
+  try {
+    if (bookings.length === 0) return;
+    await connectDB();
+    const docNumber = await generateDocNumber('quote');
+    await FinancialDocument.create(buildMultiDocFromBookings(bookings, 'quote', docNumber));
+    revalidatePath('/admin/documents');
+  } catch (err) {
+    console.error('[createQuoteFromBookings]', err);
   }
 }
 

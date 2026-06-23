@@ -97,6 +97,13 @@ export async function getDocumentById(id: string): Promise<DocRow | null> {
   }
 }
 
+// ใช้หาใบเสนอราคาจากเลขที่การจอง (orderRef) — สำหรับหน้าพิมพ์/PDF ที่ลูกค้าเข้าถึงได้เอง ไม่ต้องผ่านแอดมิน
+export async function getDocumentByBookingRef(orderRef: string): Promise<DocRow | null> {
+  await connectDB();
+  const doc = await FinancialDocument.findOne({ bookingRef: orderRef }).sort({ createdAt: -1 }).lean();
+  return doc ? normalize(doc) : null;
+}
+
 export async function getDocStats(): Promise<DocStats> {
   await connectDB();
   const now        = new Date();

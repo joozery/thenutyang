@@ -1,36 +1,46 @@
 'use client';
 
-import { useActionState, useState } from 'react';
-import { createCartBooking } from '@/app/actions/booking';
+import { useState } from 'react';
 import type { CustomerSession } from '@/lib/customer-session';
 import type { CustomerProfile } from '@/lib/customer-profile';
+import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 import { useCart } from './cart-context';
+import { CarCombobox } from './car-combobox';
 
 type CustomerType = 'individual' | 'corporate';
 
 export function CartCheckoutForm({
   customer,
   profile,
+  formId,
+  formAction,
+  carBrands,
+  carModels,
 }: {
   customer?: CustomerSession | null;
   profile?: CustomerProfile | null;
+  formId: string;
+  formAction: (formData: FormData) => void;
+  carBrands: CarBrandRow[];
+  carModels: CarModelRow[];
 }) {
   const { items } = useCart();
-  const [state, formAction, isPending] = useActionState(createCartBooking, null);
   const [customerType, setCustomerType] = useState<CustomerType>('individual');
+  const [carBrand, setCarBrand] = useState('');
+  const [carModel, setCarModel] = useState('');
+
+  const brandOptions = carBrands.map((b) => ({ id: b.id, label: b.name }));
+  const matchedBrand = carBrands.find((b) => b.name.toLowerCase() === carBrand.trim().toLowerCase());
+  const modelOptions = matchedBrand
+    ? carModels.filter((m) => m.brandId === matchedBrand.id).map((m) => ({ id: m.id, label: m.name }))
+    : [];
 
   const itemsJson = JSON.stringify(
     items.map((i) => ({ id: i.id, name: `${i.brand} ${i.model} ${i.size}`, price: i.price, quantity: i.quantity }))
   );
 
   return (
-    <form action={formAction} className="space-y-6 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 md:p-8">
-      {state?.error && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-green-600 text-sm font-medium">
-          {state.error}
-        </div>
-      )}
-
+    <form id={formId} action={formAction} className="space-y-6 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 md:p-8">
       <input type="hidden" name="items" value={itemsJson} />
       {customer && <input type="hidden" name="lineUserId" value={customer.lineUserId} />}
 
@@ -167,6 +177,47 @@ export function CartCheckoutForm({
       </div>
 
       <div>
+        <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">ข้อมูลรถ</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">ยี่ห้อรถ</label>
+            <CarCombobox
+              name="carBrand"
+              options={brandOptions}
+              placeholder="พิมพ์ค้นหา เช่น Toyota"
+              value={carBrand}
+              onChange={(v) => { setCarBrand(v); setCarModel(''); }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">รุ่นรถ</label>
+            <CarCombobox
+              name="carModel"
+              options={modelOptions}
+              placeholder={matchedBrand ? 'พิมพ์ค้นหา เช่น Vios' : 'เลือกยี่ห้อรถก่อน'}
+              value={carModel}
+              onChange={setCarModel}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">ทะเบียนรถ</label>
+            <input
+              type="text" name="licensePlate" placeholder="กข 1234 กรุงเทพมหานคร"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">เลขไมล์ปัจจุบัน</label>
+            <input
+              type="number" name="mileageBefore" min={0} placeholder="50000"
+              className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-slate-400 mt-3">ไม่บังคับ — ใส่เพื่อให้ทีมงานบันทึกประวัติการเข้ารับบริการของรถคุณ</p>
+      </div>
+
+      <div>
         <h3 className="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">นัดหมายเข้ารับบริการ</h3>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">
           วันที่ต้องการ <span className="text-green-500">*</span>
@@ -185,18 +236,6 @@ export function CartCheckoutForm({
           className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition resize-none"
         />
       </div>
-
-      <button
-        type="submit"
-        disabled={isPending || items.length === 0}
-        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-green-200 text-base"
-      >
-        {isPending
-          ? 'กำลังส่งข้อมูล...'
-          : customer
-            ? `ยืนยันการจองทั้งหมด (${items.length} รายการ) — รับใบเสนอราคาทาง LINE ทันที`
-            : `ยืนยันการจองทั้งหมด (${items.length} รายการ)`}
-      </button>
     </form>
   );
 }

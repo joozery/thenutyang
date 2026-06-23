@@ -356,13 +356,27 @@ export function DocumentsClient({
   const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleStatusChange = (id: string, status: string) => {
+    // ต้องเปิดแท็บแบบ synchronous ในตัว handler ทันที ไม่งั้นเบราว์เซอร์จะบล็อก popup
+    // เพราะ window.open หลัง await ถือว่าหลุดจาก user-gesture แล้ว
+    const willAutoPrint = status === 'accepted' && docs.find(d => d.id === id)?.type === 'quote';
+    const printWindow = willAutoPrint ? window.open('about:blank', '_blank') : null;
+
     startTransition(async () => {
       const res = await updateDocStatus(id, status);
-      if (res.error) { showToast(res.error, false); return; }
+      if (res.error) {
+        printWindow?.close();
+        showToast(res.error, false);
+        return;
+      }
       setDocs(prev => prev.map(d => d.id === id ? { ...d, status } : d));
       if (viewDoc?.id === id) setViewDoc(prev => prev ? { ...prev, status } : prev);
       router.refresh();
       showToast(STATUS_LABEL[status] ? `อัปเดตสถานะเป็น "${STATUS_LABEL[status]}"` : 'อัปเดตสำเร็จ');
+
+      // อนุมัติใบเสนอราคาแล้ว — เปิดหน้าพิมพ์ในแท็บที่เตรียมไว้ทันที ไม่ต้องกดปุ่มพิมพ์แยก
+      if (printWindow) {
+        printWindow.location.href = `/admin/documents/${id}/print`;
+      }
     });
   };
 

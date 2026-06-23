@@ -228,6 +228,172 @@ export function buildQuoteFlexMessage(booking: IBooking) {
   };
 }
 
+export function buildQuoteFlexMessageMulti(bookings: IBooking[]) {
+  const primary = bookings[0];
+  const itemTotals = bookings.map((b) => b.tirePrice * b.quantity);
+  const totalPrice = itemTotals.reduce((sum, n) => sum + n, 0);
+  const depositTotal = bookings.reduce((sum, b) => sum + (b.depositStatus !== 'not_required' ? b.depositAmount : 0), 0);
+  const remainingTotal = bookings.reduce((sum, b, i) => {
+    const itemTotal = itemTotals[i];
+    return sum + (b.depositStatus === 'verified' ? itemTotal - b.depositAmount : itemTotal);
+  }, 0);
+
+  const appointmentFormatted = new Date(primary.appointmentDate).toLocaleDateString('th-TH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'Asia/Bangkok',
+  });
+
+  return {
+    type: 'flex',
+    altText: `ใบเสนอราคา ${primary.orderRef} — รวม ${bookings.length} รายการ`,
+    contents: {
+      type: 'bubble',
+      size: 'giga',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#16a34a',
+        paddingAll: '20px',
+        paddingBottom: '18px',
+        contents: [
+          { type: 'text', text: 'เดอะนัททายางยนต์', color: '#bbf7d0', size: 'sm', weight: 'bold' },
+          { type: 'text', text: 'ใบเสนอราคา', color: '#ffffff', size: 'xl', weight: 'bold', margin: 'sm' },
+          { type: 'text', text: `${bookings.length} รายการ`, color: '#bbf7d0', size: 'xs', margin: 'xs' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        spacing: 'lg',
+        contents: [
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            contents: [
+              { type: 'text', text: 'ข้อมูลลูกค้า', size: 'xs', color: '#999999', weight: 'bold' },
+              infoRow('ชื่อ', primary.name),
+              infoRow('เบอร์โทร', primary.phone),
+              ...(primary.carModel ? [infoRow('รุ่นรถ', `${primary.carModel} ปี ${primary.carYear}`)] : []),
+              infoRow('เลขที่อ้างอิง', primary.orderRef),
+            ],
+          },
+          separator(),
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'md',
+            contents: [
+              { type: 'text', text: 'รายการสินค้า', size: 'xs', color: '#999999', weight: 'bold' },
+              ...bookings.flatMap((b, i) => [
+                {
+                  type: 'box',
+                  layout: 'vertical',
+                  spacing: 'xs',
+                  contents: [
+                    { type: 'text', text: b.tireName, size: 'sm', weight: 'bold', color: '#222222', wrap: true },
+                    infoRow('จำนวน', `${b.quantity} เส้น`),
+                    infoRow('ราคารวม', `฿${itemTotals[i].toLocaleString()}`),
+                  ],
+                },
+                ...(i < bookings.length - 1 ? [separator()] : []),
+              ]),
+            ],
+          },
+          separator(),
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            contents: [
+              {
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: 'ราคารวมทั้งหมด', size: 'sm', color: '#444444', flex: 1 },
+                  { type: 'text', text: `฿${totalPrice.toLocaleString()}`, size: 'sm', weight: 'bold', color: '#16a34a', align: 'end' },
+                ],
+              },
+              ...(depositTotal > 0 ? [{
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: 'มัดจำที่ต้องชำระ (รวม)', size: 'xs', color: '#888888', flex: 1 },
+                  { type: 'text', text: `฿${depositTotal.toLocaleString()}`, size: 'xs', color: '#888888', align: 'end' },
+                ],
+              }] : []),
+              {
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: 'ยอดคงเหลือชำระหน้าร้าน', size: 'xs', color: '#888888', weight: 'bold', flex: 1 },
+                  { type: 'text', text: `฿${remainingTotal.toLocaleString()}`, size: 'xs', color: '#888888', weight: 'bold', align: 'end' },
+                ],
+              },
+            ],
+          },
+          separator(),
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'วันนัดหมาย', size: 'sm', color: '#444444', flex: 1 },
+              { type: 'text', text: appointmentFormatted, size: 'sm', weight: 'bold', color: '#222222', align: 'end', wrap: true, flex: 2 },
+            ],
+          },
+          ...(primary.note ? [{
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'หมายเหตุ', size: 'sm', color: '#444444', flex: 1 },
+              { type: 'text', text: primary.note, size: 'sm', color: '#666666', align: 'end', wrap: true, flex: 2 },
+            ],
+          }] : []),
+          {
+            type: 'text',
+            text: '* ราคานี้รวมค่าติดตั้ง ถ่วงล้อ และ VAT 7%',
+            size: 'xxs',
+            color: '#aaaaaa',
+            wrap: true,
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '16px',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: 'ยืนยันการจอง / ชำระมัดจำ',
+              uri: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://thenutyang.com'}/booking/success?ref=${primary.orderRef}`,
+            },
+            style: 'primary',
+            color: '#16a34a',
+            height: 'md',
+          },
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: 'สอบถามเพิ่มเติม',
+              uri: `https://line.me/R/ti/p/@${process.env.LINE_OA_ID}`,
+            },
+            style: 'secondary',
+            height: 'sm',
+          },
+        ],
+      },
+    },
+  };
+}
+
 export function buildConfirmMessage(booking: IBooking) {
   const appointmentFormatted = new Date(booking.appointmentDate).toLocaleDateString('th-TH', {
     year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Bangkok',

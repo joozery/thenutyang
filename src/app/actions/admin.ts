@@ -93,6 +93,18 @@ export async function createQuoteForBooking(ref: string): Promise<ActionResult> 
   }
 }
 
+export async function updateMileageAfter(ref: string, mileageAfter: number): Promise<ActionResult> {
+  try {
+    if (!Number.isFinite(mileageAfter) || mileageAfter < 0) return { ok: false, error: 'เลขไมล์ไม่ถูกต้อง' };
+    await connectDB();
+    await Booking.updateOne({ ref }, { mileageAfter });
+    revalidatePath('/admin/bookings');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
 export async function cancelBooking(ref: string): Promise<ActionResult> {
   try {
     const booking = await getBooking(ref);

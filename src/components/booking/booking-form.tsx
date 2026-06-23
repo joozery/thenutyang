@@ -44,17 +44,19 @@ export function BookingForm({ tire, customer }: Props) {
       {/* Selected tire preview */}
       {tire && (
         <div className="bg-green-50 border border-green-100 rounded-xl p-4 flex items-center gap-4">
-          <img src={tire.image} alt={tire.model} className="h-20 w-auto object-contain shrink-0" />
+          <img src={tire.image || '/yang.png'} alt={tire.model} className="h-20 w-auto object-contain shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="h-4 mb-1.5 flex items-center">
-              <Image
-                src={BRAND_LOGOS[tire.brand]}
-                alt={tire.brand}
-                width={60}
-                height={16}
-                className={`h-full w-auto object-contain max-w-[60px]
-                  ${['MICHELIN', 'BRIDGESTONE', 'PIRELLI'].includes(tire.brand) ? 'scale-[1.8] origin-left' : 'origin-left'}`}
-              />
+              {BRAND_LOGOS[tire.brand] && (
+                <Image
+                  src={BRAND_LOGOS[tire.brand]}
+                  alt={tire.brand}
+                  width={60}
+                  height={16}
+                  className={`h-full w-auto object-contain max-w-[60px]
+                    ${['MICHELIN', 'BRIDGESTONE', 'PIRELLI'].includes(tire.brand) ? 'scale-[1.8] origin-left' : 'origin-left'}`}
+                />
+              )}
             </div>
             <p className="font-bold text-slate-800 text-sm mt-2">{tire.model}</p>
             <p className="text-xs text-slate-500">{tire.size}</p>

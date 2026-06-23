@@ -3,8 +3,8 @@
 import { useTransition, useState, Fragment } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { sendLineQuote, confirmBooking, markReady, cancelBooking, createQuoteForBooking } from '@/app/actions/admin';
-import { CheckCircle, Package, XCircle, ChevronDown, ChevronUp, Calendar, Phone, Car, Tag, ChevronLeft, ChevronRight, Building2, MapPin, Hash, FileEdit, FileText } from 'lucide-react';
+import { sendLineQuote, confirmBooking, markReady, cancelBooking, createQuoteForBooking, updateMileageAfter } from '@/app/actions/admin';
+import { CheckCircle, Package, XCircle, ChevronDown, ChevronUp, Calendar, Phone, Car, Tag, ChevronLeft, ChevronRight, Building2, MapPin, Hash, FileEdit, FileText, Gauge, Save } from 'lucide-react';
 
 const LineIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -25,8 +25,12 @@ type Booking = {
   phone: string;
   lineId: string;
   lineUserId?: string;
+  carBrand?: string;
   carModel: string;
   carYear: string;
+  licensePlate?: string;
+  mileageBefore?: number | null;
+  mileageAfter?: number | null;
   address?: string;
   taxId?: string;
   appointmentDate: string;
@@ -49,6 +53,42 @@ const STATUS_STYLE: Record<string, { label: string; className: string; dot: stri
   completed: { label: 'เสร็จสิ้น',   className: 'bg-emerald-50 text-emerald-700 border-emerald-200/50', dot: 'bg-emerald-500' },
   cancelled: { label: 'ยกเลิก',      className: 'bg-slate-50 text-slate-500 border-slate-200/50', dot: 'bg-slate-400' },
 };
+
+// กรอกเลขไมล์หลังใช้บริการ — แอดมินกรอกตอนปิดงาน เพราะลูกค้าไม่มีทางรู้เลขนี้ตอนจอง
+function MileageAfterField({ bookingRef, initialValue }: { bookingRef: string; initialValue: number | null }) {
+  const [value, setValue] = useState(initialValue != null ? String(initialValue) : '');
+  const [isPending, startTransition] = useTransition();
+  const [saved, setSaved] = useState(false);
+
+  function handleSave() {
+    const num = Number(value);
+    if (!value || !Number.isFinite(num) || num < 0) return;
+    startTransition(async () => {
+      const res = await updateMileageAfter(bookingRef, num);
+      if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000); }
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="number" min={0} value={value}
+        onChange={(e) => { setValue(e.target.value); setSaved(false); }}
+        placeholder="กรอกเลขไมล์"
+        className="w-28 border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-green-400"
+      />
+      <button
+        onClick={handleSave}
+        disabled={isPending || !value}
+        title="บันทึกเลขไมล์หลัง"
+        className="p-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-40 transition-colors shrink-0"
+      >
+        <Save className="w-3.5 h-3.5" />
+      </button>
+      {saved && <span className="text-[11px] text-emerald-600 font-bold whitespace-nowrap">บันทึกแล้ว</span>}
+    </div>
+  );
+}
 
 export function BookingsTable({ 
   bookings, 
@@ -292,15 +332,34 @@ export function BookingsTable({
                         <div className="px-6 py-6 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* Car Detail (เฉพาะรายการเก่าที่มีข้อมูลรถ) */}
-                            {b.carModel && (
+                            {(b.carModel || b.carBrand) && (
                               <div className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-start gap-4 hover:border-slate-300 transition-colors">
                                 <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
                                   <Car className="w-5 h-5" />
                                 </div>
                                 <div>
                                   <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">ข้อมูลรถยนต์</p>
-                                  <p className="text-sm font-bold text-slate-800">{b.carModel}</p>
-                                  <p className="text-[13px] font-medium text-slate-500 mt-0.5">ปี {b.carYear}</p>
+                                  <p className="text-sm font-bold text-slate-800">{[b.carBrand, b.carModel].filter(Boolean).join(' ')}</p>
+                                  {b.carYear && <p className="text-[13px] font-medium text-slate-500 mt-0.5">ปี {b.carYear}</p>}
+                                  {b.licensePlate && <p className="text-[13px] font-medium text-slate-500 mt-0.5">ทะเบียน {b.licensePlate}</p>}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* เลขไมล์ก่อน/หลังใช้บริการ */}
+                            {b.mileageBefore != null && (
+                              <div className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-start gap-4 hover:border-slate-300 transition-colors">
+                                <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                                  <Gauge className="w-5 h-5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">เลขไมล์</p>
+                                  <p className="text-sm font-bold text-slate-800 mb-2">ก่อน {b.mileageBefore.toLocaleString()} กม.</p>
+                                  {b.mileageAfter != null ? (
+                                    <p className="text-[13px] font-medium text-emerald-600">หลัง {b.mileageAfter.toLocaleString()} กม.</p>
+                                  ) : (
+                                    <MileageAfterField bookingRef={b.ref} initialValue={b.mileageAfter ?? null} />
+                                  )}
                                 </div>
                               </div>
                             )}

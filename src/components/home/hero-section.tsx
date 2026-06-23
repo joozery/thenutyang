@@ -23,11 +23,11 @@ import { HeroSearch } from './hero-search';
 export function HeroSection() {
   return (
     <>
-      <section className="relative w-full bg-slate-900 overflow-hidden min-h-[400px] md:min-h-[500px] flex items-center pt-8 pb-40 md:pb-16 bg-[url('/cover/covergreen.png')] bg-cover bg-[position:80%_center] md:bg-center bg-no-repeat">
+      <section className="relative w-full bg-slate-900 overflow-hidden lg:overflow-visible min-h-[400px] md:min-h-[500px] flex items-center pt-8 pb-40 md:pb-16 bg-[url('/cover/covergreen.png')] bg-cover bg-[position:80%_center] md:bg-center bg-no-repeat">
         {/* Dark overlay for text readability */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/20 z-0 pointer-events-none"></div>
         
-        <div className="container mx-auto px-4 md:px-8 relative z-10">
+        <div className="container mx-auto px-4 md:px-8 relative z-30">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
 
             {/* Left Content */}

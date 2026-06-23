@@ -53,7 +53,7 @@ export function PopularTiresTabs({ tabs }: { tabs: PopularTab[] }) {
                     {tire.badge}
                   </div>
                 )}
-                <img src={tire.image} alt={tire.model} className="h-full w-auto object-contain group-hover:scale-110 transition-transform duration-300" />
+                <img src={tire.image || '/yang.png'} alt={tire.model} className="h-full w-auto object-contain group-hover:scale-110 transition-transform duration-300" />
               </div>
 
               {/* Info Section */}

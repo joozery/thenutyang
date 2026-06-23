@@ -141,7 +141,7 @@ function PaymentRow({ row }: { row: PaymentReviewRow }) {
               <Undo2 size={14} />
             </button>
           </span>
-        ) : remaining > 0 ? (
+        ) : remaining > 0 && (status === 'verified' || status === 'not_required') ? (
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => payBalance('cash')} disabled={isPending}
               className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 bg-white hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
@@ -152,6 +152,8 @@ function PaymentRow({ row }: { row: PaymentReviewRow }) {
               <Landmark size={14} className="text-slate-400" /> รับโอน
             </button>
           </div>
+        ) : remaining > 0 ? (
+          <span className="text-[11px] font-medium text-amber-500 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">รอตรวจสอบมัดจำก่อนจ่ายส่วนต่าง</span>
         ) : (
           <span className="text-[11px] font-medium text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">ไม่ต้องชำระเพิ่ม</span>
         )}
@@ -167,23 +169,61 @@ function PaymentRow({ row }: { row: PaymentReviewRow }) {
 }
 
 export function PaymentReviewList({ bookings }: { bookings: PaymentReviewRow[] }) {
-  if (bookings.length === 0) {
-    return (
-      <div className="py-24 flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-          <CheckCircle2 size={32} className="text-slate-300" />
-        </div>
-        <h3 className="text-slate-500 font-medium text-lg">ตรวจสอบครบหมดแล้ว</h3>
-        <p className="text-slate-400 text-sm mt-1">ยังไม่มีรายการจองที่รอการตรวจสอบชำระเงิน</p>
-      </div>
-    );
-  }
+  const [activeTab, setActiveTab] = useState<'deposit' | 'balance' | 'completed'>('deposit');
+
+  const pendingDeposits = bookings.filter(b => b.balanceStatus !== 'paid' && (b.depositStatus === 'pending' || b.depositStatus === 'submitted'));
+  const pendingBalances = bookings.filter(b => b.balanceStatus === 'unpaid' && (b.depositStatus === 'verified' || b.depositStatus === 'not_required'));
+  const completed = bookings.filter(b => b.balanceStatus === 'paid');
+
+  const getFilteredBookings = () => {
+    if (activeTab === 'deposit') return pendingDeposits;
+    if (activeTab === 'balance') return pendingBalances;
+    return completed;
+  };
+
+  const displayedBookings = getFilteredBookings();
 
   return (
-    <div className="divide-y divide-slate-100">
-      {bookings.map((row) => (
-        <PaymentRow key={row.ref} row={row} />
-      ))}
+    <div className="flex flex-col h-full">
+      <div className="flex border-b border-slate-100 bg-slate-50/50 px-4 pt-4 gap-4 overflow-x-auto">
+        <button
+          onClick={() => setActiveTab('deposit')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'deposit' ? 'border-green-500 text-green-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          รอมัดจำ
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'deposit' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>{pendingDeposits.length}</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('balance')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'balance' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          รอจ่ายส่วนต่าง
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'balance' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600'}`}>{pendingBalances.length}</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('completed')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap flex items-center gap-2 ${activeTab === 'completed' ? 'border-blue-500 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          เสร็จสิ้น
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'completed' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>{completed.length}</span>
+        </button>
+      </div>
+
+      <div className="divide-y divide-slate-100">
+        {displayedBookings.length === 0 ? (
+          <div className="py-24 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle2 size={32} className="text-slate-300" />
+            </div>
+            <h3 className="text-slate-500 font-medium text-lg">ไม่มีรายการในหมวดหมู่นี้</h3>
+            <p className="text-slate-400 text-sm mt-1">รายการทั้งหมดถูกจัดการเรียบร้อยแล้ว</p>
+          </div>
+        ) : (
+          displayedBookings.map((row) => (
+            <PaymentRow key={row.ref} row={row} />
+          ))
+        )}
+      </div>
     </div>
   );
 }
