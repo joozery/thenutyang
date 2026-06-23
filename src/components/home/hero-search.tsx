@@ -10,6 +10,7 @@ interface TireSizeData {
   widths: string[];
   series: Record<string, string[]>;
   rims: Record<string, string[]>;
+  brands?: string[];
 }
 
 const DEFAULT_WIDTHS = ['155','165','175','185','195','205','215','225','235','245','255','265','275'];
@@ -241,7 +242,7 @@ export function HeroSearch() {
             <CustomSelect 
               value={searchBrand} 
               onChange={setSearchBrand} 
-              options={BRANDS} 
+              options={sizeData?.brands ?? BRANDS} 
               placeholder="-- ไม่ระบุยี่ห้อ --" 
             />
           </div>

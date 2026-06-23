@@ -42,7 +42,10 @@ export async function GET() {
       rims[k] = [...r].sort((a, b) => Number(a) - Number(b));
     }
 
-    return NextResponse.json({ widths, series, rims });
+    const brands = await Product.distinct('brand', { published: true });
+    brands.sort();
+
+    return NextResponse.json({ widths, series, rims, brands });
   } catch (err) {
     console.error('[tire-sizes]', err);
     return NextResponse.json({ error: 'DB error' }, { status: 500 });
