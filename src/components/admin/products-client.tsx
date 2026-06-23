@@ -459,18 +459,26 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                   <input value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} className={inputCls} placeholder="26" maxLength={2} />
                 </Field>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
+                <Field label="กำไร">
+                  <input
+                    type="number"
+                    value={(form.priceCash - form.costPrice) || ''}
+                    onChange={e => {
+                      const profit = +e.target.value;
+                      const cash = form.costPrice + profit;
+                      setForm(f => ({ ...f, priceCash: cash, ...calcDerivedPrices(cash) }));
+                    }}
+                    className={inputCls}
+                  />
+                  {form.costPrice > 0 && (
+                    <p className={`text-[10px] mt-1 font-semibold ${form.priceCash - form.costPrice >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {(((form.priceCash - form.costPrice) / form.costPrice) * 100).toFixed(1)}%
+                    </p>
+                  )}
+                </Field>
                 <Field label="ราคาเงินสด *">
                   <input type="number" value={form.priceCash || ''} onChange={e => { const cash = +e.target.value; setForm(f => ({ ...f, priceCash: cash, ...calcDerivedPrices(cash) })); }} className={inputCls} />
-                  {form.costPrice > 0 && (() => {
-                    const profit = form.priceCash - form.costPrice;
-                    const marginPct = (profit / form.costPrice) * 100;
-                    return (
-                      <p className={`text-[10px] mt-1 font-semibold ${profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        กำไร ฿{profit.toLocaleString()} ({marginPct.toFixed(1)}%)
-                      </p>
-                    );
-                  })()}
                 </Field>
                 <Field label="รูดบัตร">
                   <input type="number" value={form.priceCredit || ''} onChange={e => setForm(f => ({ ...f, priceCredit: +e.target.value }))} className={inputCls} />
