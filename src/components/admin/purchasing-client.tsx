@@ -299,6 +299,8 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
   const [orders, setOrders] = useState(initialOrders);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo,   setDateTo]   = useState('');
   const [page, setPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<PORow | null>(null);
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
@@ -309,12 +311,16 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
+    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
     return orders.filter(o => {
       const matchSearch = o.poNumber.toLowerCase().includes(q) || o.supplier.toLowerCase().includes(q);
       const matchStatus = statusFilter === 'ทั้งหมด' || o.status === statusFilter;
-      return matchSearch && matchStatus;
+      const orderTime = new Date(o.orderDate).getTime();
+      const matchDate = (!fromTime || orderTime >= fromTime) && (!toTime || orderTime <= toTime);
+      return matchSearch && matchStatus && matchDate;
     });
-  }, [orders, search, statusFilter]);
+  }, [orders, search, statusFilter, dateFrom, dateTo]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -406,6 +412,23 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
                 <option key={t} value={t}>{t === 'ทั้งหมด' ? 'สถานะ: ทั้งหมด' : t}</option>
               ))}
             </select>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400"
+              />
+              <span className="text-slate-400 text-sm">–</span>
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400"
+              />
+            </div>
           </div>
 
           <div className="w-full">

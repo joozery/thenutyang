@@ -9,15 +9,15 @@ import {
 
 interface DashboardData {
   summary: {
-    todayRevenue: number;
-    yesterdayRevenue: number;
+    isRange: boolean;
+    rangeDays: number;
+    rangeRevenue: number;
+    rangeBills: number;
     revenueTrend: string | null;
-    todayBills: number;
-    yesterdayBills: number;
-    billTrend: number;
+    billTrend: number | null;
     monthRevenue: number;
     pendingBookings: number;
-    todayBookings: number;
+    rangeBookings: number;
     totalProducts: number;
     totalStock: number;
     totalIncomeMonth: number;
@@ -69,16 +69,23 @@ export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+  const [dateFrom, setDateFrom] = useState<string>(''); // YYYY-MM-DD
+  const [dateTo,   setDateTo]   = useState<string>('');
+
+  function buildUrl() {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    return params.toString() ? `/api/admin/dashboard?${params.toString()}` : '/api/admin/dashboard';
+  }
 
   useEffect(() => {
     setLoading(true);
-    const url = selectedDate ? `/api/admin/dashboard?date=${selectedDate}` : '/api/admin/dashboard';
-    fetch(url)
+    fetch(buildUrl())
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => { setError('โหลดข้อมูลไม่ได้'); setLoading(false); });
-  }, [selectedDate]);
+  }, [dateFrom, dateTo]);
 
   if (loading && !data) return (
     <div className="flex items-center justify-center h-64 text-slate-400">
@@ -123,27 +130,33 @@ export default function AdminDashboard() {
 
   const opsCards = [
     {
-      title: 'ยอดขายวันนี้',
-      value: `฿${fmt(summary.todayRevenue)}`,
-      trend: summary.revenueTrend
-        ? `${Number(summary.revenueTrend) >= 0 ? '▲' : '▼'} ${Math.abs(Number(summary.revenueTrend))}% จากเมื่อวาน`
-        : 'ยังไม่มียอดเมื่อวาน',
-      trendUp: Number(summary.revenueTrend ?? 0) >= 0,
+      title: summary.isRange ? 'ยอดขายช่วงที่เลือก' : 'ยอดขายวันนี้',
+      value: `฿${fmt(summary.rangeRevenue)}`,
+      trend: summary.isRange
+        ? `รวม ${summary.rangeDays} วัน · ${summary.rangeBills} บิล`
+        : summary.revenueTrend
+          ? `${Number(summary.revenueTrend) >= 0 ? '▲' : '▼'} ${Math.abs(Number(summary.revenueTrend))}% จากเมื่อวาน`
+          : 'ยังไม่มียอดเมื่อวาน',
+      trendUp: summary.isRange ? false : Number(summary.revenueTrend ?? 0) >= 0,
+      isNeutral: summary.isRange,
       icon: <DollarSign size={18} />,
       iconClass: 'text-indigo-600', iconBg: 'bg-indigo-50',
     },
     {
-      title: 'บิลขายวันนี้',
-      value: `${summary.todayBills} บิล`,
-      trend: `${summary.billTrend >= 0 ? '▲' : '▼'} ${Math.abs(summary.billTrend)} บิล จากเมื่อวาน`,
-      trendUp: summary.billTrend >= 0,
+      title: summary.isRange ? 'บิลขายช่วงที่เลือก' : 'บิลขายวันนี้',
+      value: `${summary.rangeBills} บิล`,
+      trend: summary.isRange || summary.billTrend === null
+        ? 'ในช่วงที่เลือก'
+        : `${summary.billTrend >= 0 ? '▲' : '▼'} ${Math.abs(summary.billTrend)} บิล จากเมื่อวาน`,
+      trendUp: summary.isRange ? false : (summary.billTrend ?? 0) >= 0,
+      isNeutral: summary.isRange,
       icon: <FileText size={18} />,
       iconClass: 'text-blue-600', iconBg: 'bg-blue-50',
     },
     {
       title: 'การจองรออนุมัติ',
       value: `${summary.pendingBookings} รายการ`,
-      trend: `จองใหม่วันนี้ ${summary.todayBookings} ราย`,
+      trend: summary.isRange ? `จองใหม่ในช่วงที่เลือก ${summary.rangeBookings} ราย` : `จองใหม่วันนี้ ${summary.rangeBookings} ราย`,
       trendUp: false, isNeutral: true,
       icon: <CalendarCheck size={18} />,
       iconClass: 'text-violet-600', iconBg: 'bg-violet-50',
@@ -158,9 +171,9 @@ export default function AdminDashboard() {
     },
   ];
 
-
-  const displayDate = selectedDate ? new Date(selectedDate) : new Date();
-  const thDate = displayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  const thDate = summary.isRange
+    ? `${new Date(dateFrom || dateTo).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} – ${new Date(dateTo || dateFrom).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}`
+    : new Date(dateFrom || dateTo || Date.now()).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div className="w-full">
@@ -170,22 +183,30 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-black text-slate-900">Dashboard</h1>
           <div className="text-sm text-slate-500 font-medium mt-1">ข้อมูล ณ วันที่ {thDate}</div>
         </div>
-        <div className="flex items-center gap-2">
-          <input 
-            type="date" 
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={e => setDateFrom(e.target.value)}
+            className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
+          />
+          <span className="text-slate-400 text-sm">–</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={e => setDateTo(e.target.value)}
             className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
           />
           <button
-            onClick={() => { 
-              setLoading(true); 
-              const url = selectedDate ? `/api/admin/dashboard?date=${selectedDate}` : '/api/admin/dashboard';
-              fetch(url).then(r => r.json()).then(d => { setData(d); setLoading(false); }); 
+            onClick={() => {
+              setLoading(true);
+              fetch(buildUrl()).then(r => r.json()).then(d => { setData(d); setLoading(false); });
             }}
             className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition shadow-sm"
           >
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <Loader2 size={14} />} รีเฟรชข้อมูล
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Loader2 size={14} />} รีเฟรช
           </button>
         </div>
       </div>

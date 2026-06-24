@@ -33,6 +33,12 @@ export async function getAllEmployees(): Promise<EmployeeRow[]> {
   return docs.map(d => normalize(d as Record<string, unknown>));
 }
 
+export async function getActiveEmployees(): Promise<{ id: string; name: string; nickname: string; role: string }[]> {
+  await connectDB();
+  const docs = await Employee.find({ status: { $in: ['active', 'on_leave'] } }, { _id: 1, name: 1, nickname: 1, role: 1 }).sort({ empId: 1 }).lean();
+  return docs.map(d => ({ id: String((d as Record<string, unknown>)._id), name: String((d as Record<string, unknown>).name ?? ''), nickname: String((d as Record<string, unknown>).nickname ?? ''), role: String((d as Record<string, unknown>).role ?? '') }));
+}
+
 export async function getNextEmpId(): Promise<string> {
   await connectDB();
   const last = await Employee.findOne({}).sort({ empId: -1 }).lean() as { empId?: string } | null;

@@ -2,7 +2,7 @@ import connectDB from '@/lib/mongodb';
 import { Booking } from '@/models/Booking';
 import { FinancialDocument } from '@/models/FinancialDocument';
 import { BookingsTable } from '@/components/admin/bookings-table';
-import { DatePickerFilter } from '@/components/admin/date-picker-filter';
+import { DateRangePickerFilter } from '@/components/admin/date-picker-filter';
 import { ClipboardList, LayoutGrid } from 'lucide-react';
 
 export const metadata = { title: 'การจอง | Admin' };
@@ -20,9 +20,9 @@ const STATUS_LABEL: Record<string, string> = {
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string, page?: string, date?: string }>;
+  searchParams: Promise<{ status?: string, page?: string, dateFrom?: string, dateTo?: string }>;
 }) {
-  const { status, page, date } = await searchParams;
+  const { status, page, dateFrom, dateTo } = await searchParams;
   const activeStatus = STATUS_FILTER.includes(status as typeof STATUS_FILTER[number]) ? status : 'all';
 
   const currentPage = parseInt(page || '1', 10);
@@ -30,8 +30,11 @@ export default async function AdminBookingsPage({
 
   await connectDB();
   const query: any = activeStatus && activeStatus !== 'all' ? { status: activeStatus } : {};
-  if (date) {
-    query.appointmentDate = date;
+  if (dateFrom || dateTo) {
+    // appointmentDate เก็บเป็น string 'YYYY-MM-DD' เทียบแบบ lexicographic ได้ตรงกับลำดับวันที่จริง
+    query.appointmentDate = {};
+    if (dateFrom) query.appointmentDate.$gte = dateFrom;
+    if (dateTo) query.appointmentDate.$lte = dateTo;
   }
   
   const totalItems = await Booking.countDocuments(query);
@@ -78,8 +81,10 @@ export default async function AdminBookingsPage({
   }));
 
   const matchStage: any = {};
-  if (date) {
-    matchStage.appointmentDate = date;
+  if (dateFrom || dateTo) {
+    matchStage.appointmentDate = {};
+    if (dateFrom) matchStage.appointmentDate.$gte = dateFrom;
+    if (dateTo) matchStage.appointmentDate.$lte = dateTo;
   }
 
   const counts = await Booking.aggregate([
@@ -122,7 +127,8 @@ export default async function AdminBookingsPage({
               {STATUS_FILTER.map(s => {
                 const params = new URLSearchParams();
                 if (s !== 'all') params.set('status', s);
-                if (date) params.set('date', date);
+                if (dateFrom) params.set('dateFrom', dateFrom);
+                if (dateTo) params.set('dateTo', dateTo);
                 const href = `/admin/bookings${params.toString() ? `?${params.toString()}` : ''}`;
                 return (
                   <a
@@ -146,7 +152,7 @@ export default async function AdminBookingsPage({
           </div>
           
           <div className="flex items-center gap-4 flex-wrap">
-            <DatePickerFilter label="วันนัดหมาย" />
+            <DateRangePickerFilter label="วันนัดหมาย" />
             
             <div className="flex items-center gap-4 text-[13px] text-slate-500 bg-white px-4 py-2 rounded-lg border border-slate-200/60 shadow-sm font-medium w-fit">
               <span className="flex items-center gap-2">

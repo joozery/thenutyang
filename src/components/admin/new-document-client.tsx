@@ -7,14 +7,17 @@ import {
   ArrowLeft, Plus, Trash2, Send, FileText,
   User, Phone, Hash, ChevronDown,
   AlertCircle, Receipt, FileEdit, FileMinus, FileClock,
-  Search, X, Building2, MapPin, Car, UserPlus, Wrench, PackageSearch, Gauge,
+  Search, X, Building2, MapPin, Car, UserPlus, Wrench, PackageSearch, Gauge, HardHat,
 } from 'lucide-react';
 import { createDocument, updateDocument } from '@/app/actions/documents';
 import type { DocFormPayload } from '@/app/actions/documents';
 import type { DocType, PaymentMethod } from '@/lib/documents';
 import type { UnifiedCustomerRow } from '@/lib/customers';
+import type { VehicleEntry } from '@/app/actions/customers';
 import type { ProductRow } from '@/lib/products';
 import type { ServiceItemRow } from '@/lib/service-items';
+import type { getActiveEmployees } from '@/lib/employees';
+type ActiveEmployee = Awaited<ReturnType<typeof getActiveEmployees>>[number];
 import { createServiceItem } from '@/app/actions/service-items';
 import { PickerModal } from '@/components/admin/picker-modal';
 import { CustomerModal } from '@/components/admin/customers-client';
@@ -57,6 +60,7 @@ export type DocPrefill = {
   items: { description: string; qty: number; unitPrice: number; discount: number }[];
   vatRate:       number;
   paymentMethod: PaymentMethod;
+  technicianName?: string;
   note:          string;
   showPaymentInfo?:   boolean;
   dueDate?:           string;
@@ -106,12 +110,14 @@ export function NewDocumentClient({
   customers = [],
   products = [],
   serviceItems = [],
+  employees = [],
   prefill,
   editTarget,
 }: {
   customers?: UnifiedCustomerRow[];
   products?: ProductRow[];
   serviceItems?: ServiceItemRow[];
+  employees?: ActiveEmployee[];
   prefill?: DocPrefill;
   editTarget?: DocEditTarget;
 }) {
@@ -126,6 +132,9 @@ export function NewDocumentClient({
   const [customerName,    setCustomerName]    = useState(prefill?.customerName ?? '');
   const [customerPhone,   setCustomerPhone]   = useState(prefill?.customerPhone ?? '');
   const prefillCar = parseCarInfo(prefill?.customerCar ?? '');
+  const [carBrand,     setCarBrand]     = useState(prefillCar.carBrand);
+  const [carModel,     setCarModel]     = useState(prefillCar.carModel);
+  const [carColor,     setCarColor]     = useState(prefillCar.carColor);
   const [licensePlate, setLicensePlate] = useState(prefillCar.licensePlate);
   const [mileage,      setMileage]      = useState(prefillCar.mileage);
   const [bookingRef]                          = useState(prefill?.bookingRef ?? '');
@@ -134,16 +143,38 @@ export function NewDocumentClient({
   const [customerSelected, setCustomerSelected] = useState(false);
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
+  const [customerVehicles, setCustomerVehicles] = useState<VehicleEntry[]>([]);
+  const [selectedVehicleIdx, setSelectedVehicleIdx] = useState(0);
+
+  function applyVehicle(v: VehicleEntry) {
+    setCarBrand(v.carBrand);
+    setCarModel(v.carModel);
+    setCarColor(v.carColor);
+    setLicensePlate(v.licensePlate);
+    setMileage(v.mileage);
+  }
 
   function selectCustomer(c: UnifiedCustomerRow) {
     setCustomerName(c.name);
     setCustomerPhone(c.phone);
     setCustomerAddress(c.address);
     setCustomerTaxId(c.taxId);
-    const car = parseCarInfo(c.carInfo);
-    setLicensePlate(car.licensePlate);
-    setMileage(car.mileage);
     setCustomerSelected(true);
+
+    if (c.vehicles && c.vehicles.length > 0) {
+      setCustomerVehicles(c.vehicles);
+      setSelectedVehicleIdx(0);
+      applyVehicle(c.vehicles[0]);
+    } else {
+      setCustomerVehicles([]);
+      setSelectedVehicleIdx(0);
+      const car = parseCarInfo(c.carInfo);
+      setCarBrand(car.carBrand);
+      setCarModel(car.carModel);
+      setCarColor(car.carColor);
+      setLicensePlate(car.licensePlate);
+      setMileage(car.mileage);
+    }
   }
 
   function clearCustomerSelection() {
@@ -152,21 +183,38 @@ export function NewDocumentClient({
     setCustomerPhone('');
     setCustomerAddress('');
     setCustomerTaxId('');
+    setCustomerVehicles([]);
+    setSelectedVehicleIdx(0);
+    setCarBrand('');
+    setCarModel('');
+    setCarColor('');
     setLicensePlate('');
     setMileage('');
   }
 
-  function handleNewCustomerSaved(c?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string }) {
+  function handleNewCustomerSaved(c?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string; vehicles: VehicleEntry[] }) {
     setAddCustomerOpen(false);
     if (!c) return;
     setCustomerName(c.name);
     setCustomerPhone(c.phone);
     setCustomerAddress(c.address);
     setCustomerTaxId(c.taxId);
-    const car = parseCarInfo(c.carInfo);
-    setLicensePlate(car.licensePlate);
-    setMileage(car.mileage);
     setCustomerSelected(true);
+
+    if (c.vehicles && c.vehicles.length > 0) {
+      setCustomerVehicles(c.vehicles);
+      setSelectedVehicleIdx(0);
+      applyVehicle(c.vehicles[0]);
+    } else {
+      setCustomerVehicles([]);
+      setSelectedVehicleIdx(0);
+      const car = parseCarInfo(c.carInfo);
+      setCarBrand(car.carBrand);
+      setCarModel(car.carModel);
+      setCarColor(car.carColor);
+      setLicensePlate(car.licensePlate);
+      setMileage(car.mileage);
+    }
   }
 
   // line items
@@ -218,8 +266,9 @@ export function NewDocumentClient({
   const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>(prefill?.paymentMethod ?? 'cash');
 
   // meta
-  const [dueDate, setDueDate] = useState(prefill?.dueDate ?? '');
-  const [note,    setNote]    = useState(prefill?.note ?? '');
+  const [dueDate,         setDueDate]         = useState(prefill?.dueDate ?? '');
+  const [note,            setNote]            = useState(prefill?.note ?? '');
+  const [technicianName,  setTechnicianName]  = useState(prefill?.technicianName ?? '');
   const [showPaymentInfo, setShowPaymentInfo] = useState(prefill?.showPaymentInfo ?? false);
 
   // error
@@ -276,7 +325,7 @@ export function NewDocumentClient({
         type:         docType,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        customerCar:   composeCarInfo(licensePlate, mileage),
+        customerCar:   composeCarInfo({ carBrand, carModel, carColor, licensePlate, mileage }),
         bookingRef:    bookingRef,
         customerAddress: customerAddress.trim(),
         customerTaxId:   customerTaxId.trim(),
@@ -293,6 +342,7 @@ export function NewDocumentClient({
         vatAmount:     calc.vatAmount,
         grandTotal:    calc.grandTotal,
         paymentMethod,
+        technicianName: technicianName.trim(),
         note:          note.trim(),
         showPaymentInfo,
         dueDate,
@@ -419,6 +469,34 @@ export function NewDocumentClient({
               </div>
             </div>
             <div>
+              <Label>ช่างผู้รับผิดชอบ</Label>
+              <div className="relative">
+                <HardHat size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  value={technicianName}
+                  onChange={e => setTechnicianName(e.target.value)}
+                  className={inputCls + ' appearance-none pl-8 pr-9'}
+                >
+                  <option value="">— ไม่ระบุ —</option>
+                  {Object.entries(
+                    employees.reduce<Record<string, ActiveEmployee[]>>((acc, emp) => {
+                      (acc[emp.role] ??= []).push(emp);
+                      return acc;
+                    }, {})
+                  ).map(([role, list]) => (
+                    <optgroup key={role} label={role}>
+                      {list.map(emp => (
+                        <option key={emp.id} value={emp.name}>
+                          {emp.name}{emp.nickname ? ` (${emp.nickname})` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
               <Label>หมายเหตุ</Label>
               <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="หมายเหตุเพิ่มเติม..." className={inputCls + ' resize-none'} />
             </div>
@@ -443,13 +521,35 @@ export function NewDocumentClient({
             <div>
               <Label required>ชื่อลูกค้า</Label>
               {customerSelected ? (
-                <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-green-200 bg-green-50">
-                  <span className="text-sm font-semibold text-green-700 flex items-center gap-1.5">
-                    <Search size={13} /> {customerName} <span className="text-[11px] text-green-500 font-normal">(เลือกจากรายชื่อลูกค้า)</span>
-                  </span>
-                  <button type="button" onClick={clearCustomerSelection} className="text-green-600 hover:text-green-800">
-                    <X size={14} />
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-green-200 bg-green-50">
+                    <span className="text-sm font-semibold text-green-700 flex items-center gap-1.5">
+                      <Search size={13} /> {customerName} <span className="text-[11px] text-green-500 font-normal">(เลือกจากรายชื่อลูกค้า)</span>
+                    </span>
+                    <button type="button" onClick={clearCustomerSelection} className="text-green-600 hover:text-green-800">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {customerVehicles.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Car size={13} className="text-slate-400 shrink-0" />
+                      <select
+                        value={selectedVehicleIdx}
+                        onChange={e => {
+                          const idx = Number(e.target.value);
+                          setSelectedVehicleIdx(idx);
+                          applyVehicle(customerVehicles[idx]);
+                        }}
+                        className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-green-400 bg-white"
+                      >
+                        {customerVehicles.map((v, i) => (
+                          <option key={i} value={i}>
+                            {[v.carBrand, v.carModel, v.carColor, v.licensePlate].filter(Boolean).join(' ') || `รถคันที่ ${i + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex gap-2">

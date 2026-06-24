@@ -24,12 +24,14 @@ const EXPENSE_CATEGORIES = ['ค่าน้ำ', 'ค่าไฟ', 'ค่า�
 export function FinanceClient({
   summary,
   activeRange,
-  activeDate,
+  activeDateFrom,
+  activeDateTo,
   periodLabel,
 }: {
   summary: FinanceSummary;
   activeRange: string;
-  activeDate?: string;
+  activeDateFrom?: string;
+  activeDateTo?: string;
   periodLabel: string;
 }) {
   const router = useRouter();
@@ -78,20 +80,35 @@ export function FinanceClient({
           <p className="text-sm text-slate-500 mt-1">ภาพรวมการเงิน — {periodLabel}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <input
-            type="date"
-            value={activeDate || ''}
-            onChange={e => {
-              if (e.target.value) {
-                router.push(`/admin/finance?date=${e.target.value}`);
-              } else {
-                router.push(`/admin/finance?range=this_month`);
-              }
-            }}
-            className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white"
-          />
+          <div className="flex items-center gap-1.5">
+            <input
+              type="date"
+              value={activeDateFrom || ''}
+              max={activeDateTo || undefined}
+              onChange={e => {
+                const params = new URLSearchParams();
+                if (e.target.value) params.set('dateFrom', e.target.value);
+                if (activeDateTo) params.set('dateTo', activeDateTo);
+                router.push(params.toString() ? `/admin/finance?${params.toString()}` : '/admin/finance?range=this_month');
+              }}
+              className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white"
+            />
+            <span className="text-slate-400 text-sm">–</span>
+            <input
+              type="date"
+              value={activeDateTo || ''}
+              min={activeDateFrom || undefined}
+              onChange={e => {
+                const params = new URLSearchParams();
+                if (activeDateFrom) params.set('dateFrom', activeDateFrom);
+                if (e.target.value) params.set('dateTo', e.target.value);
+                router.push(params.toString() ? `/admin/finance?${params.toString()}` : '/admin/finance?range=this_month');
+              }}
+              className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white"
+            />
+          </div>
           <select
-            value={activeDate ? '' : activeRange}
+            value={(activeDateFrom || activeDateTo) ? '' : activeRange}
             onChange={e => {
               if (e.target.value) {
                 router.push(`/admin/finance?range=${e.target.value}`);
@@ -99,7 +116,7 @@ export function FinanceClient({
             }}
             className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white"
           >
-            {activeDate && <option value="" disabled className="hidden">เลือกช่วงเวลา</option>}
+            {(activeDateFrom || activeDateTo) && <option value="" disabled className="hidden">เลือกช่วงเวลา</option>}
             {Object.entries(RANGE_LABEL).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}

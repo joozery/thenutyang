@@ -26,7 +26,7 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-const inputCls = 'w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-500/10 transition-colors placeholder:text-slate-300 disabled:bg-slate-50 disabled:text-slate-400';
+const inputCls = 'w-full px-3 py-2.5 rounded-md border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-500/10 transition-colors placeholder:text-slate-300 disabled:bg-slate-50 disabled:text-slate-400';
 
 // ── Move Modal (รับเข้า / เบิกออก / ปรับสต๊อก) ─────────────────────────────
 
@@ -85,15 +85,15 @@ function MoveModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-md mx-4">
+      <div className="relative bg-white rounded-md shadow-2xl w-full max-w-md mx-4">
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${type === 'in' ? 'bg-emerald-100 text-emerald-600' : type === 'out' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-600'}`}>
+            <div className={`w-8 h-8 rounded-md flex items-center justify-center ${type === 'in' ? 'bg-emerald-100 text-emerald-600' : type === 'out' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-600'}`}>
               {type === 'in' ? <ArrowDownCircle size={16} /> : type === 'out' ? <ArrowUpCircle size={16} /> : <SlidersHorizontal size={16} />}
             </div>
             <h2 className="text-base font-black text-slate-900">{TITLES[type]}</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={18} /></button>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400"><X size={18} /></button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -102,7 +102,7 @@ function MoveModal({
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">สินค้า <span className="text-green-500">*</span></label>
             <div className="relative">
               <div
-                className="flex items-center w-full border border-slate-200 rounded-lg overflow-hidden focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-500/10 transition-colors bg-white"
+                className="flex items-center w-full border border-slate-200 rounded-md overflow-hidden focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-500/10 transition-colors bg-white"
               >
                 <Search size={14} className="ml-3 text-slate-400 shrink-0" />
                 <input
@@ -130,7 +130,7 @@ function MoveModal({
               
               {/* Dropdown list */}
               {(!productId || (selected && search !== selected.label)) && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
                   {filteredProducts.length === 0 ? (
                     <div className="px-4 py-3 text-sm text-slate-500 text-center">ไม่พบสินค้า</div>
                   ) : (
@@ -206,18 +206,18 @@ function MoveModal({
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 text-sm text-red-600 font-medium">
+            <div className="bg-red-50 border border-red-100 rounded-md px-4 py-3 text-sm text-red-600 font-medium">
               {error}
             </div>
           )}
         </div>
 
         <div className="p-5 border-t border-slate-100 flex gap-3">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50">ยกเลิก</button>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-md text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50">ยกเลิก</button>
           <button
             onClick={handleSubmit}
             disabled={!isValid || isPending}
-            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+            className={`flex-1 px-4 py-2.5 rounded-md text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
               type === 'in' ? 'bg-emerald-600 hover:bg-emerald-700' : type === 'out' ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-700 hover:bg-slate-800'
             }`}
           >
@@ -260,25 +260,25 @@ function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: st
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             placeholder="ค้นหาสินค้า, SKU, บาร์โค้ด..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 text-[13px] text-slate-700 focus:outline-none focus:border-[#008a44] transition-colors"
+            className="w-full pl-10 pr-4 py-2.5 rounded-md border border-slate-200 text-[13px] text-slate-700 focus:outline-none focus:border-[#008a44] transition-colors"
           />
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar shrink-0">
           <button
             onClick={() => { setFilter('all'); setPage(1); }}
-            className={`px-5 py-2.5 rounded-lg text-[13px] font-bold whitespace-nowrap transition-colors ${filter === 'all' ? 'bg-[#008a44] text-white shadow-sm shadow-green-500/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+            className={`px-5 py-2.5 rounded-md text-[13px] font-bold whitespace-nowrap transition-colors ${filter === 'all' ? 'bg-[#008a44] text-white shadow-sm ' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
           >
             ทั้งหมด
           </button>
           <button
             onClick={() => { setFilter('low'); setPage(1); }}
-            className={`px-4 py-2.5 rounded-lg text-[13px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${filter === 'low' ? 'bg-[#008a44] text-white shadow-sm shadow-green-500/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+            className={`px-4 py-2.5 rounded-md text-[13px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${filter === 'low' ? 'bg-[#008a44] text-white shadow-sm ' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
           >
             <span className={`text-xs ${filter === 'low' ? 'text-white/80' : 'text-slate-400'}`}>{lowCount}</span> ใกล้หมด
           </button>
           <button
             onClick={() => { setFilter('ok'); setPage(1); }}
-            className={`px-5 py-2.5 rounded-lg text-[13px] font-bold whitespace-nowrap transition-colors ${filter === 'ok' ? 'bg-[#008a44] text-white shadow-sm shadow-green-500/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+            className={`px-5 py-2.5 rounded-md text-[13px] font-bold whitespace-nowrap transition-colors ${filter === 'ok' ? 'bg-[#008a44] text-white shadow-sm ' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
           >
             ปกติ
           </button>
@@ -287,7 +287,7 @@ function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: st
       <div className="overflow-x-auto flex-1">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-[12px] text-slate-400 font-bold uppercase tracking-wide border-b border-slate-50 bg-slate-50/50">
+            <tr className="text-[12px] text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200 bg-slate-50">
               <th className="text-left px-5 py-4">สินค้า</th>
               <th className="text-center px-5 py-4">สต๊อก</th>
               <th className="text-right px-5 py-4">ราคาทุน</th>
@@ -303,7 +303,7 @@ function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: st
               <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-4">
-                    <img src={p.image} alt={p.label} className="w-10 h-10 object-contain rounded-lg shrink-0" />
+                    <img src={p.image} alt={p.label} className="w-10 h-10 object-contain rounded-md shrink-0" />
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
                         {p.brandLogo && (
@@ -352,18 +352,18 @@ function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: st
           แสดง {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filtered.length)} จาก {filtered.length} รายการ
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&lt;</button>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&lt;</button>
           
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#008a44] text-white font-bold text-[13px]">{page}</button>
-          {page < totalPages && <button onClick={() => setPage(page + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 1}</button>}
-          {page + 1 < totalPages && <button onClick={() => setPage(page + 2)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 2}</button>}
+          <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[#008a44] text-white font-bold text-[13px]">{page}</button>
+          {page < totalPages && <button onClick={() => setPage(page + 1)} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 1}</button>}
+          {page + 1 < totalPages && <button onClick={() => setPage(page + 2)} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 2}</button>}
           
           {totalPages > 3 && page + 2 < totalPages && <span className="px-2 text-slate-400 text-xs">...</span>}
-          {totalPages > 3 && page + 2 < totalPages && <button onClick={() => setPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{totalPages}</button>}
+          {totalPages > 3 && page + 2 < totalPages && <button onClick={() => setPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{totalPages}</button>}
           
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&gt;</button>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&gt;</button>
         </div>
-        <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 cursor-pointer transition-colors">
+        <div className="flex items-center gap-2 border border-slate-200 rounded-md px-3 py-2 hover:bg-slate-50 cursor-pointer transition-colors">
           <span className="text-[12px] font-bold text-slate-500">10 / หน้า</span>
           <ArrowDownCircle size={12} className="text-slate-400 opacity-50" />
         </div>
@@ -400,7 +400,7 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             placeholder="ค้นหาสินค้า, เลขอ้างอิง..."
-            className="w-full pl-8 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-[#008a44]"
+            className="w-full pl-8 pr-4 py-2.5 rounded-md border border-slate-200 text-sm focus:outline-none focus:border-[#008a44]"
           />
         </div>
       </div>
@@ -457,18 +457,18 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
           แสดง {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filtered.length)} จาก {filtered.length} รายการ
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&lt;</button>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&lt;</button>
           
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#008a44] text-white font-bold text-[13px]">{page}</button>
-          {page < totalPages && <button onClick={() => setPage(page + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 1}</button>}
-          {page + 1 < totalPages && <button onClick={() => setPage(page + 2)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 2}</button>}
+          <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[#008a44] text-white font-bold text-[13px]">{page}</button>
+          {page < totalPages && <button onClick={() => setPage(page + 1)} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 1}</button>}
+          {page + 1 < totalPages && <button onClick={() => setPage(page + 2)} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 2}</button>}
           
           {totalPages > 3 && page + 2 < totalPages && <span className="px-2 text-slate-400 text-xs">...</span>}
-          {totalPages > 3 && page + 2 < totalPages && <button onClick={() => setPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{totalPages}</button>}
+          {totalPages > 3 && page + 2 < totalPages && <button onClick={() => setPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{totalPages}</button>}
           
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&gt;</button>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&gt;</button>
         </div>
-        <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 cursor-pointer transition-colors">
+        <div className="flex items-center gap-2 border border-slate-200 rounded-md px-3 py-2 hover:bg-slate-50 cursor-pointer transition-colors">
           <span className="text-[12px] font-bold text-slate-500">10 / หน้า</span>
           <ArrowDownCircle size={12} className="text-slate-400 opacity-50" />
         </div>
@@ -524,13 +524,13 @@ export function WarehouseClient({
             )}
             <button
               onClick={() => setModal('in')}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[#008a44] text-[13px] font-bold text-[#008a44] hover:bg-green-50 transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-md border border-[#008a44] text-[13px] font-bold text-[#008a44] hover:bg-green-50 transition-colors"
             >
               <ArrowDownCircle size={16} /> รับสินค้าเข้า
             </button>
             <button
               onClick={() => setModal('out')}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#008a44] text-[13px] font-bold text-white hover:bg-[#007339] transition-colors shadow-sm shadow-green-500/20"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#008a44] text-[13px] font-bold text-white hover:bg-[#007339] transition-colors shadow-sm "
             >
               <ArrowUpCircle size={16} /> เบิกสินค้าออก
             </button>
@@ -540,19 +540,19 @@ export function WarehouseClient({
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           {[
-            { label: 'มูลค่าสต๊อกรวม', value: `฿${(stats.totalValue / 1000).toFixed(0)}K`, sub: `${stats.totalItems.toLocaleString()} ชิ้น`, color: 'text-[#008a44]', icon: <Package size={20} className="text-[#008a44]" />, bg: 'bg-[#008a44]/10' },
-            { label: 'สินค้าทั้งหมด',   value: String(stats.totalItems), sub: `< 8 เส้น`, color: 'text-amber-500', icon: <Tag size={20} className="text-amber-500" />, bg: 'bg-amber-50' },
-            { label: 'รับเข้าวันนี้',   value: `+${stats.todayIn}`,  sub: '0 ชิ้น', color: 'text-[#008a44]', icon: <Download size={20} className="text-[#008a44]" />, bg: 'bg-[#008a44]/10' },
-            { label: 'เบิกออกวันนี้',   value: `-${stats.todayOut}`, sub: '0 ชิ้น', color: 'text-red-500', icon: <Upload size={20} className="text-red-500" />, bg: 'bg-red-50' },
-            { label: 'คงเหลือสุทธิ',    value: stats.todayIn - stats.todayOut >= 0 ? `+${stats.todayIn - stats.todayOut}` : String(stats.todayIn - stats.todayOut), sub: 'วันนี้', color: 'text-slate-900', icon: <TrendingUp size={20} className="text-slate-500" />, bg: 'bg-slate-100' },
+            { label: 'มูลค่าสต๊อกรวม', value: `฿${(stats.totalValue / 1000).toFixed(0)}K`, sub: `${stats.totalItems.toLocaleString()} ชิ้น`, color: 'text-slate-800', icon: <Package size={18} className="text-emerald-600" />, bg: 'bg-emerald-50' },
+            { label: 'สินค้าทั้งหมด',   value: String(stats.totalItems), sub: `< 8 เส้น`, color: 'text-slate-800', icon: <Tag size={18} className="text-blue-600" />, bg: 'bg-blue-50' },
+            { label: 'รับเข้าวันนี้',   value: `+${stats.todayIn}`,  sub: '0 ชิ้น', color: 'text-emerald-600', icon: <Download size={18} className="text-emerald-600" />, bg: 'bg-emerald-50' },
+            { label: 'เบิกออกวันนี้',   value: `-${stats.todayOut}`, sub: '0 ชิ้น', color: 'text-rose-600', icon: <Upload size={18} className="text-rose-600" />, bg: 'bg-rose-50' },
+            { label: 'คงเหลือสุทธิ',    value: stats.todayIn - stats.todayOut >= 0 ? `+${stats.todayIn - stats.todayOut}` : String(stats.todayIn - stats.todayOut), sub: 'วันนี้', color: 'text-slate-800', icon: <TrendingUp size={18} className="text-indigo-600" />, bg: 'bg-indigo-50' },
           ].map(s => (
-            <div key={s.label} className="bg-white rounded-lg border border-slate-100 p-5 flex items-center justify-between shadow-[0_1px_3px_rgb(0,0,0,0.01)] hover:shadow-md transition-shadow">
+            <div key={s.label} className="bg-white rounded-md border border-slate-100 p-5 flex items-center justify-between shadow-[0_1px_3px_rgb(0,0,0,0.01)] hover:shadow-md transition-shadow">
               <div>
                 <p className="text-[12px] text-slate-400 font-bold">{s.label}</p>
                 <p className={`text-xl font-black mt-1.5 ${s.color}`}>{s.value}</p>
                 <p className="text-[11px] text-slate-400 mt-1 font-medium">{s.sub}</p>
               </div>
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${s.bg}`}>
+              <div className={`w-12 h-12 rounded-md flex items-center justify-center shrink-0 ${s.bg}`}>
                 {s.icon}
               </div>
             </div>
@@ -562,7 +562,7 @@ export function WarehouseClient({
         {/* Main content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Tabs */}
-          <div className="lg:col-span-2 bg-white rounded-lg border border-slate-100 overflow-hidden shadow-sm flex flex-col">
+          <div className="lg:col-span-2 bg-white rounded-md border border-slate-100 overflow-hidden shadow-sm flex flex-col">
             {/* Tab bar */}
             <div className="flex border-b border-slate-100 px-2 pt-2">
               {([
@@ -592,7 +592,7 @@ export function WarehouseClient({
           {/* Right sidebar */}
           <div className="space-y-5">
             {/* Low stock */}
-            <div className="bg-white rounded-lg border border-slate-100 p-6 shadow-sm">
+            <div className="bg-white rounded-md border border-slate-100 p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-6">
                 <AlertTriangle size={18} className="text-amber-500" />
                 <h2 className="font-bold text-slate-800 text-[15px]">สินค้าใกล้หมด</h2>
@@ -629,7 +629,7 @@ export function WarehouseClient({
             </div>
 
             {/* Today summary */}
-            <div className="bg-white rounded-lg border border-slate-100 p-6 shadow-sm relative overflow-hidden">
+            <div className="bg-white rounded-md border border-slate-100 p-6 shadow-sm relative overflow-hidden">
               <div className="flex items-center gap-2 mb-5 relative z-10">
                 <Package size={18} className="text-slate-400" />
                 <h3 className="font-bold text-slate-800 text-[15px]">สรุปสต๊อกวันนี้</h3>

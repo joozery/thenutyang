@@ -1,5 +1,6 @@
 import connectDB from './mongodb';
 import { Customer } from '@/models/Customer';
+import type { VehicleEntry } from '@/models/Customer';
 
 export type CustomerDirectoryRow = {
   id: string;
@@ -13,6 +14,7 @@ export type CustomerDirectoryRow = {
   address: string;
   taxId: string;
   carInfo: string;
+  vehicles: VehicleEntry[];
   note: string;
   source: 'online' | 'walkin';
   createdAt: string;
@@ -40,6 +42,7 @@ export async function getCustomerDirectory(): Promise<CustomerDirectoryRow[]> {
     address: d.address ?? '',
     taxId: d.taxId ?? '',
     carInfo: d.carInfo ?? '',
+    vehicles: (d.vehicles as VehicleEntry[] | undefined) ?? [],
     note: d.note ?? '',
     source: (d.source as 'online' | 'walkin') ?? 'walkin',
     createdAt: d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt ?? ''),

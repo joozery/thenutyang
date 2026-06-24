@@ -34,6 +34,8 @@ const financialDocSchema = new Schema({
   paymentMethod: { type: String, enum: ['cash', 'transfer', 'credit_card', 'pending'], default: 'pending' },
   paidAt:        { type: Date, default: null },
 
+  technicianName: { type: String, default: '' },
+
   status:        { type: String, required: true, default: 'unpaid' },
   note:          { type: String, default: '' },
   showPaymentInfo: { type: Boolean, default: false },

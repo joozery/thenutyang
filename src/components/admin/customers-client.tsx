@@ -1,14 +1,19 @@
 'use client';
 
 import { useState, useMemo, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Search, Phone, FileText, ChevronLeft, ChevronRight, Crown, UserCheck, Sparkles,
   Download, Filter, Plus, X, Pencil, Trash2, Building2, Mail, MapPin, Hash, Car, Gauge,
 } from 'lucide-react';
 import type { UnifiedCustomerRow } from '@/lib/customers';
-import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput } from '@/app/actions/customers';
+import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput, type VehicleEntry } from '@/app/actions/customers';
 import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
+
+function emptyVehicle(): VehicleEntry {
+  return { carBrand: '', carModel: '', carColor: '', licensePlate: '', mileage: '' };
+}
 
 function formatLastVisit(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -38,7 +43,9 @@ const TAG_ICON: Record<string, React.ReactNode> = {
 const EMPTY_FORM: CustomerFormInput = {
   customerType: 'individual',
   firstName: '', lastName: '', companyName: '',
-  phone: '', email: '', address: '', taxId: '', carInfo: '', note: '',
+  phone: '', email: '', address: '', taxId: '', carInfo: '',
+  vehicles: [],
+  note: '',
 };
 
 type EditableCustomer = UnifiedCustomerRow & { id: string };
@@ -48,8 +55,17 @@ export function CustomerModal({
 }: {
   initial: EditableCustomer | null;
   onClose: () => void;
-  onSaved: (customer?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string }) => void;
+  onSaved: (customer?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string; vehicles: VehicleEntry[] }) => void;
 }) {
+  function initVehicles(): VehicleEntry[] {
+    if (initial?.vehicles?.length) return initial.vehicles.map(v => ({ ...v }));
+    const p = parseCarInfo(initial?.carInfo ?? '');
+    if (p.licensePlate || p.carBrand || p.carModel) {
+      return [{ carBrand: p.carBrand, carModel: p.carModel, carColor: p.carColor, licensePlate: p.licensePlate, mileage: p.mileage }];
+    }
+    return [emptyVehicle()];
+  }
+
   const [form, setForm] = useState<CustomerFormInput>(
     initial
       ? {
@@ -62,13 +78,11 @@ export function CustomerModal({
           address: initial.address,
           taxId: initial.taxId,
           carInfo: initial.carInfo,
+          vehicles: initVehicles(),
           note: initial.note,
         }
-      : EMPTY_FORM
+      : { ...EMPTY_FORM, vehicles: [emptyVehicle()] }
   );
-  const initialCar = parseCarInfo(initial?.carInfo ?? '');
-  const [licensePlate, setLicensePlate] = useState(initialCar.licensePlate);
-  const [mileage,      setMileage]      = useState(initialCar.mileage);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -77,9 +91,26 @@ export function CustomerModal({
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function setVehicle(idx: number, field: keyof VehicleEntry, value: string) {
+    setForm(f => {
+      const v = f.vehicles.map((ve, i) => i === idx ? { ...ve, [field]: value } : ve);
+      return { ...f, vehicles: v };
+    });
+  }
+
+  function addVehicle() {
+    setForm(f => ({ ...f, vehicles: [...f.vehicles, emptyVehicle()] }));
+  }
+
+  function removeVehicle(idx: number) {
+    setForm(f => ({ ...f, vehicles: f.vehicles.filter((_, i) => i !== idx) }));
+  }
+
   function handleSubmit() {
     setError('');
-    const finalForm = { ...form, carInfo: composeCarInfo(licensePlate, mileage) };
+    const validVehicles = form.vehicles.filter(v => v.licensePlate.trim() || v.carBrand.trim() || v.carModel.trim());
+    const carInfo = validVehicles.length > 0 ? composeCarInfo(validVehicles[0]) : '';
+    const finalForm = { ...form, vehicles: validVehicles, carInfo };
     startTransition(async () => {
       const result = initial ? await updateCustomer(initial.id, finalForm) : await createCustomer(finalForm);
       if (result.error) setError(result.error);
@@ -157,20 +188,51 @@ export function CustomerModal({
             <input value={form.taxId} onChange={(e) => set('taxId', e.target.value)} placeholder="0-0000-00000-00-0" className={inputCls} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Car size={11} /> ทะเบียนรถ</label>
-              <input value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} placeholder="กก-1234 กรุงเทพฯ" className={inputCls} />
+          {/* Multi-vehicle section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500"><Car size={11} /> รถของลูกค้า ({form.vehicles.length} คัน)</label>
+              <button type="button" onClick={addVehicle} className="inline-flex items-center gap-1 text-[11px] font-bold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-lg hover:bg-green-100 transition-colors">
+                <Plus size={11} /> เพิ่มรถ
+              </button>
             </div>
-            <div>
-              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Gauge size={11} /> ไมล์ปัจจุบัน (กม.)</label>
-              <input
-                value={mileage}
-                onChange={(e) => setMileage(e.target.value.replace(/[^\d,]/g, ''))}
-                placeholder="45,000"
-                className={inputCls}
-              />
-            </div>
+
+            {form.vehicles.map((v, idx) => (
+              <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">รถคันที่ {idx + 1}</span>
+                  {form.vehicles.length > 1 && (
+                    <button type="button" onClick={() => removeVehicle(idx)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">ยี่ห้อ</label>
+                    <input value={v.carBrand} onChange={e => setVehicle(idx, 'carBrand', e.target.value)} placeholder="Toyota" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">รุ่น</label>
+                    <input value={v.carModel} onChange={e => setVehicle(idx, 'carModel', e.target.value)} placeholder="Camry" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">สี</label>
+                    <input value={v.carColor} onChange={e => setVehicle(idx, 'carColor', e.target.value)} placeholder="ขาว" className={inputCls} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 mb-1">ทะเบียน</label>
+                    <input value={v.licensePlate} onChange={e => setVehicle(idx, 'licensePlate', e.target.value)} placeholder="กก-1234 กทม." className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 mb-1"><Gauge size={9} /> ไมล์ (กม.)</label>
+                    <input value={v.mileage} onChange={e => setVehicle(idx, 'mileage', e.target.value.replace(/[^\d,]/g, ''))} placeholder="45,000" className={inputCls} />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div>
@@ -358,8 +420,21 @@ export function CustomersClient({ customers }: { customers: UnifiedCustomerRow[]
                         )}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800 text-sm">{c.name}</p>
-                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">ID: {(page - 1) * PAGE_SIZE + i + 1}</p>
+                        {c.id ? (
+                          <Link href={`/admin/customers/${c.id}`} className="font-bold text-slate-800 text-sm hover:text-green-700 transition-colors">
+                            {c.name}
+                          </Link>
+                        ) : (
+                          <p className="font-bold text-slate-800 text-sm">{c.name}</p>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">#{(page - 1) * PAGE_SIZE + i + 1}</p>
+                          {c.vehicles.length > 0 && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-100">
+                              <Car size={9} /> {c.vehicles.length} คัน
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>

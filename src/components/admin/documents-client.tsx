@@ -354,6 +354,22 @@ function ViewModal({
                   <span className="font-bold text-slate-800">ยอดรวมสุทธิ</span>
                   <span className="text-2xl font-black text-slate-900 tabular-nums tracking-tight">฿{fmtMoney(doc.grandTotal)}</span>
                 </div>
+                {bookingStatus && bookingStatus.depositStatus === 'verified' && bookingStatus.depositAmount > 0 && (
+                  <>
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-emerald-600 font-medium flex items-center gap-1.5">
+                        <CheckCircle size={13} /> มัดจำที่รับแล้ว
+                      </span>
+                      <span className="text-emerald-600 font-bold tabular-nums">-฿{fmtMoney(bookingStatus.depositAmount)}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-emerald-100 pt-3 mt-1">
+                      <span className="font-bold text-slate-800">ยอดคงชำระ</span>
+                      <span className="text-2xl font-black text-blue-700 tabular-nums tracking-tight">
+                        ฿{fmtMoney(Math.max(0, doc.grandTotal - bookingStatus.depositAmount))}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -530,7 +546,8 @@ export function DocumentsClient({
   const [search,     setSearch]     = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statFilter, setStatFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo,   setDateTo]   = useState('');
   const [page,       setPage]       = useState(1);
 
   // modals
@@ -545,13 +562,17 @@ export function DocumentsClient({
   // filtered & paginated
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return docs.filter(d =>
-      (!q || d.docNumber.toLowerCase().includes(q) || d.customerName.toLowerCase().includes(q)) &&
-      (!typeFilter || d.type === typeFilter) &&
-      (!statFilter || d.status === statFilter) &&
-      (!dateFilter || d.issuedAt.startsWith(dateFilter))
-    );
-  }, [docs, search, typeFilter, statFilter, dateFilter]);
+    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+    return docs.filter(d => {
+      const issuedTime = new Date(d.issuedAt).getTime();
+      return (!q || d.docNumber.toLowerCase().includes(q) || d.customerName.toLowerCase().includes(q)) &&
+        (!typeFilter || d.type === typeFilter) &&
+        (!statFilter || d.status === statFilter) &&
+        (!fromTime || issuedTime >= fromTime) &&
+        (!toTime || issuedTime <= toTime);
+    });
+  }, [docs, search, typeFilter, statFilter, dateFrom, dateTo]);
 
   const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -769,12 +790,23 @@ export function DocumentsClient({
             />
           </div>
           <div className="flex flex-wrap gap-3">
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={e => { setDateFilter(e.target.value); setPage(1); }}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
-            />
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
+              />
+              <span className="text-slate-400 text-sm">–</span>
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
+              />
+            </div>
             <select
               value={typeFilter}
               onChange={e => { setTypeFilter(e.target.value); setPage(1); }}

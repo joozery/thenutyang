@@ -48,6 +48,7 @@ export type DocumentTemplateProps = {
   payment?: { date?: string; method?: string };
   notes?: string[];
   footerNote?: string;
+  technicianName?: string;
 };
 
 const fmt = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -81,6 +82,7 @@ export function DocumentTemplate({
   payment,
   notes = [],
   footerNote,
+  technicianName,
 }: DocumentTemplateProps) {
   const paid = paidAmount ?? grandTotal;
   const minRows = 4;
@@ -225,7 +227,7 @@ export function DocumentTemplate({
         <div className="grid grid-cols-5 gap-2 text-center">
           {[
             { role: 'ผู้ออกเอกสาร (ผู้ขาย)', sig: seller.issuerSignatureUrl, name: seller.issuerName },
-            { role: 'ผู้อนุมัติเอกสาร (ผู้ขาย)', sig: seller.approverSignatureUrl, name: seller.approverName },
+            { role: 'ช่างผู้รับผิดชอบ', sig: '', name: technicianName ?? '' },
             { role: 'ตราประทับ (ผู้ขาย)', sig: seller.stampUrl, name: '' },
             { role: 'ผู้รับเอกสาร (ลูกค้า)', sig: '', name: '' },
             { role: 'ผู้ประทับตรา (ลูกค้า)', sig: '', name: '' },

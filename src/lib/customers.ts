@@ -1,6 +1,7 @@
 import connectDB from './mongodb';
 import { Booking } from '@/models/Booking';
 import type { CustomerDirectoryRow } from './customer-directory';
+import type { VehicleEntry } from '@/models/Customer';
 import { composeCarInfo } from './car-info';
 
 export type CustomerRow = {
@@ -28,6 +29,7 @@ export type UnifiedCustomerRow = {
   address: string;
   taxId: string;
   carInfo: string;
+  vehicles: VehicleEntry[];
   note: string;
   lineUserId?: string;
   cars: string[];
@@ -52,7 +54,8 @@ export function mergeCustomerSources(
       name: b.name,
       firstName: '', lastName: '', companyName: '',
       phone: b.phone,
-      email: '', address: '', taxId: '', carInfo: b.carInfo, note: '',
+      email: '', address: '', taxId: '', carInfo: b.carInfo, vehicles: [],
+      note: '',
       lineUserId: b.lineUserId,
       cars: b.cars,
       totalBills: b.totalBills,
@@ -78,6 +81,7 @@ export function mergeCustomerSources(
       address: d.address,
       taxId: d.taxId,
       carInfo: d.carInfo || existing?.carInfo || '',
+      vehicles: d.vehicles ?? [],
       note: d.note,
       lineUserId: existing?.lineUserId,
       cars: existing
@@ -142,7 +146,7 @@ export async function getCustomers(): Promise<CustomerRow[]> {
       lineUserId: r.lineUserId as string | undefined,
       lineId:     r.lineId as string | undefined,
       cars:       r.cars as string[],
-      carInfo:    composeCarInfo((c?.licensePlate as string) ?? '', mileage != null ? String(mileage) : ''),
+      carInfo:    composeCarInfo({ licensePlate: (c?.licensePlate as string) ?? '', mileage: mileage != null ? String(mileage) : '' }),
       totalBills: r.totalBills as number,
       totalSpent: r.totalSpent as number,
       lastVisit:  r.lastVisit instanceof Date ? r.lastVisit.toISOString() : String(r.lastVisit),

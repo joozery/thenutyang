@@ -4,7 +4,15 @@ import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { Customer } from '@/models/Customer';
 
-type SavedCustomer = { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string };
+export type VehicleEntry = {
+  carBrand:     string;
+  carModel:     string;
+  carColor:     string;
+  licensePlate: string;
+  mileage:      string;
+};
+
+type SavedCustomer = { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string; vehicles: VehicleEntry[] };
 type ActionResult = { error?: string; ok?: boolean; customer?: SavedCustomer };
 
 export type CustomerFormInput = {
@@ -17,6 +25,7 @@ export type CustomerFormInput = {
   address: string;
   taxId: string;
   carInfo: string;
+  vehicles: VehicleEntry[];
   note: string;
 };
 
@@ -39,7 +48,7 @@ export async function createCustomer(input: CustomerFormInput): Promise<ActionRe
       : `${input.firstName} ${input.lastName}`.trim();
     return {
       ok: true,
-      customer: { id: String(doc._id), name, phone: input.phone, address: input.address, taxId: input.taxId, carInfo: input.carInfo },
+      customer: { id: String(doc._id), name, phone: input.phone, address: input.address, taxId: input.taxId, carInfo: input.carInfo, vehicles: input.vehicles },
     };
   } catch (err) {
     console.error('[createCustomer]', err);
