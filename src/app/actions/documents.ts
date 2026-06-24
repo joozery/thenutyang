@@ -454,7 +454,12 @@ export async function importFromBookings(): Promise<{
 export async function deleteDocument(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     await connectDB();
+    const doc = await FinancialDocument.findById(id).lean() as { docNumber?: string } | null;
     await FinancialDocument.findByIdAndDelete(id);
+    if (doc?.docNumber) {
+      const { Income } = await import('@/models/Income');
+      await Income.deleteMany({ note: { $regex: doc.docNumber } });
+    }
     revalidatePath('/admin/documents');
     return { success: true };
   } catch (err) {
