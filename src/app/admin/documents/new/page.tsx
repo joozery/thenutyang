@@ -5,6 +5,7 @@ import { getServiceItems } from '@/lib/service-items';
 import { getDocumentById } from '@/lib/documents';
 import type { DocType } from '@/lib/documents';
 import { getActiveEmployees } from '@/lib/employees';
+import { getCarBrands, getCarModels } from '@/app/actions/car-data';
 import { NewDocumentClient, type DocPrefill } from '@/components/admin/new-document-client';
 
 export const dynamic = 'force-dynamic';
@@ -26,13 +27,15 @@ export default async function NewDocumentPage({
 }) {
   const { from, type } = await searchParams;
 
-  const [bookingCustomers, directoryCustomers, products, serviceItems, sourceDoc, employees] = await Promise.all([
+  const [bookingCustomers, directoryCustomers, products, serviceItems, sourceDoc, employees, carBrands, carModels] = await Promise.all([
     getCustomers(),
     getCustomerDirectory(),
     getAllProductsAdmin(),
     getServiceItems(),
     from ? getDocumentById(from) : Promise.resolve(null),
     getActiveEmployees(),
+    getCarBrands(),
+    getCarModels(),
   ]);
   const customers = mergeCustomerSources(bookingCustomers, directoryCustomers);
 
@@ -59,5 +62,5 @@ export default async function NewDocumentPage({
     };
   }
 
-  return <NewDocumentClient customers={customers} products={products} serviceItems={serviceItems} employees={employees} prefill={prefill} />;
+  return <NewDocumentClient customers={customers} products={products} serviceItems={serviceItems} employees={employees} prefill={prefill} carBrands={carBrands} carModels={carModels} />;
 }

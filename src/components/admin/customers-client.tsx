@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Search, Phone, FileText, ChevronLeft, ChevronRight, Crown, UserCheck, Sparkles,
-  Download, Filter, Plus, X, Pencil, Trash2, Building2, Mail, MapPin, Hash, Car, Gauge,
+  Download, Filter, Plus, X, Pencil, Trash2, Building2, Mail, MapPin, Hash, Car, Gauge, ChevronDown, Check,
 } from 'lucide-react';
 import type { UnifiedCustomerRow } from '@/lib/customers';
 import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput, type VehicleEntry } from '@/app/actions/customers';
+import { createCarBrand, createCarModel } from '@/app/actions/car-data';
+import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
 
 function emptyVehicle(): VehicleEntry {
@@ -51,11 +53,13 @@ const EMPTY_FORM: CustomerFormInput = {
 type EditableCustomer = UnifiedCustomerRow & { id: string };
 
 export function CustomerModal({
-  initial, onClose, onSaved,
+  initial, onClose, onSaved, carBrands = [], carModels = [],
 }: {
   initial: EditableCustomer | null;
   onClose: () => void;
   onSaved: (customer?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string; vehicles: VehicleEntry[] }) => void;
+  carBrands?: CarBrandRow[];
+  carModels?: CarModelRow[];
 }) {
   function initVehicles(): VehicleEntry[] {
     if (initial?.vehicles?.length) return initial.vehicles.map(v => ({ ...v }));
@@ -86,6 +90,59 @@ export function CustomerModal({
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  // per-vehicle combobox state
+  const [localBrands, setLocalBrands] = useState<CarBrandRow[]>(carBrands);
+  const [localModels, setLocalModels] = useState<CarModelRow[]>(carModels);
+  const [brandDropIdx, setBrandDropIdx] = useState<number | null>(null);
+  const [modelDropIdx, setModelDropIdx] = useState<number | null>(null);
+  const [brandSearches, setBrandSearches] = useState<string[]>([]);
+  const [modelSearches, setModelSearches] = useState<string[]>([]);
+
+  function getBrandSearch(idx: number) { return brandSearches[idx] ?? ''; }
+  function getModelSearch(idx: number) { return modelSearches[idx] ?? ''; }
+  function setBrandSearch(idx: number, v: string) { setBrandSearches(prev => { const a = [...prev]; a[idx] = v; return a; }); }
+  function setModelSearch(idx: number, v: string) { setModelSearches(prev => { const a = [...prev]; a[idx] = v; return a; }); }
+
+  function filteredBrandsFor(idx: number) {
+    const q = getBrandSearch(idx).toLowerCase();
+    return localBrands.filter(b => !q || b.name.toLowerCase().includes(q));
+  }
+  function filteredModelsFor(idx: number, brandName: string) {
+    const q = getModelSearch(idx).toLowerCase();
+    const bid = localBrands.find(b => b.name.toLowerCase() === brandName.toLowerCase())?.id;
+    const base = bid ? localModels.filter(m => m.brandId === bid) : localModels;
+    return base.filter(m => !q || m.name.toLowerCase().includes(q));
+  }
+
+  async function pickBrandForVehicle(idx: number, name: string) {
+    setVehicle(idx, 'carBrand', name);
+    setVehicle(idx, 'carModel', '');
+    setBrandSearch(idx, name);
+    setModelSearch(idx, '');
+    setBrandDropIdx(null);
+    if (!localBrands.find(b => b.name.toLowerCase() === name.toLowerCase())) {
+      const fd = new FormData();
+      fd.append('name', name);
+      const res = await createCarBrand(null, fd);
+      if (res.ok || res.error?.includes('มีอยู่แล้ว')) {
+        setLocalBrands(prev => [...prev, { id: name, name }]);
+      }
+    }
+  }
+
+  async function pickModelForVehicle(idx: number, name: string, brandId?: string) {
+    setVehicle(idx, 'carModel', name);
+    setModelSearch(idx, name);
+    setModelDropIdx(null);
+    const bid = brandId ?? localBrands.find(b => b.name.toLowerCase() === form.vehicles[idx]?.carBrand?.toLowerCase())?.id ?? '';
+    if (bid && !localModels.find(m => m.name.toLowerCase() === name.toLowerCase() && m.brandId === bid)) {
+      const res = await createCarModel(bid, name);
+      if (res.ok || res.error?.includes('มีอยู่แล้ว')) {
+        setLocalModels(prev => [...prev, { id: name, name, brandId: bid }]);
+      }
+    }
+  }
 
   function set<K extends keyof CustomerFormInput>(key: K, value: CustomerFormInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -208,13 +265,89 @@ export function CustomerModal({
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div>
+                  <div className="relative">
                     <label className="block text-[10px] font-semibold text-slate-400 mb-1">ยี่ห้อ</label>
-                    <input value={v.carBrand} onChange={e => setVehicle(idx, 'carBrand', e.target.value)} placeholder="Toyota" className={inputCls} />
+                    <div className="relative">
+                      <input
+                        value={brandDropIdx === idx ? (getBrandSearch(idx) || v.carBrand) : v.carBrand}
+                        onChange={e => { setBrandSearch(idx, e.target.value); setVehicle(idx, 'carBrand', e.target.value); setBrandDropIdx(idx); }}
+                        onFocus={() => { setBrandSearch(idx, ''); setBrandDropIdx(idx); }}
+                        onBlur={() => setTimeout(() => setBrandDropIdx(null), 150)}
+                        placeholder="Toyota"
+                        autoComplete="off"
+                        className={inputCls + ' pr-6 text-xs'}
+                      />
+                      <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                    {brandDropIdx === idx && (
+                      <div className="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                        {filteredBrandsFor(idx).length === 0 && getBrandSearch(idx).trim() ? (
+                          <button type="button" onMouseDown={() => pickBrandForVehicle(idx, getBrandSearch(idx).trim())}
+                            className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-green-700 hover:bg-green-50 font-bold">
+                            <Plus size={11} /> เพิ่ม "{getBrandSearch(idx).trim()}"
+                          </button>
+                        ) : (
+                          filteredBrandsFor(idx).map(b => (
+                            <button key={b.id} type="button" onMouseDown={() => pickBrandForVehicle(idx, b.name)}
+                              className={`w-full flex items-center gap-1.5 px-3 py-2 text-xs text-left hover:bg-slate-50 ${
+                                b.name.toLowerCase() === v.carBrand.toLowerCase() ? 'bg-green-50 text-green-700 font-bold' : 'text-slate-700'
+                              }`}>
+                              {b.name.toLowerCase() === v.carBrand.toLowerCase() && <Check size={10} className="text-green-600" />}
+                              {b.name}
+                            </button>
+                          ))
+                        )}
+                        {filteredBrandsFor(idx).length > 0 && getBrandSearch(idx).trim() &&
+                          !filteredBrandsFor(idx).find(b => b.name.toLowerCase() === getBrandSearch(idx).toLowerCase()) && (
+                          <button type="button" onMouseDown={() => pickBrandForVehicle(idx, getBrandSearch(idx).trim())}
+                            className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-green-700 hover:bg-green-50 font-bold border-t border-slate-100">
+                            <Plus size={11} /> เพิ่ม "{getBrandSearch(idx).trim()}"
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div>
+                  <div className="relative">
                     <label className="block text-[10px] font-semibold text-slate-400 mb-1">รุ่น</label>
-                    <input value={v.carModel} onChange={e => setVehicle(idx, 'carModel', e.target.value)} placeholder="Camry" className={inputCls} />
+                    <div className="relative">
+                      <input
+                        value={modelDropIdx === idx ? (getModelSearch(idx) || v.carModel) : v.carModel}
+                        onChange={e => { setModelSearch(idx, e.target.value); setVehicle(idx, 'carModel', e.target.value); setModelDropIdx(idx); }}
+                        onFocus={() => { setModelSearch(idx, ''); setModelDropIdx(idx); }}
+                        onBlur={() => setTimeout(() => setModelDropIdx(null), 150)}
+                        placeholder="Camry"
+                        autoComplete="off"
+                        className={inputCls + ' pr-6 text-xs'}
+                      />
+                      <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                    {modelDropIdx === idx && (
+                      <div className="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-40 overflow-y-auto">
+                        {filteredModelsFor(idx, v.carBrand).length === 0 && getModelSearch(idx).trim() ? (
+                          <button type="button" onMouseDown={() => pickModelForVehicle(idx, getModelSearch(idx).trim())}
+                            className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-green-700 hover:bg-green-50 font-bold">
+                            <Plus size={11} /> เพิ่ม &ldquo;{getModelSearch(idx).trim()}&rdquo;
+                          </button>
+                        ) : (
+                          filteredModelsFor(idx, v.carBrand).map(m => (
+                            <button key={m.id} type="button" onMouseDown={() => pickModelForVehicle(idx, m.name, m.brandId)}
+                              className={`w-full flex items-center gap-1.5 px-3 py-2 text-xs text-left hover:bg-slate-50 ${
+                                m.name.toLowerCase() === v.carModel.toLowerCase() ? 'bg-green-50 text-green-700 font-bold' : 'text-slate-700'
+                              }`}>
+                              {m.name.toLowerCase() === v.carModel.toLowerCase() && <Check size={10} className="text-green-600" />}
+                              {m.name}
+                            </button>
+                          ))
+                        )}
+                        {filteredModelsFor(idx, v.carBrand).length > 0 && getModelSearch(idx).trim() &&
+                          !filteredModelsFor(idx, v.carBrand).find(m => m.name.toLowerCase() === getModelSearch(idx).toLowerCase()) && (
+                          <button type="button" onMouseDown={() => pickModelForVehicle(idx, getModelSearch(idx).trim())}
+                            className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-green-700 hover:bg-green-50 font-bold border-t border-slate-100">
+                            <Plus size={11} /> เพิ่ม &ldquo;{getModelSearch(idx).trim()}&rdquo;
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[10px] font-semibold text-slate-400 mb-1">สี</label>
@@ -252,7 +385,7 @@ export function CustomerModal({
   );
 }
 
-export function CustomersClient({ customers }: { customers: UnifiedCustomerRow[] }) {
+export function CustomersClient({ customers, carBrands = [], carModels = [] }: { customers: UnifiedCustomerRow[]; carBrands?: CarBrandRow[]; carModels?: CarModelRow[] }) {
   const [search, setSearch]       = useState('');
   const [tagFilter, setTagFilter] = useState('ทั้งหมด');
   const [sourceFilter, setSourceFilter] = useState('ทั้งหมด');
@@ -510,6 +643,8 @@ export function CustomersClient({ customers }: { customers: UnifiedCustomerRow[]
       {modal && (
         <CustomerModal
           initial={modal === 'add' ? null : modal}
+          carBrands={carBrands}
+          carModels={carModels}
           onClose={() => setModal(null)}
           onSaved={() => setModal(null)}
         />

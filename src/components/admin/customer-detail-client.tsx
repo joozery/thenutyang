@@ -23,6 +23,7 @@ function docTypeLabel(type: string): string {
 }
 import { CustomerModal } from '@/components/admin/customers-client';
 import type { UnifiedCustomerRow } from '@/lib/customers';
+import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 
 const STATUS_STYLE: Record<string, string> = {
   paid:       'bg-green-100 text-green-700 border-green-200',
@@ -63,7 +64,7 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export function CustomerDetailClient({ data }: { data: CustomerDetailResult }) {
+export function CustomerDetailClient({ data, carBrands = [], carModels = [] }: { data: CustomerDetailResult; carBrands?: CarBrandRow[]; carModels?: CarModelRow[] }) {
   const { customer, docs, bookings, totalSpent, totalDocs, totalBookings } = data;
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
@@ -325,10 +326,11 @@ export function CustomerDetailClient({ data }: { data: CustomerDetailResult }) {
         </div>
       </div>
 
-      {/* Edit Modal */}
       {editOpen && (
         <CustomerModal
           initial={editableCustomer}
+          carBrands={carBrands}
+          carModels={carModels}
           onClose={() => setEditOpen(false)}
           onSaved={() => { setEditOpen(false); router.refresh(); }}
         />

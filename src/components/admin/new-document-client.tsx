@@ -7,7 +7,7 @@ import {
   ArrowLeft, Plus, Trash2, Send, FileText,
   User, Phone, Hash, ChevronDown,
   AlertCircle, Receipt, FileEdit, FileMinus, FileClock, BookMarked,
-  Search, X, Building2, MapPin, Car, UserPlus, Wrench, PackageSearch, Gauge, HardHat, Banknote,
+  Search, X, Building2, MapPin, Car, UserPlus, Wrench, PackageSearch, Gauge, HardHat, Banknote, Check,
 } from 'lucide-react';
 import { createDocument, updateDocument } from '@/app/actions/documents';
 import type { DocFormPayload } from '@/app/actions/documents';
@@ -19,6 +19,8 @@ import type { ServiceItemRow } from '@/lib/service-items';
 import type { getActiveEmployees } from '@/lib/employees';
 type ActiveEmployee = Awaited<ReturnType<typeof getActiveEmployees>>[number];
 import { createServiceItem } from '@/app/actions/service-items';
+import { createCarBrand, createCarModel } from '@/app/actions/car-data';
+import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 import { PickerModal } from '@/components/admin/picker-modal';
 import { CustomerModal } from '@/components/admin/customers-client';
 import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
@@ -81,7 +83,10 @@ export type DocEditTarget = {
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function today() {
-  return new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date().toISOString().slice(0, 10);
+}
+function displayDate(iso: string) {
+  return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 const inputCls = "w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-500/10 transition-colors placeholder:text-slate-300 disabled:bg-slate-50 disabled:text-slate-400";
@@ -113,6 +118,8 @@ export function NewDocumentClient({
   products = [],
   serviceItems = [],
   employees = [],
+  carBrands = [],
+  carModels = [],
   prefill,
   editTarget,
 }: {
@@ -120,6 +127,8 @@ export function NewDocumentClient({
   products?: ProductRow[];
   serviceItems?: ServiceItemRow[];
   employees?: ActiveEmployee[];
+  carBrands?: CarBrandRow[];
+  carModels?: CarModelRow[];
   prefill?: DocPrefill;
   editTarget?: DocEditTarget;
 }) {
@@ -147,6 +156,62 @@ export function NewDocumentClient({
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
   const [customerVehicles, setCustomerVehicles] = useState<VehicleEntry[]>([]);
   const [selectedVehicleIdx, setSelectedVehicleIdx] = useState(0);
+
+  // car brand/model combobox UI state
+  const [brandDropOpen,  setBrandDropOpen]  = useState(false);
+  const [modelDropOpen,  setModelDropOpen]  = useState(false);
+  const [localBrands,    setLocalBrands]    = useState<CarBrandRow[]>(carBrands);
+  const [localModels,    setLocalModels]    = useState<CarModelRow[]>(carModels);
+  const [brandSearch,    setBrandSearch]    = useState('');
+  const [modelSearch,    setModelSearch]    = useState('');
+
+  const filteredBrands = useMemo(() => {
+    const q = brandSearch.toLowerCase();
+    return localBrands.filter(b => b.name.toLowerCase().includes(q));
+  }, [localBrands, brandSearch]);
+
+  const selectedBrandId = useMemo(() =>
+    localBrands.find(b => b.name.toLowerCase() === carBrand.toLowerCase())?.id ?? null,
+    [localBrands, carBrand]
+  );
+
+  const filteredModels = useMemo(() => {
+    const q = modelSearch.toLowerCase();
+    const base = selectedBrandId ? localModels.filter(m => m.brandId === selectedBrandId) : localModels;
+    return base.filter(m => m.name.toLowerCase().includes(q));
+  }, [localModels, modelSearch, selectedBrandId]);
+
+  async function pickBrand(name: string) {
+    setCarBrand(name);
+    setBrandSearch(name);
+    setBrandDropOpen(false);
+    setCarModel('');
+    setModelSearch('');
+    // save to DB if new
+    if (!localBrands.find(b => b.name.toLowerCase() === name.toLowerCase())) {
+      const fd = new FormData();
+      fd.append('name', name);
+      const res = await createCarBrand(null, fd);
+      if (res.ok || res.error?.includes('มีอยู่แล้ว')) {
+        // re-use existing or just add locally
+        const existing = localBrands.find(b => b.name.toLowerCase() === name.toLowerCase());
+        if (!existing) setLocalBrands(prev => [...prev, { id: name, name }]);
+      }
+    }
+  }
+
+  async function pickModel(name: string, brandId?: string) {
+    setCarModel(name);
+    setModelSearch(name);
+    setModelDropOpen(false);
+    const bid = brandId ?? selectedBrandId ?? '';
+    if (bid && !localModels.find(m => m.name.toLowerCase() === name.toLowerCase() && m.brandId === bid)) {
+      const res = await createCarModel(bid, name);
+      if (res.ok || res.error?.includes('มีอยู่แล้ว')) {
+        setLocalModels(prev => [...prev, { id: name, name, brandId: bid }]);
+      }
+    }
+  }
 
   function applyVehicle(v: VehicleEntry) {
     setCarBrand(v.carBrand);
@@ -268,8 +333,10 @@ export function NewDocumentClient({
   const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>(prefill?.paymentMethod ?? 'cash');
 
   // meta
+  const [issuedDate,      setIssuedDate]      = useState(today());
   const [dueDate,         setDueDate]         = useState(prefill?.dueDate ?? '');
   const [depositAmount,   setDepositAmount]   = useState(prefill?.depositAmount ?? 0);
+  const [globalDiscount,  setGlobalDiscount]  = useState(0);
   const [note,            setNote]            = useState(prefill?.note ?? '');
   const [technicianName,  setTechnicianName]  = useState(prefill?.technicianName ?? '');
   const [showPaymentInfo, setShowPaymentInfo] = useState(prefill?.showPaymentInfo ?? false);
@@ -301,22 +368,26 @@ export function NewDocumentClient({
   // จะ "ถอด" VAT 7% ออกมาจากยอดนี้เพื่อโชว์ในใบกำกับภาษี โดยยอดรวมที่ลูกค้าจ่ายไม่เปลี่ยน
   const calc = useMemo(() => {
     const lineCalcs = lines.map(l => {
-      const gross  = l.qty * l.unitPrice;
+      const gross   = l.qty * l.unitPrice;
       const discAmt = gross * (l.discount / 100);
       return { gross, discAmt, net: gross - discAmt };
     });
     const subtotal      = lineCalcs.reduce((s, l) => s + l.gross, 0);
-    const discountTotal = lineCalcs.reduce((s, l) => s + l.discAmt, 0);
-    const afterDisc     = subtotal - discountTotal;
+    const lineDiscTotal = lineCalcs.reduce((s, l) => s + l.discAmt, 0);
+    const afterLineDisc = subtotal - lineDiscTotal;
+    const globalDiscAmt = afterLineDisc * (globalDiscount / 100);
+    const discountTotal = lineDiscTotal + globalDiscAmt;
+    const afterDisc     = afterLineDisc - globalDiscAmt;
     const grandTotal    = afterDisc;
     const vatAmount     = vatEnabled ? afterDisc - afterDisc / 1.07 : 0;
     const preVatAmount  = afterDisc - vatAmount;
     return { lineCalcs, subtotal, discountTotal, afterDisc, vatAmount, preVatAmount, grandTotal };
-  }, [lines, vatEnabled]);
+  }, [lines, vatEnabled, globalDiscount]);
 
   // ── validation ─────────────────────────────────────────────────────────────
 
-  const isValid = !!customerName.trim() && lines.every(l => l.description.trim() && l.qty > 0 && l.unitPrice >= 0);
+  const effectiveCustomerName = customerName.trim() || (!vatEnabled && licensePlate.trim() ? licensePlate.trim() : '');
+  const isValid = !!effectiveCustomerName && lines.every(l => l.description.trim() && l.qty > 0 && l.unitPrice >= 0);
 
   // ── submit ─────────────────────────────────────────────────────────────────
 
@@ -326,7 +397,7 @@ export function NewDocumentClient({
     startTransition(async () => {
       const payload: DocFormPayload = {
         type:         docType,
-        customerName: customerName.trim(),
+        customerName: effectiveCustomerName,
         customerPhone: customerPhone.trim(),
         customerCar:   composeCarInfo({ carBrand, carModel, carColor, licensePlate, mileage }),
         bookingRef:    bookingRef,
@@ -350,6 +421,7 @@ export function NewDocumentClient({
         note:          note.trim(),
         showPaymentInfo,
         dueDate,
+        issuedDate,
         ...(prefill && !isEditMode ? { relatedDocId: prefill.sourceDocId, relatedDocNumber: prefill.sourceDocNumber } : {}),
       };
 
@@ -381,7 +453,7 @@ export function NewDocumentClient({
           <div>
             <h1 className="text-xl font-black text-slate-900">{isEditMode ? 'แก้ไขเอกสาร' : 'สร้างเอกสารใหม่'}</h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              {isEditMode ? <>เลขที่เอกสาร <span className="font-bold text-slate-600">{editTarget.docNumber}</span></> : 'ออกเลขที่อัตโนมัติ'} &nbsp;·&nbsp; {today()}
+              {isEditMode ? <>เลขที่เอกสาร <span className="font-bold text-slate-600">{editTarget.docNumber}</span></> : 'ออกเลขที่อัตโนมัติ'} &nbsp;·&nbsp; {displayDate(issuedDate)}
             </p>
           </div>
         </div>
@@ -454,7 +526,12 @@ export function NewDocumentClient({
               </div>
               <div>
                 <Label>วันที่ออกเอกสาร</Label>
-                <input value={today()} disabled className={inputCls} />
+                <input
+                  type="date"
+                  value={issuedDate}
+                  onChange={e => setIssuedDate(e.target.value)}
+                  className={inputCls}
+                />
               </div>
             </div>
             {(docType === 'quote' || docType === 'billing_note' || docType === 'booking_note') && (
@@ -621,23 +698,109 @@ export function NewDocumentClient({
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div>
+              <div className="relative">
                 <Label>ยี่ห้อรถ</Label>
-                <input
-                  value={carBrand}
-                  onChange={e => setCarBrand(e.target.value)}
-                  placeholder="Toyota"
-                  className={inputCls}
-                />
+                <div className="relative">
+                  <input
+                    value={brandSearch || carBrand}
+                    onChange={e => { setBrandSearch(e.target.value); setCarBrand(e.target.value); setBrandDropOpen(true); }}
+                    onFocus={() => { setBrandSearch(''); setBrandDropOpen(true); }}
+                    onBlur={() => setTimeout(() => setBrandDropOpen(false), 150)}
+                    placeholder="Toyota"
+                    autoComplete="off"
+                    className={inputCls + ' pr-8'}
+                  />
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+                {brandDropOpen && (
+                  <div className="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                    {filteredBrands.length === 0 && brandSearch.trim() ? (
+                      <button
+                        type="button"
+                        onMouseDown={() => pickBrand(brandSearch.trim())}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-green-700 hover:bg-green-50 font-bold"
+                      >
+                        <Plus size={14} /> เพิ่ม "{brandSearch.trim()}"
+                      </button>
+                    ) : (
+                      filteredBrands.map(b => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onMouseDown={() => pickBrand(b.name)}
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-slate-50 ${
+                            b.name.toLowerCase() === carBrand.toLowerCase() ? 'bg-green-50 text-green-700 font-bold' : 'text-slate-700'
+                          }`}
+                        >
+                          {b.name.toLowerCase() === carBrand.toLowerCase() && <Check size={12} className="text-green-600" />}
+                          {b.name}
+                        </button>
+                      ))
+                    )}
+                    {filteredBrands.length > 0 && brandSearch.trim() &&
+                      !filteredBrands.find(b => b.name.toLowerCase() === brandSearch.toLowerCase()) && (
+                      <button
+                        type="button"
+                        onMouseDown={() => pickBrand(brandSearch.trim())}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-green-700 hover:bg-green-50 font-bold border-t border-slate-100"
+                      >
+                        <Plus size={14} /> เพิ่ม "{brandSearch.trim()}"
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="relative">
                 <Label>รุ่นรถ</Label>
-                <input
-                  value={carModel}
-                  onChange={e => setCarModel(e.target.value)}
-                  placeholder="Camry"
-                  className={inputCls}
-                />
+                <div className="relative">
+                  <input
+                    value={modelSearch || carModel}
+                    onChange={e => { setModelSearch(e.target.value); setCarModel(e.target.value); setModelDropOpen(true); }}
+                    onFocus={() => { setModelSearch(''); setModelDropOpen(true); }}
+                    onBlur={() => setTimeout(() => setModelDropOpen(false), 150)}
+                    placeholder="Camry"
+                    autoComplete="off"
+                    className={inputCls + ' pr-8'}
+                  />
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+                {modelDropOpen && (
+                  <div className="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                    {filteredModels.length === 0 && modelSearch.trim() ? (
+                      <button
+                        type="button"
+                        onMouseDown={() => pickModel(modelSearch.trim())}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-green-700 hover:bg-green-50 font-bold"
+                      >
+                        <Plus size={14} /> เพิ่ม "{modelSearch.trim()}"
+                      </button>
+                    ) : (
+                      filteredModels.map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onMouseDown={() => pickModel(m.name, m.brandId)}
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm text-left hover:bg-slate-50 ${
+                            m.name.toLowerCase() === carModel.toLowerCase() ? 'bg-green-50 text-green-700 font-bold' : 'text-slate-700'
+                          }`}
+                        >
+                          {m.name.toLowerCase() === carModel.toLowerCase() && <Check size={12} className="text-green-600" />}
+                          {m.name}
+                        </button>
+                      ))
+                    )}
+                    {filteredModels.length > 0 && modelSearch.trim() &&
+                      !filteredModels.find(m => m.name.toLowerCase() === modelSearch.toLowerCase()) && (
+                      <button
+                        type="button"
+                        onMouseDown={() => pickModel(modelSearch.trim())}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-green-700 hover:bg-green-50 font-bold border-t border-slate-100"
+                      >
+                        <Plus size={14} /> เพิ่ม "{modelSearch.trim()}"
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <Label>สีรถ</Label>
@@ -819,6 +982,22 @@ export function NewDocumentClient({
               <span className="text-slate-500">{vatEnabled ? 'มูลค่าสินค้า (ไม่รวม VAT)' : 'ราคารวมก่อนหักส่วนลด'}</span>
               <span className="font-semibold tabular-nums">฿{(vatEnabled ? calc.preVatAmount : calc.subtotal).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
             </div>
+            {/* ส่วนลดรวมทั้งบิล */}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-slate-500">ส่วนลดรวมทั้งบิล (%)</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={globalDiscount || ''}
+                  onChange={e => setGlobalDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
+                  placeholder="0"
+                  className="w-20 px-2 py-1 text-right rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-green-400 tabular-nums"
+                />
+                <span className="text-slate-400 text-sm">%</span>
+              </div>
+            </div>
             {calc.discountTotal > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">ส่วนลดรวม</span>
@@ -883,23 +1062,38 @@ export function NewDocumentClient({
       {customerPickerOpen && (
         <PickerModal
           title="เลือกลูกค้า"
-          placeholder="ค้นหาชื่อ หรือเบอร์โทร..."
+          placeholder="ค้นหาทะเบียนรถ, ชื่อ หรือเบอร์โทร..."
           items={customers}
-          filterFn={(c, q) => c.name.toLowerCase().includes(q) || c.phone.includes(q)}
-          renderItem={(c) => (
-            <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${c.customerType === 'corporate' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
-                {c.customerType === 'corporate' ? <Building2 size={15} /> : <User size={15} />}
+          filterFn={(c, q) => {
+            const plates = c.vehicles?.map(v => v.licensePlate.toLowerCase()).join(' ') ?? '';
+            const legacy = c.carInfo?.toLowerCase() ?? '';
+            return plates.includes(q) || legacy.includes(q) || c.name.toLowerCase().includes(q) || c.phone.includes(q);
+          }}
+          renderItem={(c) => {
+            const plates = c.vehicles?.filter(v => v.licensePlate).map(v => v.licensePlate).join(', ')
+              || c.carInfo || '';
+            return (
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${c.customerType === 'corporate' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+                  {c.customerType === 'corporate' ? <Building2 size={15} /> : <User size={15} />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{c.name || <span className="text-slate-400 italic">ไม่มีชื่อ</span>}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {plates && (
+                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                        {plates}
+                      </span>
+                    )}
+                    <span className="text-xs text-slate-400">{c.phone || ''}</span>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${c.source === 'online' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
+                  {c.source === 'online' ? 'ออนไลน์' : 'หน้าร้าน'}
+                </span>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
-                <p className="text-xs text-slate-400">{c.phone || 'ไม่มีเบอร์โทร'}</p>
-              </div>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${c.source === 'online' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
-                {c.source === 'online' ? 'ออนไลน์' : 'หน้าร้าน'}
-              </span>
-            </div>
-          )}
+            );
+          }}
           onSelect={(c) => { selectCustomer(c); setCustomerPickerOpen(false); }}
           onClose={() => setCustomerPickerOpen(false)}
         />
@@ -908,6 +1102,8 @@ export function NewDocumentClient({
       {addCustomerOpen && (
         <CustomerModal
           initial={null}
+          carBrands={localBrands}
+          carModels={localModels}
           onClose={() => setAddCustomerOpen(false)}
           onSaved={handleNewCustomerSaved}
         />

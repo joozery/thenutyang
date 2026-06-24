@@ -36,6 +36,7 @@ export type DocFormPayload = {
   note:          string;
   showPaymentInfo: boolean;
   dueDate:       string;
+  issuedDate?:   string;
 };
 
 export async function createDocument(
@@ -62,7 +63,7 @@ export async function createDocument(
       source:   'manual',
       status:   defaultStatus,
       paidAt:   defaultStatus === 'paid' ? new Date() : null,
-      issuedAt: new Date(),
+      issuedAt: data.issuedDate ? new Date(data.issuedDate) : new Date(),
       dueDate:  data.dueDate ? new Date(data.dueDate) : null,
     });
 

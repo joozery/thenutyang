@@ -55,9 +55,14 @@ function MoveModal({
   const selected = products.find(p => p.id === productId);
 
   const filteredProducts = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = search.toLowerCase().trim();
     if (!q) return products;
-    return products.filter(p => p.label.toLowerCase().includes(q));
+    const normalizeTire = (s: string) => s.replace(/[\/rR\s]/g, '');
+    const qNorm = normalizeTire(q);
+    return products.filter(p => {
+      const label = p.label.toLowerCase();
+      return label.includes(q) || normalizeTire(label).includes(qNorm);
+    });
   }, [products, search]);
 
   const TITLES: Record<MoveType, string> = {
@@ -240,9 +245,18 @@ function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: st
   const pageSize = 10;
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = search.toLowerCase().trim();
+    // normalize tire size: "215/55R17", "215/55r17", "215/55/17", "2155517" → "2155517"
+    const normalizeTire = (s: string) => s.replace(/[\/rR\s]/g, '');
+    const qNorm = normalizeTire(q);
     return items.filter(p => {
-      const matchSearch = !q || p.label.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.model.toLowerCase().includes(q);
+      if (!q) return filter === 'all' || (filter === 'low' ? p.isLow : !p.isLow);
+      const label = p.label.toLowerCase();
+      const matchSearch =
+        label.includes(q) ||
+        p.brand.toLowerCase().includes(q) ||
+        p.model.toLowerCase().includes(q) ||
+        normalizeTire(label).includes(qNorm);
       const matchFilter = filter === 'all' || (filter === 'low' ? p.isLow : !p.isLow);
       return matchSearch && matchFilter;
     });
