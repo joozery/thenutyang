@@ -157,14 +157,14 @@ export function BookingsTable({
         <table className="w-full text-left border-collapse whitespace-nowrap md:whitespace-normal">
           <thead>
             <tr className="bg-white border-b border-slate-100">
-              <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider">หมายเลขจอง</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider">ลูกค้า</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell">สินค้า</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider hidden lg:table-cell">วันนัด</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">LINE</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">สถานะ</th>
-              <th className="px-6 py-4 text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">จัดการ</th>
-              <th className="px-4 py-4"></th>
+              <th className="px-4 py-3 text-[12px] font-bold text-slate-400 uppercase tracking-wider">หมายเลขจอง</th>
+              <th className="px-4 py-3 text-[12px] font-bold text-slate-400 uppercase tracking-wider">ลูกค้า</th>
+              <th className="px-4 py-3 text-[12px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell">สินค้า</th>
+              <th className="px-4 py-3 text-[12px] font-bold text-slate-400 uppercase tracking-wider hidden lg:table-cell">วันนัด</th>
+              <th className="px-4 py-3 text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">LINE</th>
+              <th className="px-4 py-3 text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">สถานะ</th>
+              <th className="px-4 py-3 text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">จัดการ</th>
+              <th className="px-3 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
@@ -176,7 +176,7 @@ export function BookingsTable({
                     className={`transition-colors duration-200 group
                       ${isExpanded ? 'bg-slate-50/80' : 'bg-white hover:bg-slate-50/50'}`}
                   >
-                    <td className="px-6 py-5">
+                    <td className="px-4 py-3">
                       <div className="flex flex-col gap-1">
                         <span className="font-mono text-[13px] text-slate-800 font-bold bg-slate-100/80 px-2.5 py-1 rounded-md w-fit border border-slate-200/50">{b.ref}</span>
                         <span className="text-[11px] text-slate-400 font-medium pl-1 flex items-center gap-1 mt-0.5">
@@ -185,7 +185,7 @@ export function BookingsTable({
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="px-4 py-3">
                       <div className="flex flex-col">
                         {b.customerType === 'corporate' && b.companyName ? (
                           <>
@@ -204,7 +204,7 @@ export function BookingsTable({
                         </p>
                       </div>
                     </td>
-                    <td className="px-6 py-5 hidden md:table-cell">
+                    <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex flex-col">
                         <p className="text-[13px] text-slate-800 font-semibold max-w-[200px] truncate" title={b.tireName}>{b.tireName}</p>
                         <div className="flex items-center gap-2 mt-1.5">
@@ -213,7 +213,7 @@ export function BookingsTable({
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-5 hidden lg:table-cell">
+                    <td className="px-4 py-3 hidden lg:table-cell">
                       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/80 text-blue-700 border border-blue-100/60">
                         <Calendar className="w-3.5 h-3.5" />
                         <span className="text-[13px] font-bold">
@@ -221,7 +221,7 @@ export function BookingsTable({
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-center">
+                    <td className="px-4 py-3 text-center">
                       <div className="flex justify-center">
                         {b.lineUserId ? (
                           <div className="w-8 h-8 rounded-full bg-[#06C755]/10 flex items-center justify-center border border-[#06C755]/20" title="เชื่อมต่อ LINE แล้ว">
@@ -234,20 +234,20 @@ export function BookingsTable({
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-center">
-                      <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-full border ${STATUS_STYLE[b.status]?.className}`}>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold px-3 py-1 rounded-full border ${STATUS_STYLE[b.status]?.className}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${STATUS_STYLE[b.status]?.dot}`}></span>
                         {STATUS_STYLE[b.status]?.label ?? b.status}
                       </span>
                     </td>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1.5">
                         {/* ส่งใบเสนอราคา LINE */}
                         <button
                           onClick={() => run(() => sendLineQuote(b.ref))}
                           disabled={isPending || !b.lineUserId}
                           title={b.lineUserId ? 'ส่งใบเสนอราคาผ่าน LINE' : 'ลูกค้ายังไม่เชื่อมต่อ LINE'}
-                          className="p-2.5 rounded-lg bg-[#06C755]/10 text-[#06C755] hover:bg-[#06C755] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:shadow-[#06C755]/20 hover:-translate-y-0.5 active:translate-y-0"
+                          className="p-2 rounded-md bg-[#06C755]/10 text-[#06C755] hover:bg-[#06C755] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:shadow-[#06C755]/20 hover:-translate-y-0.5 active:translate-y-0"
                         >
                           <LineIcon className="w-4 h-4" />
                         </button>
@@ -258,7 +258,7 @@ export function BookingsTable({
                             href={`/admin/documents/${b.quoteDocId}/print`}
                             target="_blank"
                             title="ดูใบเสนอราคา"
-                            className="p-2.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100/60 hover:bg-purple-600 hover:text-white hover:border-transparent transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 hover:-translate-y-0.5 active:translate-y-0"
+                            className="p-2 rounded-md bg-purple-50 text-purple-600 border border-purple-100/60 hover:bg-purple-600 hover:text-white hover:border-transparent transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 hover:-translate-y-0.5 active:translate-y-0"
                           >
                             <FileText className="w-4 h-4" />
                           </Link>
@@ -267,7 +267,7 @@ export function BookingsTable({
                             onClick={() => run(() => createQuoteForBooking(b.ref))}
                             disabled={isPending}
                             title="สร้างใบเสนอราคา"
-                            className="p-2.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100/60 hover:bg-purple-600 hover:text-white disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 hover:-translate-y-0.5 active:translate-y-0"
+                            className="p-2 rounded-md bg-purple-50 text-purple-600 border border-purple-100/60 hover:bg-purple-600 hover:text-white disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 hover:-translate-y-0.5 active:translate-y-0"
                           >
                             <FileEdit className="w-4 h-4" />
                           </button>
@@ -279,7 +279,7 @@ export function BookingsTable({
                             onClick={() => run(() => confirmBooking(b.ref))}
                             disabled={isPending}
                             title="ยืนยันการจอง"
-                            className="p-2.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100/60 hover:bg-blue-600 hover:text-white hover:border-transparent disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20 hover:-translate-y-0.5 active:translate-y-0"
+                            className="p-2 rounded-md bg-blue-50 text-blue-600 border border-blue-100/60 hover:bg-blue-600 hover:text-white hover:border-transparent disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/20 hover:-translate-y-0.5 active:translate-y-0"
                           >
                             <CheckCircle className="w-4 h-4" />
                           </button>
@@ -291,7 +291,7 @@ export function BookingsTable({
                             onClick={() => run(() => markReady(b.ref))}
                             disabled={isPending}
                             title="สินค้าพร้อม / เสร็จสิ้น"
-                            className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/60 hover:bg-emerald-500 hover:text-white hover:border-transparent disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0"
+                            className="p-2 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100/60 hover:bg-emerald-500 hover:text-white hover:border-transparent disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-emerald-500/20 hover:-translate-y-0.5 active:translate-y-0"
                           >
                             <Package className="w-4 h-4" />
                           </button>
@@ -307,17 +307,17 @@ export function BookingsTable({
                             }}
                             disabled={isPending}
                             title="ยกเลิกการจอง"
-                            className="p-2.5 rounded-lg bg-slate-50 text-slate-400 border border-slate-100 hover:bg-red-500 hover:text-white hover:border-transparent disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-red-500/20 hover:-translate-y-0.5 active:translate-y-0 group-hover:bg-slate-100"
+                            className="p-2 rounded-md bg-slate-50 text-slate-400 border border-slate-100 hover:bg-red-500 hover:text-white hover:border-transparent disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-red-500/20 hover:-translate-y-0.5 active:translate-y-0 group-hover:bg-slate-100"
                           >
                             <XCircle className="w-4 h-4" />
                           </button>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-5 text-center">
+                    <td className="px-3 py-3 text-center">
                       <button
                         onClick={() => setExpanded(isExpanded ? null : b._id)}
-                        className={`p-2 rounded-lg transition-all duration-200 flex items-center justify-center ml-auto
+                        className={`p-1.5 rounded-md transition-all duration-200 flex items-center justify-center ml-auto
                           ${isExpanded ? 'bg-slate-200 text-slate-700' : 'bg-slate-50 text-slate-400 hover:bg-slate-200 hover:text-slate-600 group-hover:bg-slate-100'}`}
                       >
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -329,8 +329,8 @@ export function BookingsTable({
                   {isExpanded && (
                     <tr className="bg-slate-50/50">
                       <td colSpan={8} className="p-0 border-b border-slate-200">
-                        <div className="px-6 py-6 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="px-4 py-4 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                             {/* Car Detail (เฉพาะรายการเก่าที่มีข้อมูลรถ) */}
                             {(b.carModel || b.carBrand) && (
                               <div className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex items-start gap-4 hover:border-slate-300 transition-colors">
@@ -422,22 +422,22 @@ export function BookingsTable({
 
       {/* Pagination Controls */}
       {pagination && (
-        <div className="p-4 sm:px-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
-          <p className="text-[13px] text-slate-500 font-medium">
+        <div className="p-3 sm:px-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
+          <p className="text-[12px] text-slate-500 font-medium">
             แสดง <span className="font-bold text-slate-700">{(pagination.currentPage - 1) * pagination.itemsPerPage + 1}</span> ถึง <span className="font-bold text-slate-700">{Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)}</span> จากทั้งหมด <span className="font-bold text-slate-700">{pagination.totalItems}</span> รายการ
           </p>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => handlePageChange(pagination.currentPage - 1)}
               disabled={pagination.currentPage <= 1 || isPending}
-              className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              className="p-1.5 rounded-md bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             
             <div className="flex items-center">
-              <span className="text-[13px] font-bold text-slate-700 px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm">
+              <span className="text-[12px] font-bold text-slate-700 px-3 py-1.5 bg-white border border-slate-200 rounded-md shadow-sm">
                 หน้า {pagination.currentPage} / {pagination.totalPages}
               </span>
             </div>
@@ -445,7 +445,7 @@ export function BookingsTable({
             <button
               onClick={() => handlePageChange(pagination.currentPage + 1)}
               disabled={pagination.currentPage >= pagination.totalPages || isPending}
-              className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              className="p-1.5 rounded-md bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

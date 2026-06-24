@@ -111,9 +111,11 @@ export type PaymentReviewRow = {
   depositSlipUrl: string;
   depositStatus: 'pending' | 'submitted' | 'verified' | 'not_required';
   depositVerifyNote: string;
+  depositRefunded: boolean;
   remainingAmount: number;
   balanceStatus: 'unpaid' | 'paid';
-  balancePaymentMethod: 'cash' | 'transfer' | '';
+  balancePaymentMethod: 'cash' | 'transfer' | 'credit_card' | '';
+  balanceReceivedAmount: number | null;
   balanceSlipUrl: string;
   balanceVerifyNote: string;
   createdAt: string;
@@ -146,9 +148,11 @@ export async function getBookingsForPaymentReview(limit = 50): Promise<PaymentRe
         depositSlipUrl: (d.depositSlipUrl as string) ?? '',
         depositStatus,
         depositVerifyNote: (d.depositVerifyNote as string) ?? '',
+        depositRefunded: (d.depositRefunded as boolean) ?? false,
         remainingAmount: balanceStatus === 'paid' ? 0 : totalAmount - (depositStatus === 'verified' ? depositAmount : 0),
         balanceStatus,
-        balancePaymentMethod: (d.balancePaymentMethod as 'cash' | 'transfer' | '') ?? '',
+        balancePaymentMethod: (d.balancePaymentMethod as 'cash' | 'transfer' | 'credit_card' | '') ?? '',
+        balanceReceivedAmount: (d.balanceReceivedAmount as number) ?? null,
         balanceSlipUrl: (d.balanceSlipUrl as string) ?? '',
         balanceVerifyNote: (d.balanceVerifyNote as string) ?? '',
         createdAt: (d.createdAt as Date).toISOString(),

@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { getProducts } from '@/lib/products';
+import { getBrands } from '@/app/actions/brands';
 import { CATEGORIES } from '@/lib/tires';
 import { TiresTableClient } from '@/components/tires/tires-table-client';
 
@@ -19,15 +20,18 @@ export default async function TiresPage({
     exactSize = `${width}/${series}R${rim}`;
   }
 
-  const results = await getProducts({
-    brand,
-    rimSize: rim && !width ? Number(rim) : undefined,
-    category,
-    size: exactSize,
-    width,
-    series,
-    rim
-  });
+  const [results, brands] = await Promise.all([
+    getProducts({
+      brand,
+      rimSize: rim && !width ? Number(rim) : undefined,
+      category,
+      size: exactSize,
+      width,
+      series,
+      rim
+    }),
+    getBrands()
+  ]);
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -48,10 +52,12 @@ export default async function TiresPage({
         {results.length === 0 ? (
           <div className="bg-white rounded-2xl p-16 text-center shadow-sm border border-slate-200">
             <p className="text-slate-400 text-lg">ไม่พบสินค้าที่ตรงกับตัวกรอง</p>
-            <Link href="/tires" className="mt-4 inline-block text-green-600 font-medium hover:underline">ดูสินค้าทั้งหมด</Link>
+            <Link href="/tires" className="text-green-600 font-bold mt-2 inline-block">ดูสินค้าทั้งหมด</Link>
           </div>
         ) : (
-          <TiresTableClient initialProducts={results} />
+          <Suspense fallback={<div className="h-96 animate-pulse bg-slate-200 rounded-xl" />}>
+            <TiresTableClient initialProducts={results} initialBrands={brands} />
+          </Suspense>
         )}
       </div>
     </div>

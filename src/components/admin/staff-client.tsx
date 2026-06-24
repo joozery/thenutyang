@@ -4,7 +4,7 @@ import { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, Plus, Phone, UserCircle, Edit2, Trash2, X,
-  Users, BadgeCheck, CalendarOff, Wallet,
+  Users, BadgeCheck, CalendarOff, Wallet, ChevronDown,
 } from 'lucide-react';
 import { createEmployee, updateEmployee, deleteEmployee } from '@/app/actions/employees';
 import type { EmployeeRow } from '@/lib/employees';
@@ -30,12 +30,24 @@ const STATUS_STYLE: Record<EmployeeRow['status'], string> = {
   resigned: 'bg-slate-200 text-slate-500',
 };
 
+const COMMON_BANKS = [
+  'กสิกรไทย (KBANK)',
+  'ไทยพาณิชย์ (SCB)',
+  'กรุงเทพ (BBL)',
+  'กรุงไทย (KTB)',
+  'กรุงศรีอยุธยา (BAY)',
+  'ทหารไทยธนชาต (TTB)',
+  'ออมสิน (GSB)',
+  'ธ.ก.ส. (BAAC)',
+  'พร้อมเพย์ (PromptPay)',
+];
+
 const EMPTY_FORM = {
   name: '',
   nickname: '',
   phone: '',
   idCard: '',
-  role: 'mechanic' as EmpRole,
+  role: 'ช่างยาง',
   status: 'active' as EmployeeRow['status'],
   baseSalary: 15000,
   startDate: '',
@@ -54,17 +66,28 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
   const [isPending, startTransition] = useTransition();
 
   const [search, setSearch]       = useState('');
-  const [roleFilter, setRoleFilter] = useState<'all' | EmpRole>('all');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
   const [modal, setModal]         = useState<'add' | 'edit' | null>(null);
   const [editTarget, setEditTarget] = useState<EmployeeRow | null>(null);
   const [form, setForm]           = useState(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<EmployeeRow | null>(null);
   const [error, setError]         = useState('');
 
+  const [isCustomRole, setIsCustomRole] = useState(false);
+  const [isCustomBank, setIsCustomBank] = useState(false);
+
+  const allUniqueRoles = useMemo(() => {
+    return Array.from(new Set([
+      ...Object.values(ROLE_LABELS),
+      ...initialEmployees.map(e => ROLE_LABELS[e.role as EmpRole] || e.role)
+    ])).sort();
+  }, [initialEmployees]);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return initialEmployees.filter(e => {
-      const matchRole = roleFilter === 'all' || e.role === roleFilter;
+      const eRoleTh = ROLE_LABELS[e.role as EmpRole] || e.role;
+      const matchRole = roleFilter === 'all' || eRoleTh === roleFilter;
       const matchSearch = !q
         || e.name.toLowerCase().includes(q)
         || e.nickname.toLowerCase().includes(q)
@@ -80,15 +103,24 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
     .filter(e => e.status !== 'resigned')
     .reduce((s, e) => s + e.baseSalary, 0);
 
-  function openAdd() { setForm(EMPTY_FORM); setError(''); setModal('add'); }
+  function openAdd() { 
+    setForm(EMPTY_FORM); 
+    setError(''); 
+    setIsCustomRole(false);
+    setIsCustomBank(false);
+    setModal('add'); 
+  }
   function openEdit(e: EmployeeRow) {
     setEditTarget(e);
+    const translatedRole = ROLE_LABELS[e.role as EmpRole] || e.role;
     setForm({
       name: e.name, nickname: e.nickname, phone: e.phone, idCard: e.idCard,
-      role: e.role, status: e.status, baseSalary: e.baseSalary,
+      role: translatedRole, status: e.status, baseSalary: e.baseSalary,
       startDate: e.startDate ? e.startDate.slice(0, 10) : '',
       bankAccount: e.bankAccount, bankName: e.bankName, address: e.address, note: e.note,
     });
+    setIsCustomRole(!allUniqueRoles.includes(translatedRole));
+    setIsCustomBank(!COMMON_BANKS.includes(e.bankName) && e.bankName !== '');
     setError('');
     setModal('edit');
   }
@@ -157,9 +189,9 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
             <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาชื่อ, รหัส, เบอร์โทร..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-colors shadow-sm" />
           </div>
           <div className="w-full sm:w-auto min-w-[200px]">
-            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value as 'all' | EmpRole)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-colors shadow-sm cursor-pointer appearance-none">
+            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-colors shadow-sm cursor-pointer appearance-none">
               <option value="all">ทุกตำแหน่ง</option>
-              {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {allUniqueRoles.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
         </div>
@@ -192,7 +224,7 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50 shadow-sm">{ROLE_LABELS[s.role]}</span>
+                    <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50 shadow-sm">{ROLE_LABELS[s.role as EmpRole] || s.role}</span>
                   </td>
                   <td className="px-6 py-4">
                     {s.phone ? <span className="flex items-center gap-1.5 text-slate-600 font-medium text-xs"><Phone size={13} className="text-slate-400" />{s.phone}</span> : <span className="text-slate-300">—</span>}
@@ -265,10 +297,10 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
                     <input value={form.nickname} onChange={e => setForm(f => ({ ...f, nickname: e.target.value }))} className={inputCls} placeholder="เช่น ศักดิ์" />
                   </Field>
                   <Field label="เบอร์โทรศัพท์">
-                    <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} placeholder="081-234-5678" />
+                    <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} maxLength={10} className={inputCls} placeholder="0812345678" />
                   </Field>
-                  <Field label="เลขประจำตัวประชาชน">
-                    <input value={form.idCard} onChange={e => setForm(f => ({ ...f, idCard: e.target.value }))} className={inputCls} placeholder="1-2345-67890-12-3" />
+                  <Field label="เลขประจำตัวประชาชน / พาสปอร์ต">
+                    <input value={form.idCard} onChange={e => setForm(f => ({ ...f, idCard: e.target.value.slice(0, 13) }))} maxLength={13} className={inputCls} placeholder="เลข 13 หลัก หรือ พาสปอร์ต" />
                   </Field>
                   <div className="sm:col-span-2">
                     <Field label="ที่อยู่ปัจจุบัน">
@@ -284,14 +316,51 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">ข้อมูลการทำงาน & การเงิน</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Field label="ตำแหน่ง *">
-                    <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as EmpRole }))} className={inputCls}>
-                      {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
+                    {!isCustomRole ? (
+                      <div className="relative">
+                        <select 
+                          value={allUniqueRoles.includes(form.role) ? form.role : ''} 
+                          onChange={e => {
+                            if (e.target.value === 'CUSTOM') {
+                              setIsCustomRole(true);
+                              setForm(f => ({ ...f, role: '' }));
+                            } else {
+                              setForm(f => ({ ...f, role: e.target.value }));
+                            }
+                          }}
+                          className={`${inputCls} cursor-pointer appearance-none`}
+                        >
+                          <option value="" disabled>-- เลือกตำแหน่ง --</option>
+                          {allUniqueRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                          <option value="CUSTOM">+ อื่นๆ (พิมพ์เพิ่มเอง)</option>
+                        </select>
+                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input 
+                          autoFocus
+                          value={form.role} 
+                          onChange={e => setForm(f => ({ ...f, role: e.target.value }))} 
+                          className={inputCls} 
+                          placeholder="พิมพ์ตำแหน่งใหม่..."
+                        />
+                        <button type="button" onClick={() => {
+                          setIsCustomRole(false);
+                          setForm(f => ({ ...f, role: allUniqueRoles[0] || 'ช่างยาง' }));
+                        }} className="px-3 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shrink-0">
+                          ยกเลิก
+                        </button>
+                      </div>
+                    )}
                   </Field>
                   <Field label="สถานะการทำงาน *">
-                    <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as EmployeeRow['status'] }))} className={inputCls}>
-                      {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
+                    <div className="relative">
+                      <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as EmployeeRow['status'] }))} className={`${inputCls} cursor-pointer appearance-none`}>
+                        {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
                   </Field>
                   <Field label="วันที่เริ่มงาน *">
                     <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
@@ -303,7 +372,43 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
                     </div>
                   </Field>
                   <Field label="ธนาคารที่รับเงิน">
-                    <input value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} className={inputCls} placeholder="เช่น กสิกรไทย" />
+                    {!isCustomBank ? (
+                      <div className="relative">
+                        <select 
+                          value={COMMON_BANKS.includes(form.bankName) ? form.bankName : ''} 
+                          onChange={e => {
+                            if (e.target.value === 'CUSTOM') {
+                              setIsCustomBank(true);
+                              setForm(f => ({ ...f, bankName: '' }));
+                            } else {
+                              setForm(f => ({ ...f, bankName: e.target.value }));
+                            }
+                          }}
+                          className={`${inputCls} cursor-pointer appearance-none`}
+                        >
+                          <option value="">- ไม่ระบุ -</option>
+                          {COMMON_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                          <option value="CUSTOM">+ อื่นๆ (พิมพ์เพิ่มเอง)</option>
+                        </select>
+                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input 
+                          autoFocus
+                          value={form.bankName} 
+                          onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} 
+                          className={inputCls} 
+                          placeholder="พิมพ์ชื่อธนาคาร..."
+                        />
+                        <button type="button" onClick={() => {
+                          setIsCustomBank(false);
+                          setForm(f => ({ ...f, bankName: '' }));
+                        }} className="px-3 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors shrink-0">
+                          ยกเลิก
+                        </button>
+                      </div>
+                    )}
                   </Field>
                   <Field label="เลขที่บัญชี">
                     <input value={form.bankAccount} onChange={e => setForm(f => ({ ...f, bankAccount: e.target.value }))} className={inputCls} placeholder="123-4-56789-0" />

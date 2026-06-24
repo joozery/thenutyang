@@ -6,6 +6,7 @@ const lineItemSchema = new Schema({
   qty:         { type: Number, required: true, min: 1 },
   unitPrice:   { type: Number, required: true, min: 0 },
   discount:    { type: Number, default: 0, min: 0, max: 100 },
+  year:        { type: String, default: '' },
   lineTotal:   { type: Number, required: true },
 }, { _id: false });
 
@@ -42,6 +43,14 @@ const purchaseOrderSchema = new Schema({
     enum: ['draft', 'pending', 'received', 'cancelled'],
     default: 'pending',
   },
+  paymentStatus: {
+    type: String,
+    enum: ['unpaid', 'partial', 'paid'],
+    default: 'unpaid',
+  },
+  amountPaid:  { type: Number, default: 0 },
+  paymentDate: { type: Date },
+  expenseId:   { type: Schema.Types.ObjectId, ref: 'Expense' },
   createdAt: { type: Date, default: Date.now },
 });
 

@@ -1,7 +1,7 @@
 import connectDB from './mongodb';
 import { FinancialDocument } from '@/models/FinancialDocument';
 
-export type DocType      = 'invoice' | 'quote' | 'credit_note';
+export type DocType      = 'invoice' | 'quote' | 'credit_note' | 'billing_note' | 'payment_note';
 export type PaymentMethod = 'cash' | 'transfer' | 'credit_card' | 'pending';
 
 export type DocItem = {
@@ -43,6 +43,8 @@ export type DocStats = {
   invoiceTotalMonth: number;
   unpaidCount:       number;
   pendingQuoteCount: number;
+  billingOutstandingCount: number;
+  billingOutstandingTotal: number;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -109,11 +111,22 @@ export async function getDocStats(): Promise<DocStats> {
   const now        = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [monthInvoices, unpaidCount, pendingQuoteCount] = await Promise.all([
+  const [monthInvoices, unpaidCount, pendingQuoteCount, outstandingBillingNotes, paymentSums] = await Promise.all([
     FinancialDocument.find({ type: 'invoice', issuedAt: { $gte: monthStart } }).lean(),
     FinancialDocument.countDocuments({ type: 'invoice', status: 'unpaid' }),
     FinancialDocument.countDocuments({ type: 'quote',   status: 'pending_approval' }),
+    FinancialDocument.find({ type: 'billing_note', status: { $in: ['unpaid', 'partial'] } }, { grandTotal: 1 }).lean(),
+    FinancialDocument.aggregate([
+      { $match: { type: 'payment_note' } },
+      { $group: { _id: '$relatedDocId', paid: { $sum: '$grandTotal' } } },
+    ]),
   ]);
+
+  const paidMap = new Map(paymentSums.map((p) => [String(p._id), p.paid as number]));
+  const billingOutstandingTotal = outstandingBillingNotes.reduce(
+    (sum, b) => sum + ((b.grandTotal as number) - (paidMap.get(String(b._id)) ?? 0)),
+    0
+  );
 
   return {
     invoiceCountMonth: monthInvoices.length,
@@ -121,11 +134,13 @@ export async function getDocStats(): Promise<DocStats> {
     invoiceTotalMonth: monthInvoices.reduce((s: number, d: any) => s + (d.grandTotal ?? 0), 0),
     unpaidCount,
     pendingQuoteCount,
+    billingOutstandingCount: outstandingBillingNotes.length,
+    billingOutstandingTotal,
   };
 }
 
 export async function generateDocNumber(type: DocType): Promise<string> {
-  const PREFIX = { invoice: 'INV', quote: 'QT', credit_note: 'CR' }[type];
+  const PREFIX = { invoice: 'INV', quote: 'QT', credit_note: 'CR', billing_note: 'BN', payment_note: 'PN' }[type];
   const year    = new Date().getFullYear();
   const pattern = new RegExp(`^${PREFIX}-${year}-`);
   const last    = await FinancialDocument.findOne({ docNumber: pattern }).sort({ docNumber: -1 }).lean() as { docNumber: string } | null;

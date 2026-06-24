@@ -67,15 +67,18 @@ export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
 
   useEffect(() => {
-    fetch('/api/admin/dashboard')
+    setLoading(true);
+    const url = selectedDate ? `/api/admin/dashboard?date=${selectedDate}` : '/api/admin/dashboard';
+    fetch(url)
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => { setError('โหลดข้อมูลไม่ได้'); setLoading(false); });
-  }, []);
+  }, [selectedDate]);
 
-  if (loading) return (
+  if (loading && !data) return (
     <div className="flex items-center justify-center h-64 text-slate-400">
       <Loader2 size={28} className="animate-spin mr-3" />กำลังโหลดข้อมูล...
     </div>
@@ -134,8 +137,8 @@ export default function AdminDashboard() {
     },
   ];
 
-  const now = new Date();
-  const thDate = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+  const displayDate = selectedDate ? new Date(selectedDate) : new Date();
+  const thDate = displayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div className="w-full">
@@ -145,12 +148,24 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-black text-slate-900">Dashboard</h1>
           <div className="text-sm text-slate-500 font-medium mt-1">ข้อมูล ณ วันที่ {thDate}</div>
         </div>
-        <button
-          onClick={() => { setLoading(true); fetch('/api/admin/dashboard').then(r => r.json()).then(d => { setData(d); setLoading(false); }); }}
-          className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition shadow-sm"
-        >
-          <Loader2 size={14} /> รีเฟรชข้อมูล
-        </button>
+        <div className="flex items-center gap-2">
+          <input 
+            type="date" 
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
+          />
+          <button
+            onClick={() => { 
+              setLoading(true); 
+              const url = selectedDate ? `/api/admin/dashboard?date=${selectedDate}` : '/api/admin/dashboard';
+              fetch(url).then(r => r.json()).then(d => { setData(d); setLoading(false); }); 
+            }}
+            className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition shadow-sm"
+          >
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Loader2 size={14} />} รีเฟรชข้อมูล
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}

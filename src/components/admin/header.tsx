@@ -70,38 +70,38 @@ export function AdminHeader({ toggleSidebar, adminUser }: HeaderProps) {
           </button>
 
           {showNotifications && (
-            <div className="absolute top-[calc(100%+8px)] right-0 w-[320px] bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden z-50 origin-top-right animate-in fade-in zoom-in-95 duration-200">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <h3 className="font-bold text-slate-800 text-sm">การแจ้งเตือนระบบ</h3>
-                <span className="text-[10px] text-green-600 font-bold cursor-pointer hover:underline px-2 py-1 bg-green-50 rounded-md">อ่านทั้งหมด</span>
+            <div className="absolute top-[calc(100%+12px)] -right-2 md:-right-4 w-[280px] bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-100 overflow-hidden z-50 origin-top-right animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-3.5 py-2.5 border-b border-slate-100 flex items-center justify-between bg-white">
+                <h3 className="font-bold text-slate-800 text-xs">การแจ้งเตือน</h3>
+                <span className="text-[10px] text-slate-500 cursor-pointer hover:text-green-600 font-medium">อ่านทั้งหมด</span>
               </div>
-              <div className="max-h-[320px] overflow-y-auto divide-y divide-slate-50">
+              <div className="max-h-[280px] overflow-y-auto divide-y divide-slate-50">
                 {/* Mock Notification Item 1 */}
-                <Link href="/admin/payments" onClick={() => setShowNotifications(false)} className="flex gap-3 p-3 hover:bg-slate-50 transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
-                    <span className="font-black text-xs">฿</span>
+                <Link href="/admin/payments" onClick={() => setShowNotifications(false)} className="flex gap-2.5 p-3 hover:bg-slate-50 transition-colors">
+                  <div className="w-7 h-7 rounded-full bg-green-50 flex items-center justify-center text-green-600 shrink-0">
+                    <span className="font-black text-[11px]">฿</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">มีสลิปมัดจำใหม่รอตรวจสอบ</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">ลูกค้ายื่นหลักฐานการโอนเงินมัดจำสำหรับรายการจองล่าสุด กรุณาตรวจสอบและยืนยัน</p>
-                    <p className="text-[9px] text-slate-400 mt-1 font-medium">ไม่กี่นาทีที่ผ่านมา</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">มีสลิปมัดจำใหม่</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5 truncate">ลูกค้ายื่นหลักฐานการโอนเงินมัดจำ</p>
+                    <p className="text-[9px] text-slate-400 mt-1">ไม่กี่นาทีที่ผ่านมา</p>
                   </div>
                 </Link>
                 {/* Mock Notification Item 2 */}
-                <Link href="/admin/bookings" onClick={() => setShowNotifications(false)} className="flex gap-3 p-3 hover:bg-slate-50 transition-colors opacity-75">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                    <span className="font-black text-xs">N</span>
+                <Link href="/admin/bookings" onClick={() => setShowNotifications(false)} className="flex gap-2.5 p-3 hover:bg-slate-50 transition-colors">
+                  <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                    <span className="font-black text-[11px]">N</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-800">รายการจองใหม่เข้า</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">มีลูกค้าระบุข้อมูลจองยางเข้ามาใหม่ผ่านหน้าร้าน รอการชำระเงินมัดจำ</p>
-                    <p className="text-[9px] text-slate-400 mt-1 font-medium">2 ชั่วโมงที่แล้ว</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-slate-800 truncate">รายการจองใหม่เข้า</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5 truncate">มีลูกค้าระบุข้อมูลจองยางเข้ามาใหม่</p>
+                    <p className="text-[9px] text-slate-400 mt-1">2 ชั่วโมงที่แล้ว</p>
                   </div>
                 </Link>
               </div>
-              <div className="p-2.5 border-t border-slate-100 text-center bg-slate-50/50">
-                <Link href="/admin/payments" onClick={() => setShowNotifications(false)} className="text-[11px] font-bold text-slate-500 hover:text-green-600 transition-colors">
-                  ไปที่หน้ารายการชำระเงิน
+              <div className="p-2 border-t border-slate-100 text-center bg-slate-50/50">
+                <Link href="/admin/payments" onClick={() => setShowNotifications(false)} className="text-[10px] font-bold text-slate-500 hover:text-green-600 transition-colors">
+                  ดูการแจ้งเตือนทั้งหมด
                 </Link>
               </div>
             </div>

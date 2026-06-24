@@ -9,7 +9,7 @@ const employeeSchema = new Schema({
   nickname:    { type: String, default: '' },
   phone:       { type: String, default: '' },
   idCard:      { type: String, default: '' },
-  role:        { type: String, enum: EMP_ROLES, required: true, default: 'mechanic' },
+  role:        { type: String, required: true, default: 'ช่างยาง' },
   status:      { type: String, enum: ['active', 'on_leave', 'resigned'], default: 'active' },
   baseSalary:  { type: Number, required: true, default: 15000 },
   startDate:   { type: Date, required: true },
@@ -20,4 +20,5 @@ const employeeSchema = new Schema({
   createdAt:   { type: Date, default: Date.now },
 });
 
-export const Employee = models.Employee || model('Employee', employeeSchema);
+delete models.Employee;
+export const Employee = model('Employee', employeeSchema);

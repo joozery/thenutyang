@@ -8,7 +8,7 @@ export type EmployeeRow = {
   nickname: string;
   phone: string;
   idCard: string;
-  role: EmpRole;
+  role: string;
   status: 'active' | 'on_leave' | 'resigned';
   baseSalary: number;
   startDate: string;

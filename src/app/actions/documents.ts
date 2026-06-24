@@ -12,6 +12,7 @@ export type DocFormPayload = {
   customerName:  string;
   customerPhone: string;
   customerCar:   string;
+  bookingRef?:   string;
   customerAddress: string;
   customerTaxId:   string;
   relatedDocId?:     string;
@@ -45,6 +46,8 @@ export async function createDocument(
         ? data.paymentMethod !== 'pending' ? 'paid' : 'unpaid'
         : data.type === 'quote'
         ? 'pending_approval'
+        : data.type === 'billing_note'
+        ? 'unpaid'
         : 'issued';
 
     await FinancialDocument.create({
@@ -191,6 +194,103 @@ export async function createQuoteFromBookings(bookings: BookingForDoc[]): Promis
     revalidatePath('/admin/documents');
   } catch (err) {
     console.error('[createQuoteFromBookings]', err);
+  }
+}
+
+// บันทึกรับชำระบางส่วนของใบแจ้งหนี้ — สร้าง "ใบรับชำระ" แยกต่อครั้ง แล้วเช็คว่าชำระครบหรือยัง
+// ถ้าครบ: ปิดใบแจ้งหนี้เป็นชำระแล้ว + ออกใบเสร็จ/ใบกำกับภาษีสุดท้ายให้อัตโนมัติ
+export async function recordPartialPayment(
+  billingNoteId: string,
+  amount: number,
+  method: PaymentMethod,
+  note?: string,
+): Promise<{ success: boolean; docNumber?: string; billingStatus?: string; invoiceDocNumber?: string; error?: string }> {
+  try {
+    if (!Number.isFinite(amount) || amount <= 0) return { success: false, error: 'จำนวนเงินไม่ถูกต้อง' };
+
+    await connectDB();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const billingNote = await FinancialDocument.findById(billingNoteId).lean() as any;
+    if (!billingNote || billingNote.type !== 'billing_note') return { success: false, error: 'ไม่พบใบแจ้งหนี้นี้' };
+    if (billingNote.status === 'paid') return { success: false, error: 'ใบแจ้งหนี้นี้ชำระครบแล้ว' };
+    if (billingNote.status === 'cancelled') return { success: false, error: 'ใบแจ้งหนี้นี้ถูกยกเลิกแล้ว' };
+
+    const paidSoFarAgg = await FinancialDocument.aggregate([
+      { $match: { type: 'payment_note', relatedDocId: billingNote._id } },
+      { $group: { _id: null, total: { $sum: '$grandTotal' } } },
+    ]);
+    const alreadyPaid = paidSoFarAgg[0]?.total ?? 0;
+    const remaining   = billingNote.grandTotal - alreadyPaid;
+
+    if (amount > remaining + 0.01) {
+      return { success: false, error: `ยอดชำระเกินยอดคงเหลือ (คงเหลือ ฿${remaining.toLocaleString()})` };
+    }
+
+    const docNumber = await generateDocNumber('payment_note');
+    await FinancialDocument.create({
+      docNumber,
+      type:             'payment_note',
+      source:           'manual',
+      relatedDocId:     billingNote._id,
+      relatedDocNumber: billingNote.docNumber,
+      customerName:     billingNote.customerName,
+      customerPhone:    billingNote.customerPhone,
+      customerCar:      billingNote.customerCar,
+      bookingRef:       billingNote.bookingRef ?? '',
+      customerAddress:  billingNote.customerAddress,
+      customerTaxId:    billingNote.customerTaxId,
+      items: [{ description: `รับชำระสำหรับใบแจ้งหนี้ ${billingNote.docNumber}`, qty: 1, unitPrice: amount, discount: 0, lineTotal: amount }],
+      subtotal:      amount,
+      discountTotal: 0,
+      vatRate:       0,
+      vatAmount:     0,
+      grandTotal:    amount,
+      paymentMethod: method,
+      status:        'paid',
+      paidAt:        new Date(),
+      issuedAt:      new Date(),
+      note:          note ?? '',
+    });
+
+    const fullyPaid = alreadyPaid + amount >= billingNote.grandTotal - 0.01;
+    let invoiceDocNumber: string | undefined;
+
+    if (fullyPaid) {
+      invoiceDocNumber = await generateDocNumber('invoice');
+      await FinancialDocument.create({
+        docNumber:        invoiceDocNumber,
+        type:             'invoice',
+        source:           'manual',
+        relatedDocId:     billingNote._id,
+        relatedDocNumber: billingNote.docNumber,
+        customerName:     billingNote.customerName,
+        customerPhone:    billingNote.customerPhone,
+        customerCar:      billingNote.customerCar,
+        bookingRef:       billingNote.bookingRef ?? '',
+        customerAddress:  billingNote.customerAddress,
+        customerTaxId:    billingNote.customerTaxId,
+        items:            billingNote.items,
+        subtotal:         billingNote.subtotal,
+        discountTotal:    billingNote.discountTotal,
+        vatRate:          billingNote.vatRate,
+        vatAmount:        billingNote.vatAmount,
+        grandTotal:       billingNote.grandTotal,
+        paymentMethod:    method,
+        status:           'paid',
+        paidAt:           new Date(),
+        issuedAt:         new Date(),
+        note:             `ออกอัตโนมัติเมื่อชำระใบแจ้งหนี้ ${billingNote.docNumber} ครบ`,
+      });
+      await FinancialDocument.findByIdAndUpdate(billingNoteId, { status: 'paid' });
+    } else {
+      await FinancialDocument.findByIdAndUpdate(billingNoteId, { status: 'partial' });
+    }
+
+    revalidatePath('/admin/documents');
+    return { success: true, docNumber, billingStatus: fullyPaid ? 'paid' : 'partial', invoiceDocNumber };
+  } catch (err) {
+    console.error('[recordPartialPayment]', err);
+    return { success: false, error: 'บันทึกการชำระเงินไม่สำเร็จ' };
   }
 }
 

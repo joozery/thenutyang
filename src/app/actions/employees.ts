@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
-import { Employee, EmpRole } from '@/models/Employee';
+import { Employee } from '@/models/Employee';
 import { getNextEmpId } from '@/lib/employees';
 
 type EmployeeInput = {
@@ -10,7 +10,7 @@ type EmployeeInput = {
   nickname?: string;
   phone?: string;
   idCard?: string;
-  role: EmpRole;
+  role: string;
   status?: 'active' | 'on_leave' | 'resigned';
   baseSalary: number;
   startDate: string;

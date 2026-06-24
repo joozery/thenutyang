@@ -8,9 +8,11 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'ตัวอย่างก่อนพิมพ์ | Admin' };
 
 const DOC_TYPE_PRINT_LABEL: Record<string, string> = {
-  invoice:     'ใบเสร็จรับเงิน/ใบกำกับภาษี',
-  quote:       'ใบเสนอราคา',
-  credit_note: 'ใบลดหนี้',
+  invoice:      'ใบเสร็จรับเงิน/ใบกำกับภาษี',
+  quote:        'ใบเสนอราคา',
+  credit_note:  'ใบลดหนี้',
+  billing_note: 'ใบแจ้งหนี้',
+  payment_note: 'ใบรับชำระ',
 };
 
 const PAYMENT_LABEL: Record<string, string> = {

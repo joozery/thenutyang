@@ -92,11 +92,17 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
+    const qNorm = q.replace(/[\/rR\s-]/g, ''); // e.g. 2155517
     return initialProducts
       .filter(p => {
         const matchSize  = sizeTab === 'all' || p.size === sizeTab;
         const matchBrand = !brandFilter || p.brand === brandFilter;
-        const matchSearch = !q || String(p.brand || '').toLowerCase().includes(q) || String(p.model || '').toLowerCase().includes(q) || String(p.size || '').toLowerCase().includes(q);
+        const sizeNorm = String(p.size || '').toLowerCase().replace(/[\/rR\s-]/g, '');
+        const matchSearch = !q || 
+          String(p.brand || '').toLowerCase().includes(q) || 
+          String(p.model || '').toLowerCase().includes(q) || 
+          String(p.size || '').toLowerCase().includes(q) ||
+          (qNorm.length > 0 && sizeNorm.includes(qNorm));
         return matchSize && matchBrand && matchSearch;
       })
       .sort((a, b) => {
@@ -219,6 +225,51 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
         ))}
       </div>
 
+      {/* Stock Summary */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 bg-emerald-50/50 flex items-center gap-2">
+          <Package size={16} className="text-emerald-600" />
+          <h2 className="text-sm font-bold text-slate-800">ยางที่มีพร้อมขาย (มีสต๊อก)</h2>
+        </div>
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[300px] overflow-y-auto bg-slate-50/30">
+          {(() => {
+            const map = new Map<string, { size: string, total: number, items: ProductRow[] }>();
+            for (const p of initialProducts) {
+              if (p.stock > 0) {
+                if (!map.has(p.size)) map.set(p.size, { size: p.size, total: 0, items: [] });
+                const group = map.get(p.size)!;
+                group.total += p.stock;
+                group.items.push(p);
+              }
+            }
+            const groups = Array.from(map.values()).sort((a, b) => a.size.localeCompare(b.size, undefined, { numeric: true }));
+            
+            if (groups.length === 0) {
+              return <div className="col-span-full text-center text-sm text-slate-500 py-4">ไม่มีสินค้าในสต๊อก</div>;
+            }
+
+            return groups.map(g => (
+              <div key={g.size} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+                <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
+                  <span className="font-mono text-[13px] font-bold text-slate-900">{g.size}</span>
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">{g.total} เส้น</span>
+                </div>
+                <div className="space-y-1.5">
+                  {g.items.map(i => (
+                    <div key={i.id} className="flex justify-between items-start text-[11px]">
+                      <span className="text-slate-600 truncate pr-2" title={`${i.brand} ${i.model}`}>
+                        <span className="font-bold text-slate-700">{i.brand}</span> {i.model}
+                      </span>
+                      <span className="font-bold text-slate-900 shrink-0">{i.stock}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+      </div>
+
       {/* Table card */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         {/* Size tabs */}
@@ -272,31 +323,32 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider w-10">#</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('brand')}>
-                  ยี่ห้อ / รุ่น <SortIcon col="brand" sortKey={sortKey} sortDir={sortDir} />
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider w-28 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('size')}>
+                  ขนาดยาง <SortIcon col="size" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                {sizeTab === 'all' && (
-                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider w-28 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('size')}>
-                    ขนาด <SortIcon col="size" sortKey={sortKey} sortDir={sortDir} />
-                  </th>
-                )}
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('brand')}>
+                  ยี่ห้อ <SortIcon col="brand" sortKey={sortKey} sortDir={sortDir} />
+                </th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('model')}>
+                  รุ่น <SortIcon col="model" sortKey={sortKey} sortDir={sortDir} />
+                </th>
                 <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32">ประเภท</th>
                 <th className="px-4 py-3 text-right text-[10px] font-bold text-amber-600 uppercase tracking-wider w-24 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('costPrice')}>
-                  ต้นทุน <SortIcon col="costPrice" sortKey={sortKey} sortDir={sortDir} />
+                  ทุน <SortIcon col="costPrice" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-700 uppercase tracking-wider w-32 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceCash')}>
-                  เงินสด/โอน <SortIcon col="priceCash" sortKey={sortKey} sortDir={sortDir} />
+                  เงินสด/เงินโอน <SortIcon col="priceCash" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider w-28 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceCredit')}>
-                  รูดบัตร <SortIcon col="priceCredit" sortKey={sortKey} sortDir={sortDir} />
+                  รูดบัตรเต็มจำนวน <SortIcon col="priceCredit" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceInstallment')}>
-                  ผ่อน 0% 4ด. <SortIcon col="priceInstallment" sortKey={sortKey} sortDir={sortDir} />
+                  ผ่อน 4 เดือน <SortIcon col="priceInstallment" sortKey={sortKey} sortDir={sortDir} />
                 </th>
+                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-16">สัปดาห์/ปี</th>
                 <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-16 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('stock')}>
                   สต๊อก <SortIcon col="stock" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-12">ปี</th>
                 <th className="px-4 py-3 w-16"></th>
               </tr>
             </thead>
@@ -305,16 +357,24 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                 <tr key={p.id} className="hover:bg-slate-50/70 transition-colors group">
                   <td className="px-4 py-3.5 text-[11px] text-slate-300 tabular-nums">{(page - 1) * PAGE_SIZE + idx + 1}</td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md border ${getBrandColor(p.brand)}`}>{p.brand}</span>
-                      <span className="font-semibold text-slate-800 text-[13px]">{p.model}</span>
-                    </div>
+                    <span className="font-mono text-[13px] font-semibold text-slate-900 bg-slate-100/80 border border-slate-200/50 px-2 py-1 rounded-md">{p.size}</span>
                   </td>
-                  {sizeTab === 'all' && (
-                    <td className="px-4 py-3.5">
-                      <span className="font-mono text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{p.size}</span>
-                    </td>
-                  )}
+                  <td className="px-4 py-3.5">
+                    {(() => {
+                      const logo = initialBrands.find(b => b.name === p.brand)?.logo;
+                      return logo ? (
+                        <div className="h-6 w-16 relative flex items-center justify-start shrink-0" title={p.brand}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={logo} alt={p.brand} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                        </div>
+                      ) : (
+                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md border ${getBrandColor(p.brand)}`}>{p.brand}</span>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="font-semibold text-slate-800 text-[13px]">{p.model}</span>
+                  </td>
                   <td className="px-4 py-3.5 text-center">
                     {p.type ? <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{p.type}</span> : <span className="text-slate-200">—</span>}
                   </td>
@@ -327,12 +387,12 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                   <td className="px-4 py-3.5 text-right text-slate-400 tabular-nums text-xs">{fmt(p.priceCredit)}</td>
                   <td className="px-4 py-3.5 text-right text-slate-500 tabular-nums text-xs font-semibold bg-slate-50/60">{fmt(p.priceInstallment)}</td>
                   <td className="px-4 py-3.5 text-center">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-md tabular-nums ${p.stock === 0 ? 'bg-red-50 text-red-500' : p.stock <= 6 ? 'bg-amber-50 text-amber-600' : 'text-slate-500 bg-slate-50'}`}>
-                      {p.stock}
-                    </span>
+                    <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60">'{p.year}</span>
                   </td>
                   <td className="px-4 py-3.5 text-center">
-                    <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">'{p.year}</span>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-md tabular-nums ${p.stock === 0 ? 'bg-red-50 text-red-600 border border-red-100' : p.stock <= 6 ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'text-emerald-700 bg-emerald-50 border border-emerald-100'}`}>
+                      {p.stock}
+                    </span>
                   </td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -343,7 +403,7 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={11} className="py-20 text-center text-sm text-slate-400">ไม่พบสินค้าในขนาดนี้</td></tr>
+                <tr><td colSpan={12} className="py-20 text-center text-sm text-slate-400">ไม่พบสินค้าในขนาดนี้</td></tr>
               )}
             </tbody>
           </table>

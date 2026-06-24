@@ -9,7 +9,7 @@ import {
   Eye, Ban, Truck, Printer, FileEdit,
 } from 'lucide-react';
 import type { PORow, POStatusThai } from '@/lib/purchasing';
-import { receivePO, cancelPO } from '@/app/actions/purchasing';
+import { receivePO, cancelPO, updatePOPayment } from '@/app/actions/purchasing';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,17 +29,24 @@ const statusStyle: Record<POStatusThai, { color: string; icon: React.ReactNode }
   'ร่าง':       { color: 'bg-slate-100 text-slate-500',   icon: <FileEdit    size={12} /> },
 };
 
+const paymentStatusStyle: Record<string, { color: string; label: string }> = {
+  unpaid:  { color: 'bg-red-100 text-red-600', label: 'ยังไม่ชำระ' },
+  partial: { color: 'bg-amber-100 text-amber-600', label: 'ชำระบางส่วน' },
+  paid:    { color: 'bg-emerald-100 text-emerald-700', label: 'ชำระแล้ว' },
+};
+
 // ── Print Preview Modal ───────────────────────────────────────────────────────
 
 // ── PO Detail Modal ───────────────────────────────────────────────────────────
 
 function PODetailModal({
-  order, onClose, onReceive, onCancel,
+  order, onClose, onReceive, onCancel, onPay,
 }: {
   order: PORow;
   onClose: () => void;
   onReceive: (id: string) => void;
   onCancel: (id: string) => void;
+  onPay: (id: string) => void;
 }) {
   return (
     <>
@@ -54,6 +61,9 @@ function PODetailModal({
             <div className="flex items-center gap-2">
               <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyle[order.status].color}`}>
                 {statusStyle[order.status].icon}{order.status}
+              </span>
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${paymentStatusStyle[order.paymentStatus].color}`}>
+                {paymentStatusStyle[order.paymentStatus].label}
               </span>
               <Link href={`/admin/purchasing/${order.id}/print`} target="_blank" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500" title="พิมพ์">
                 <Printer size={17} />
@@ -86,6 +96,7 @@ function PODetailModal({
                   <thead>
                     <tr className="bg-slate-50 text-xs text-slate-400 font-semibold">
                       <th className="text-left px-4 py-2.5">สินค้า</th>
+                      <th className="text-center px-3 py-2.5">ปี (Year)</th>
                       <th className="text-center px-3 py-2.5">จำนวน</th>
                       <th className="text-right px-4 py-2.5">ราคา/หน่วย</th>
                       <th className="text-right px-4 py-2.5">รวม</th>
@@ -95,6 +106,7 @@ function PODetailModal({
                     {order.items.map((item, idx) => (
                       <tr key={idx}>
                         <td className="px-4 py-3 font-medium text-slate-800">{item.productName}</td>
+                        <td className="px-3 py-3 text-center text-slate-500">{item.year || '-'}</td>
                         <td className="px-3 py-3 text-center text-slate-600">{item.qty} {item.unit}</td>
                         <td className="px-4 py-3 text-right text-slate-600">฿{item.unitPrice.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right font-semibold text-slate-800">฿{item.lineTotal.toLocaleString()}</td>
@@ -111,7 +123,7 @@ function PODetailModal({
                       <td className="px-4 py-2 text-right font-semibold text-slate-700">฿{order.vat.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</td>
                     </tr>
                     <tr className="bg-slate-50 border-t border-slate-200">
-                      <td colSpan={3} className="px-4 py-3 text-right text-sm font-bold text-slate-700">มูลค่ารวมสุทธิ</td>
+                      <td colSpan={4} className="px-4 py-3 text-right text-sm font-bold text-slate-700">มูลค่ารวมสุทธิ</td>
                       <td className="px-4 py-3 text-right font-black text-green-600">฿{order.grandTotal.toLocaleString()}</td>
                     </tr>
                   </tfoot>
@@ -128,11 +140,29 @@ function PODetailModal({
               >
                 <Ban size={14} /> ยกเลิก PO
               </button>
+              {order.paymentStatus !== 'paid' && (
+                <button
+                  onClick={() => { onPay(order.id); onClose(); }}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-amber-600 border border-amber-200 hover:bg-amber-50 flex items-center gap-2"
+                >
+                  ชำระเงิน
+                </button>
+              )}
               <button
                 onClick={() => { onReceive(order.id); onClose(); }}
                 className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 flex items-center gap-2"
               >
                 <Truck size={14} /> ยืนยันรับสินค้า
+              </button>
+            </div>
+          )}
+          {order.status === 'รับสินค้าแล้ว' && order.paymentStatus !== 'paid' && (
+            <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                onClick={() => { onPay(order.id); onClose(); }}
+                className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 flex items-center gap-2"
+              >
+                ชำระเงิน
               </button>
             </div>
           )}
@@ -169,11 +199,12 @@ function ConfirmCancelModal({ orderId, onConfirm, onClose }: {
 
 // ── Row Action Menu ───────────────────────────────────────────────────────────
 
-function ActionMenu({ order, onView, onReceive, onCancelRequest }: {
+function ActionMenu({ order, onView, onReceive, onCancelRequest, onPayRequest }: {
   order: PORow;
   onView: () => void;
   onReceive: () => void;
   onCancelRequest: () => void;
+  onPayRequest: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -188,6 +219,11 @@ function ActionMenu({ order, onView, onReceive, onCancelRequest }: {
             <button onClick={() => { setOpen(false); onView(); }} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 font-medium">
               <Eye size={14} className="text-slate-400" /> ดูรายละเอียด
             </button>
+            {order.paymentStatus !== 'paid' && order.status !== 'ยกเลิก' && (
+              <button onClick={() => { setOpen(false); onPayRequest(); }} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 font-medium">
+                💰 ชำระเงิน
+              </button>
+            )}
             {order.status === 'รอรับสินค้า' && (
               <>
                 <button onClick={() => { setOpen(false); onReceive(); }} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50 font-medium">
@@ -201,6 +237,53 @@ function ActionMenu({ order, onView, onReceive, onCancelRequest }: {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ── Payment Modal ─────────────────────────────────────────────────────────────
+
+function POPaymentModal({ order, onConfirm, onClose }: {
+  order: PORow; onConfirm: (id: string, amount: number, date: string) => void; onClose: () => void;
+}) {
+  const remaining = order.grandTotal - order.amountPaid;
+  const [amount, setAmount] = useState(remaining);
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isPending, startTransition] = useTransition();
+
+  const handleConfirm = () => {
+    if (amount <= 0 || amount > remaining) return;
+    startTransition(() => {
+      onConfirm(order.id, amount, date);
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <h3 className="text-lg font-black text-slate-900 mb-4">บันทึกการชำระเงิน</h3>
+        <div className="space-y-4 mb-6">
+          <div className="bg-slate-50 p-3 rounded-xl flex justify-between">
+            <span className="text-sm text-slate-500">ยอดที่ต้องชำระ (คงเหลือ)</span>
+            <span className="text-sm font-bold text-slate-800">฿{remaining.toLocaleString()}</span>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">จำนวนเงินที่ชำระ (บาท)</label>
+            <input type="number" min={1} max={remaining} value={amount || ''} onChange={e => setAmount(Number(e.target.value))} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-green-400" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">วันที่ชำระ</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-green-400" />
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50">ยกเลิก</button>
+          <button onClick={handleConfirm} disabled={isPending || amount <= 0 || amount > remaining} className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-50">
+            {isPending ? 'กำลังบันทึก...' : 'บันทึก'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -219,6 +302,7 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
   const [page, setPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<PORow | null>(null);
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+  const [payTarget, setPayTarget] = useState<PORow | null>(null);
 
   // sync when server re-renders (after router.refresh)
   useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
@@ -256,6 +340,14 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
     setCancelTarget(null);
     startTransition(async () => {
       await cancelPO(id);
+      router.refresh();
+    });
+  };
+
+  const handlePay = (id: string, amount: number, date: string) => {
+    startTransition(async () => {
+      await updatePOPayment(id, amount, date);
+      setPayTarget(null);
       router.refresh();
     });
   };
@@ -326,7 +418,8 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
                   <th className="text-right px-4 py-3">มูลค่า</th>
                   <th className="text-left px-4 py-3">วันที่สั่ง</th>
                   <th className="text-left px-4 py-3">กำหนดรับ</th>
-                  <th className="text-center px-4 py-3">สถานะ</th>
+                  <th className="text-center px-4 py-3">สถานะสินค้า</th>
+                  <th className="text-center px-4 py-3">การชำระเงิน</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -353,12 +446,18 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
                         {statusStyle[o.status].icon}{o.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${paymentStatusStyle[o.paymentStatus].color}`}>
+                        {paymentStatusStyle[o.paymentStatus].label}
+                      </span>
+                    </td>
                     <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
                       <ActionMenu
                         order={o}
                         onView={() => setSelectedOrder(o)}
                         onReceive={() => handleReceive(o.id)}
                         onCancelRequest={() => setCancelTarget(o.id)}
+                        onPayRequest={() => setPayTarget(o)}
                       />
                     </td>
                   </tr>
@@ -398,6 +497,10 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
           onClose={() => setSelectedOrder(null)}
           onReceive={handleReceive}
           onCancel={id => setCancelTarget(id)}
+          onPay={id => {
+            const o = orders.find(x => x.id === id);
+            if (o) setPayTarget(o);
+          }}
         />
       )}
       {cancelTarget && (
@@ -405,6 +508,13 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
           orderId={orders.find(o => o.id === cancelTarget)?.poNumber ?? cancelTarget}
           onConfirm={() => handleCancel(cancelTarget)}
           onClose={() => setCancelTarget(null)}
+        />
+      )}
+      {payTarget && (
+        <POPaymentModal
+          order={payTarget}
+          onConfirm={handlePay}
+          onClose={() => setPayTarget(null)}
         />
       )}
     </>

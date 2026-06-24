@@ -1,6 +1,7 @@
 import connectDB from './mongodb';
 import { Product } from '@/models/Product';
 import { StockMovement } from '@/models/StockMovement';
+import { Brand } from '@/models/Brand';
 
 export const MIN_STOCK = 8;
 
@@ -15,6 +16,7 @@ export type StockItem = {
   stockValue: number;
   image:      string;
   isLow:      boolean;
+  brandLogo?: string;
 };
 
 export type MovementRow = {
@@ -70,8 +72,22 @@ function normalizeMovement(d: any): MovementRow {
 
 export async function getStockItems(): Promise<StockItem[]> {
   await connectDB();
-  const docs = await Product.find({}).sort({ brand: 1, model: 1, size: 1 }).lean();
-  return docs.map(normalizeStock);
+  const [docs, brands] = await Promise.all([
+    Product.find({}).sort({ brand: 1, model: 1, size: 1 }).lean(),
+    Brand.find({}).lean(),
+  ]);
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const brandMap = new Map<string, string>(brands.map((b: any) => [String(b.name).toUpperCase(), b.logo]));
+
+  return docs.map(d => {
+    const item = normalizeStock(d);
+    const logo = brandMap.get(item.brand.toUpperCase());
+    if (logo) {
+      item.brandLogo = logo;
+    }
+    return item;
+  });
 }
 
 export async function getStockMovements(limit = 50): Promise<MovementRow[]> {

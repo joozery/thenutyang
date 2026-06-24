@@ -28,9 +28,13 @@ export interface IBooking {
   depositSlipUrl: string;
   depositStatus: 'pending' | 'submitted' | 'verified' | 'not_required';
   depositVerifyNote: string;
+  depositPaidAt: Date | null;
+  depositRefunded: boolean;
+  depositRefundedAt: Date | null;
   balanceStatus: 'unpaid' | 'paid';
-  balancePaymentMethod: 'cash' | 'transfer' | '';
+  balancePaymentMethod: 'cash' | 'transfer' | 'credit_card' | '';
   balancePaidAt: Date | null;
+  balanceReceivedAmount: number | null;
   balanceSlipUrl: string;
   balanceVerifyNote: string;
   createdAt: Date;
@@ -64,9 +68,13 @@ const BookingSchema = new Schema<IBooking>({
   depositSlipUrl:    { type: String, default: '' },
   depositStatus:     { type: String, enum: ['pending', 'submitted', 'verified', 'not_required'], default: 'pending' },
   depositVerifyNote: { type: String, default: '' },
+  depositPaidAt:     { type: Date, default: null },
+  depositRefunded:   { type: Boolean, default: false },
+  depositRefundedAt: { type: Date, default: null },
   balanceStatus:        { type: String, enum: ['unpaid', 'paid'], default: 'unpaid' },
-  balancePaymentMethod: { type: String, enum: ['cash', 'transfer', ''], default: '' },
+  balancePaymentMethod: { type: String, enum: ['cash', 'transfer', 'credit_card', ''], default: '' },
   balancePaidAt:        { type: Date, default: null },
+  balanceReceivedAmount: { type: Number, default: null },
   balanceSlipUrl:       { type: String, default: '' },
   balanceVerifyNote:    { type: String, default: '' },
   createdAt:       { type: Date, default: Date.now },

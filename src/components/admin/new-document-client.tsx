@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   ArrowLeft, Plus, Trash2, Send, FileText,
   User, Phone, Hash, ChevronDown,
-  AlertCircle, CheckCircle, Receipt, FileEdit, FileMinus,
+  AlertCircle, CheckCircle, Receipt, FileEdit, FileMinus, FileClock,
   Search, X, Building2, MapPin,
 } from 'lucide-react';
 import { createDocument } from '@/app/actions/documents';
@@ -18,9 +18,10 @@ import { PickerModal } from '@/components/admin/picker-modal';
 // ── constants ─────────────────────────────────────────────────────────────────
 
 const DOC_TYPES: { value: DocType; label: string; desc: string; icon: React.ReactNode }[] = [
-  { value: 'invoice',     label: 'ใบเสร็จ / ใบกำกับภาษี', desc: 'บันทึกการขายที่ชำระแล้ว',         icon: <Receipt  size={18} /> },
-  { value: 'quote',       label: 'ใบเสนอราคา',              desc: 'เสนอราคาให้ลูกค้าก่อนตัดสินใจ',   icon: <FileEdit size={18} /> },
-  { value: 'credit_note', label: 'ใบลดหนี้',                desc: 'ลดยอดหนี้จากใบเสร็จที่ออกแล้ว',  icon: <FileMinus size={18} /> },
+  { value: 'invoice',      label: 'ใบเสร็จ / ใบกำกับภาษี', desc: 'บันทึกการขายที่ชำระแล้ว',         icon: <Receipt  size={18} /> },
+  { value: 'quote',        label: 'ใบเสนอราคา',              desc: 'เสนอราคาให้ลูกค้าก่อนตัดสินใจ',   icon: <FileEdit size={18} /> },
+  { value: 'billing_note', label: 'ใบแจ้งหนี้',              desc: 'บิลเครดิต ออกก่อนรับเงิน รอลูกค้าชำระ (จ่ายเป็นงวดได้)', icon: <FileClock size={18} /> },
+  { value: 'credit_note',  label: 'ใบลดหนี้',                desc: 'ลดยอดหนี้จากใบเสร็จที่ออกแล้ว',  icon: <FileMinus size={18} /> },
 ];
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -44,6 +45,8 @@ export type DocPrefill = {
   docType: DocType;
   customerName:    string;
   customerPhone:   string;
+  customerCar:     string;
+  bookingRef:      string;
   customerAddress: string;
   customerTaxId:   string;
   items: { description: string; qty: number; unitPrice: number; discount: number }[];
@@ -102,6 +105,8 @@ export function NewDocumentClient({
   // customer
   const [customerName,    setCustomerName]    = useState(prefill?.customerName ?? '');
   const [customerPhone,   setCustomerPhone]   = useState(prefill?.customerPhone ?? '');
+  const [customerCar]                         = useState(prefill?.customerCar ?? '');
+  const [bookingRef]                          = useState(prefill?.bookingRef ?? '');
   const [customerAddress, setCustomerAddress] = useState(prefill?.customerAddress ?? '');
   const [customerTaxId,   setCustomerTaxId]   = useState(prefill?.customerTaxId ?? '');
   const [customerSelected, setCustomerSelected] = useState(false);
@@ -191,7 +196,8 @@ export function NewDocumentClient({
         type:         docType,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        customerCar:   '',
+        customerCar:   customerCar,
+        bookingRef:    bookingRef,
         customerAddress: customerAddress.trim(),
         customerTaxId:   customerTaxId.trim(),
         items: lines.map((l, idx) => ({
@@ -324,9 +330,9 @@ export function NewDocumentClient({
                 <input value={today()} disabled className={inputCls} />
               </div>
             </div>
-            {(docType === 'quote') && (
+            {(docType === 'quote' || docType === 'billing_note') && (
               <div>
-                <Label>วันหมดอายุ (ใบเสนอราคา)</Label>
+                <Label>{docType === 'billing_note' ? 'วันครบกำหนดชำระ' : 'วันหมดอายุ (ใบเสนอราคา)'}</Label>
                 <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={inputCls} />
               </div>
             )}
@@ -392,6 +398,9 @@ export function NewDocumentClient({
                   className={inputCls + ' pl-8'}
                 />
               </div>
+              {customerCar && (
+                <p className="text-[11px] text-slate-400 mt-1.5">ข้อมูลรถ: {customerCar}</p>
+              )}
             </div>
             <div>
               <Label>ที่อยู่ (สำหรับออกเอกสาร)</Label>

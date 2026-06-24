@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { Booking } from '@/models/Booking';
 import { PaymentSettings } from '@/models/PaymentSettings';
+import { Expense } from '@/models/Expense';
 import { verifySlip } from '@/lib/slip2go';
 import { uploadImage } from './upload';
 
@@ -36,7 +37,12 @@ export async function uploadDepositSlip(_prev: ActionResult | null, formData: Fo
 
     await Booking.updateMany(
       { orderRef, depositStatus: { $ne: 'not_required' } },
-      { depositSlipUrl: url, depositStatus: verified ? 'verified' : 'submitted', depositVerifyNote: reason }
+      {
+        depositSlipUrl: url,
+        depositStatus: verified ? 'verified' : 'submitted',
+        depositVerifyNote: reason,
+        ...(verified ? { depositPaidAt: new Date() } : {}),
+      }
     );
 
     revalidatePath('/booking/success');
@@ -78,6 +84,8 @@ export async function uploadBalanceSlip(_prev: ActionResult | null, formData: Fo
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const { verified, reason } = await verifySlip(fileBuffer, file.name, file.type, remaining);
 
+    // ยอดที่ Slip2Go ตรวจสอบคือยอดรวมทั้งกลุ่ม (ถ้าตะกร้ามีหลายรุ่นยาง) — ไม่ต้องเซ็ต balanceReceivedAmount ต่อรายการ
+    // ปล่อยเป็น null เพื่อให้ finance.ts ใช้ยอดที่ต้องชำระของแต่ละรายการแทน (เคสนี้โอนตรงผ่านสลิป ไม่มีค่าธรรมเนียมหัก)
     await Booking.updateMany(
       { orderRef },
       verified
@@ -111,7 +119,7 @@ export async function updateDepositAmount(ref: string, amount: number): Promise<
 export async function verifyDepositManually(ref: string): Promise<ActionResult> {
   try {
     await connectDB();
-    await Booking.updateOne({ ref }, { depositStatus: 'verified' });
+    await Booking.updateOne({ ref }, { depositStatus: 'verified', depositPaidAt: new Date() });
     revalidatePath('/admin/payments');
     return { ok: true };
   } catch (err) {
@@ -120,11 +128,59 @@ export async function verifyDepositManually(ref: string): Promise<ActionResult> 
   }
 }
 
-export async function markBalancePaid(ref: string, method: 'cash' | 'transfer'): Promise<ActionResult> {
+// คืนเงินมัดจำให้ลูกค้า — ใช้กรณีลูกค้าจ่ายเต็มจำนวนทีหลังโดยไม่ได้หักมัดจำที่จ่ายไปก่อน หรือยกเลิกงาน
+// ทำเครื่องหมายไว้เฉยๆ ไม่ลบสถานะ verified เพื่อให้เห็นประวัติว่าเคยจ่ายมัดจำจริง แค่ไม่นับเป็นรายรับแล้ว (หน้าการเงินจะตัดออกเอง)
+export async function refundDeposit(ref: string): Promise<ActionResult> {
   try {
     await connectDB();
-    await Booking.updateOne({ ref }, { balanceStatus: 'paid', balancePaymentMethod: method, balancePaidAt: new Date() });
+    const booking = await Booking.findOne({ ref });
+    if (!booking) return { error: 'ไม่พบการจองนี้' };
+    if (booking.depositStatus !== 'verified') return { error: 'มัดจำรายการนี้ยังไม่ได้ยืนยันรับเงิน' };
+    if (booking.depositRefunded) return { error: 'คืนเงินมัดจำไปแล้ว' };
+
+    await Booking.updateOne({ ref }, { depositRefunded: true, depositRefundedAt: new Date() });
     revalidatePath('/admin/payments');
+    revalidatePath('/admin/finance');
+    return { ok: true };
+  } catch (err) {
+    console.error('[refundDeposit]', err);
+    return { error: 'ดำเนินการไม่สำเร็จ' };
+  }
+}
+
+export async function markBalancePaid(ref: string, method: 'cash' | 'transfer' | 'credit_card', receivedAmount?: number): Promise<ActionResult> {
+  try {
+    await connectDB();
+    const booking = await Booking.findOne({ ref });
+    if (!booking) return { error: 'ไม่พบการจองนี้' };
+
+    const totalAmount = booking.tirePrice * booking.quantity;
+    const remaining = booking.depositStatus === 'verified' ? totalAmount - booking.depositAmount : totalAmount;
+    const received  = receivedAmount ?? remaining;
+
+    if (!Number.isFinite(received) || received < 0) return { error: 'จำนวนเงินไม่ถูกต้อง' };
+
+    await Booking.updateOne({ ref }, {
+      balanceStatus: 'paid',
+      balancePaymentMethod: method,
+      balancePaidAt: new Date(),
+      balanceReceivedAmount: received,
+    });
+
+    // รูดบัตรแล้วยอดเข้าน้อยกว่ายอดที่ต้องชำระ (โดนหักค่าธรรมเนียม) — บันทึกส่วนต่างเป็นรายจ่ายอัตโนมัติ
+    const shortfall = remaining - received;
+    if (method === 'credit_card' && shortfall > 0.01) {
+      await Expense.create({
+        category:    'ค่าธรรมเนียมบัตรเครดิต',
+        description: `ค่าธรรมเนียมบัตรเครดิต - ${booking.ref}`,
+        amount:      shortfall,
+        expenseDate: new Date(),
+        note:        `ยอดที่ต้องชำระ ฿${remaining.toLocaleString()} เข้าจริง ฿${received.toLocaleString()}`,
+      });
+    }
+
+    revalidatePath('/admin/payments');
+    revalidatePath('/admin/finance');
     return { ok: true };
   } catch (err) {
     console.error('[markBalancePaid]', err);
@@ -135,8 +191,9 @@ export async function markBalancePaid(ref: string, method: 'cash' | 'transfer'):
 export async function revertBalancePayment(ref: string): Promise<ActionResult> {
   try {
     await connectDB();
-    await Booking.updateOne({ ref }, { balanceStatus: 'unpaid', balancePaymentMethod: '', balancePaidAt: null });
+    await Booking.updateOne({ ref }, { balanceStatus: 'unpaid', balancePaymentMethod: '', balancePaidAt: null, balanceReceivedAmount: null });
     revalidatePath('/admin/payments');
+    revalidatePath('/admin/finance');
     return { ok: true };
   } catch (err) {
     console.error('[revertBalancePayment]', err);

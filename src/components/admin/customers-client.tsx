@@ -218,11 +218,11 @@ export function CustomersClient({ customers }: { customers: UnifiedCustomerRow[]
           </p>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setModal('add')} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition-all shadow-sm">
+          <button onClick={() => setModal('add')} className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-700 transition-all shadow-sm">
             <Plus size={16} />
             เพิ่มลูกค้า
           </button>
-          <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
+          <button className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
             <Download size={16} />
             Export CSV
           </button>
@@ -230,13 +230,13 @@ export function CustomersClient({ customers }: { customers: UnifiedCustomerRow[]
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <div className="bg-gradient-to-br from-[#00B900] to-green-700 p-6 rounded-2xl shadow-lg shadow-green-600/20 text-white relative overflow-hidden">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-br from-[#00B900] to-green-700 p-5 rounded-lg shadow-md text-white relative overflow-hidden">
           <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
           <div className="relative z-10">
-            <p className="text-green-100 font-medium text-sm mb-1">ยอดใช้จ่ายรวมทั้งหมด</p>
-            <p className="text-3xl font-black drop-shadow-sm tracking-tight">฿{totalSpent.toLocaleString()}</p>
-            <div className="mt-4 inline-flex items-center gap-1.5 text-xs bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-sm">
+            <p className="text-green-100 font-medium text-xs mb-1">ยอดใช้จ่ายรวมทั้งหมด</p>
+            <p className="text-2xl font-black drop-shadow-sm tracking-tight">฿{totalSpent.toLocaleString()}</p>
+            <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
               <span>จากทุก booking</span>
             </div>
           </div>
@@ -247,38 +247,38 @@ export function CustomersClient({ customers }: { customers: UnifiedCustomerRow[]
           { label: 'ลูกค้า VIP',    value: vipCount.toString(),         sub: 'ยอดซื้อ ≥ 50,000', icon: <Crown className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50' },
           { label: 'ลูกค้าใหม่ (เดือนนี้)', value: newCount.toString(),  sub: 'จองครั้งแรก', icon: <Sparkles className="w-5 h-5 text-green-500" />, bg: 'bg-green-50' },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${s.bg}`}>
+          <div key={s.label} className="bg-white rounded-lg border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between mb-3">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${s.bg}`}>
                 {s.icon}
               </div>
             </div>
             <div>
-              <p className="text-3xl font-black text-slate-800">{s.value}</p>
+              <p className="text-2xl font-black text-slate-800">{s.value}</p>
               <p className="text-sm font-semibold text-slate-500 mt-1">{s.label}</p>
-              <p className="text-xs text-slate-400 mt-1">{s.sub}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{s.sub}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
         {/* Filters */}
-        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-50/50">
+        <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-3 items-center justify-between bg-slate-50/50">
           <div className="relative w-full md:max-w-md">
-            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="ค้นหาชื่อ, เบอร์โทรศัพท์..."
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all shadow-sm"
+              className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all shadow-sm"
             />
           </div>
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-2.5 border border-slate-200 rounded-xl bg-white shadow-sm w-full md:w-auto">
-              <Filter size={16} className="text-slate-400" />
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg bg-white shadow-sm w-full md:w-auto">
+              <Filter size={14} className="text-slate-400" />
               <select
                 value={sourceFilter}
                 onChange={e => { setSourceFilter(e.target.value); setPage(1); }}
@@ -287,8 +287,8 @@ export function CustomersClient({ customers }: { customers: UnifiedCustomerRow[]
                 {['ทั้งหมด', 'ออนไลน์', 'หน้าร้าน'].map(t => <option key={t} value={t}>ที่มา: {t}</option>)}
               </select>
             </div>
-            <div className="inline-flex items-center gap-2 px-3 py-2.5 border border-slate-200 rounded-xl bg-white shadow-sm w-full md:w-auto">
-              <Filter size={16} className="text-slate-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg bg-white shadow-sm w-full md:w-auto">
+              <Filter size={14} className="text-slate-400" />
               <select
                 value={tagFilter}
                 onChange={e => { setTagFilter(e.target.value); setPage(1); }}
@@ -304,77 +304,77 @@ export function CustomersClient({ customers }: { customers: UnifiedCustomerRow[]
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-slate-400 font-bold uppercase tracking-wider border-b border-slate-200 bg-slate-50/80">
-                <th className="text-left px-6 py-4">ลูกค้า</th>
-                <th className="text-left px-6 py-4">เบอร์โทร</th>
-                <th className="text-center px-6 py-4">จำนวนบิล</th>
-                <th className="text-right px-6 py-4">ยอดซื้อรวม</th>
-                <th className="text-left px-6 py-4">เข้ามาล่าสุด</th>
-                <th className="text-center px-6 py-4">สถานะ</th>
-                <th className="text-center px-6 py-4">ที่มา</th>
-                <th className="px-6 py-4 w-20"></th>
+              <tr className="text-[11px] text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200 bg-slate-50">
+                <th className="text-left px-4 py-3">ลูกค้า</th>
+                <th className="text-left px-4 py-3">เบอร์โทร</th>
+                <th className="text-center px-4 py-3">จำนวนบิล</th>
+                <th className="text-right px-4 py-3">ยอดซื้อรวม</th>
+                <th className="text-left px-4 py-3">เข้ามาล่าสุด</th>
+                <th className="text-center px-4 py-3">สถานะ</th>
+                <th className="text-center px-4 py-3">ที่มา</th>
+                <th className="px-4 py-3 w-20"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {paginated.length === 0 ? (
-                <tr><td colSpan={8} className="py-24 text-center text-slate-400 text-base font-medium">ไม่พบข้อมูลลูกค้าที่คุณค้นหา</td></tr>
+                <tr><td colSpan={8} className="py-16 text-center text-slate-400 text-sm font-medium">ไม่พบข้อมูลลูกค้าที่คุณค้นหา</td></tr>
               ) : paginated.map((c, i) => (
                 <tr key={c.id ?? c.phone} className="hover:bg-green-50/30 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
                       <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center text-green-700 font-black text-sm shrink-0 border border-green-200 shadow-sm group-hover:scale-105 transition-transform">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center text-green-700 font-black text-sm shrink-0 border border-green-200 shadow-sm group-hover:scale-105 transition-transform">
                           {c.name.charAt(0)}
                         </div>
                         {c.customerType === 'corporate' ? (
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-purple-600 rounded-full border-2 border-white flex items-center justify-center shadow-sm" title="นิติบุคคล">
-                            <Building2 size={9} className="text-white" />
+                          <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-purple-600 rounded-full border border-white flex items-center justify-center shadow-sm" title="นิติบุคคล">
+                            <Building2 size={8} className="text-white" />
                           </div>
                         ) : c.lineUserId && (
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#06C755] rounded-full border-2 border-white flex items-center justify-center shadow-sm" title="เชื่อมต่อ LINE แล้ว">
+                          <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-[#06C755] rounded-full border border-white flex items-center justify-center shadow-sm" title="เชื่อมต่อ LINE แล้ว">
                             <svg viewBox="0 0 24 24" className="w-2 h-2 fill-white"><path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.122.301.079.767.038 1.076-.003.016-.046.284-.046.284s-.142.859-.172 1.034c-.049.289-.228 1.127 1.01.606 1.238-.521 6.678-3.929 8.924-7.069C23.013 14.28 24 12.395 24 10.304zm-14.73 2.946H6.602a.852.852 0 0 1-.852-.853V7.276a.852.852 0 0 1 1.704 0v4.269h1.816a.852.852 0 0 1 0 1.705zm2.768-.853a.853.853 0 0 1-1.705 0V7.276a.853.853 0 0 1 1.705 0v5.121zm4.869 0a.853.853 0 0 1-.853.853h-2.557a.853.853 0 0 1-.853-.853V7.276a.852.852 0 0 1 .853-.853h2.557a.853.853 0 1 1 0 1.705h-1.704v.852h1.704a.853.853 0 0 1 0 1.705h-1.704v.853h1.704a.852.852 0 0 1 .853.852zm3.308-5.121v5.121a.852.852 0 0 1-1.704 0V8.718l-2.457 3.422a.846.846 0 0 1-.689.379.852.852 0 0 1-.852-.853V6.544a.853.853 0 0 1 1.705 0v3.68l2.457-3.422a.846.846 0 0 1 .689-.379.852.852 0 0 1 .851.853z" /></svg>
                           </div>
                         )}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800">{c.name}</p>
-                        <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">ID: {(page - 1) * PAGE_SIZE + i + 1}</p>
+                        <p className="font-bold text-slate-800 text-sm">{c.name}</p>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">ID: {(page - 1) * PAGE_SIZE + i + 1}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
-                      <Phone size={13} className="text-slate-400" />{c.phone || '—'}
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium bg-slate-50 px-2 py-0.5 rounded border border-slate-100 text-[13px]">
+                      <Phone size={12} className="text-slate-400" />{c.phone || '—'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center justify-center gap-1.5 font-bold text-slate-700 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">
-                      <FileText size={14} className="text-blue-500" />{c.totalBills}
+                  <td className="px-4 py-3 text-center">
+                    <span className="inline-flex items-center justify-center gap-1 font-bold text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-100 text-[13px]">
+                      <FileText size={12} className="text-blue-500" />{c.totalBills}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="font-black text-slate-800 text-base">
+                  <td className="px-4 py-3 text-right">
+                    <span className="font-bold text-slate-800 text-sm">
                       ฿{c.totalSpent.toLocaleString()}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-slate-500 text-sm font-medium">
+                  <td className="px-4 py-3 text-slate-500 text-xs font-medium">
                     {c.totalBills > 0 ? formatLastVisit(c.lastVisit) : '—'}
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border ${TAG_STYLE[c.tag]}`}>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md border ${TAG_STYLE[c.tag]}`}>
                       {TAG_ICON[c.tag]}{c.tag}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md ${c.source === 'online' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded ${c.source === 'online' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
                       {c.source === 'online' ? 'ออนไลน์' : 'หน้าร้าน'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3">
                     {c.id && (
                       <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => setModal(c as EditableCustomer)} className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"><Pencil size={14} /></button>
-                        <button onClick={() => setDeleteTarget(c as EditableCustomer)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"><Trash2 size={14} /></button>
+                        <button onClick={() => setModal(c as EditableCustomer)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"><Pencil size={14} /></button>
+                        <button onClick={() => setDeleteTarget(c as EditableCustomer)} className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"><Trash2 size={14} /></button>
                       </div>
                     )}
                   </td>
@@ -385,26 +385,26 @@ export function CustomersClient({ customers }: { customers: UnifiedCustomerRow[]
         </div>
 
         {/* Pagination */}
-        <div className="p-5 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="text-sm font-medium text-slate-500">
             แสดง <span className="text-slate-900 font-bold">{filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}</span> จากทั้งหมด <span className="text-slate-900 font-bold">{filtered.length}</span> รายการ
           </span>
           <div className="flex gap-1.5">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all">
+              className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all">
               <ChevronLeft size={16} />
             </button>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
               const n = totalPages <= 5 ? i + 1 : Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
               return (
                 <button key={n} onClick={() => setPage(n)}
-                  className={`w-9 h-9 rounded-xl text-sm font-bold transition-all shadow-sm ${page === n ? 'bg-[#00B900] text-white border-transparent' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                  className={`w-8 h-8 rounded-lg text-sm font-bold transition-all shadow-sm ${page === n ? 'bg-[#00B900] text-white border-transparent' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                   {n}
                 </button>
               );
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all">
+              className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all">
               <ChevronRight size={16} />
             </button>
           </div>

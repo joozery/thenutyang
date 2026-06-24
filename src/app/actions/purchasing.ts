@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { PurchaseOrder } from '@/models/PurchaseOrder';
+import { Expense } from '@/models/Expense';
 import { generatePONumber } from '@/lib/purchasing';
 
 export type POFormPayload = {
@@ -15,9 +16,10 @@ export type POFormPayload = {
   dueDate: string;
   items: {
     productName: string; unit: string;
-    qty: number; unitPrice: number; discount: number; lineTotal: number;
+    qty: number; unitPrice: number; discount: number; year: string; lineTotal: number;
   }[];
   paymentTerm:     string;
+  paymentDate?:    string;
   paymentMethod:   string;
   shippingAddress: string;
   notes:           string;
@@ -40,6 +42,7 @@ async function savePO(data: POFormPayload, status: 'pending' | 'draft') {
     dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
     items: data.items,
     paymentTerm:     data.paymentTerm,
+    paymentDate:     data.paymentDate ? new Date(data.paymentDate) : undefined,
     paymentMethod:   data.paymentMethod,
     shippingAddress: data.shippingAddress,
     notes:           data.notes,
@@ -100,5 +103,43 @@ export async function cancelPO(id: string): Promise<{ error?: string }> {
   } catch (err) {
     console.error('[cancelPO]', err);
     return { error: 'ไม่สามารถยกเลิกได้' };
+  }
+}
+
+export async function updatePOPayment(
+  id: string,
+  amountPaid: number,
+  paymentDateStr: string,
+): Promise<{ error?: string }> {
+  try {
+    await connectDB();
+    const po = await PurchaseOrder.findById(id);
+    if (!po) return { error: 'ไม่พบใบสั่งซื้อ' };
+
+    const paymentDate = new Date(paymentDateStr || Date.now());
+    const totalPaid = po.amountPaid + amountPaid;
+    const paymentStatus = totalPaid >= po.grandTotal ? 'paid' : 'partial';
+
+    // Record expense
+    const expense = await Expense.create({
+      category: 'PurchaseOrder',
+      description: `ชำระเงินใบสั่งซื้อ ${po.poNumber}`,
+      amount: amountPaid,
+      expenseDate: paymentDate,
+      note: `อ้างอิงใบสั่งซื้อ ${po.poNumber}`,
+    });
+
+    await PurchaseOrder.findByIdAndUpdate(id, {
+      paymentStatus,
+      amountPaid: totalPaid,
+      paymentDate,
+      expenseId: expense._id,
+    });
+
+    revalidatePath('/admin/purchasing');
+    return {};
+  } catch (err) {
+    console.error('[updatePOPayment]', err);
+    return { error: 'ไม่สามารถบันทึกการชำระเงินได้' };
   }
 }

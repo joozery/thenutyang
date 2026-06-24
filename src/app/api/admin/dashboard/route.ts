@@ -6,21 +6,36 @@ import { Booking } from '@/models/Booking';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     await connectDB();
 
-    const now = new Date();
+    const { searchParams } = new URL(req.url);
+    const dateParam = searchParams.get('date');
+    
+    let now = new Date();
+    if (dateParam) {
+      const parsed = new Date(dateParam);
+      if (!isNaN(parsed.getTime())) {
+        now = parsed;
+      }
+    }
+
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
     const yesterdayStart = new Date(todayStart);
     yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
     // ─── Today's invoices (paid only) ───────────────────────────
     const [todayDocs, yesterdayDocs, monthDocs] = await Promise.all([
       FinancialDocument.find({
         type: 'invoice',
-        createdAt: { $gte: todayStart },
+        createdAt: { $gte: todayStart, $lt: tomorrowStart },
       }).lean(),
       FinancialDocument.find({
         type: 'invoice',
@@ -28,7 +43,7 @@ export async function GET() {
       }).lean(),
       FinancialDocument.find({
         type: 'invoice',
-        createdAt: { $gte: monthStart },
+        createdAt: { $gte: monthStart, $lt: nextMonthStart },
       }).lean(),
     ]);
 
@@ -53,11 +68,11 @@ export async function GET() {
     // ─── Pending bookings ────────────────────────────────────────
     const pendingBookings = await Booking.countDocuments({ status: 'pending' });
     const todayBookings = await Booking.countDocuments({
-      createdAt: { $gte: todayStart },
+      createdAt: { $gte: todayStart, $lt: tomorrowStart },
     });
 
     // ─── Recent invoices ─────────────────────────────────────────
-    const recentInvoices = await FinancialDocument.find({ type: 'invoice' })
+    const recentInvoices = await FinancialDocument.find({ type: 'invoice', createdAt: { $gte: todayStart, $lt: tomorrowStart } })
       .sort({ createdAt: -1 })
       .limit(8)
       .lean();

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   Search, ArrowDownCircle, ArrowUpCircle, AlertTriangle,
   Package, SlidersHorizontal, X, CheckCircle,
+  Tag, Download, Upload, TrendingUp
 } from 'lucide-react';
 import type { StockItem, MovementRow, WarehouseStats } from '@/lib/warehouse';
 import { receiveStock, disburseStock, adjustStock } from '@/app/actions/warehouse';
@@ -25,7 +26,7 @@ function fmtDate(iso: string) {
   return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-const inputCls = 'w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-500/10 transition-colors placeholder:text-slate-300 disabled:bg-slate-50 disabled:text-slate-400';
+const inputCls = 'w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-500/10 transition-colors placeholder:text-slate-300 disabled:bg-slate-50 disabled:text-slate-400';
 
 // ── Move Modal (รับเข้า / เบิกออก / ปรับสต๊อก) ─────────────────────────────
 
@@ -84,10 +85,10 @@ function MoveModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+      <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-md mx-4">
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${type === 'in' ? 'bg-emerald-100 text-emerald-600' : type === 'out' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-600'}`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${type === 'in' ? 'bg-emerald-100 text-emerald-600' : type === 'out' ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-600'}`}>
               {type === 'in' ? <ArrowDownCircle size={16} /> : type === 'out' ? <ArrowUpCircle size={16} /> : <SlidersHorizontal size={16} />}
             </div>
             <h2 className="text-base font-black text-slate-900">{TITLES[type]}</h2>
@@ -101,7 +102,7 @@ function MoveModal({
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">สินค้า <span className="text-green-500">*</span></label>
             <div className="relative">
               <div
-                className="flex items-center w-full border border-slate-200 rounded-xl overflow-hidden focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-500/10 transition-colors bg-white"
+                className="flex items-center w-full border border-slate-200 rounded-lg overflow-hidden focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-500/10 transition-colors bg-white"
               >
                 <Search size={14} className="ml-3 text-slate-400 shrink-0" />
                 <input
@@ -129,7 +130,7 @@ function MoveModal({
               
               {/* Dropdown list */}
               {(!productId || (selected && search !== selected.label)) && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {filteredProducts.length === 0 ? (
                     <div className="px-4 py-3 text-sm text-slate-500 text-center">ไม่พบสินค้า</div>
                   ) : (
@@ -205,18 +206,18 @@ function MoveModal({
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-sm text-red-600 font-medium">
+            <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 text-sm text-red-600 font-medium">
               {error}
             </div>
           )}
         </div>
 
         <div className="p-5 border-t border-slate-100 flex gap-3">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50">ยกเลิก</button>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50">ยกเลิก</button>
           <button
             onClick={handleSubmit}
             disabled={!isValid || isPending}
-            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
+            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors ${
               type === 'in' ? 'bg-emerald-600 hover:bg-emerald-700' : type === 'out' ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-700 hover:bg-slate-800'
             }`}
           >
@@ -234,93 +235,138 @@ function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: st
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'low' | 'ok'>('all');
 
+  const lowCount = items.filter(p => p.isLow).length;
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return items.filter(p => {
-      const matchSearch = !q || p.label.toLowerCase().includes(q);
+      const matchSearch = !q || p.label.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.model.toLowerCase().includes(q);
       const matchFilter = filter === 'all' || (filter === 'low' ? p.isLow : !p.isLow);
       return matchSearch && matchFilter;
     });
   }, [items, search, filter]);
 
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
   return (
-    <div>
-      <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row gap-3 items-center">
+        <div className="relative flex-1 w-full">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="ค้นหาสินค้า..."
-            className="w-full pl-8 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-green-400"
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="ค้นหาสินค้า, SKU, บาร์โค้ด..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 text-[13px] text-slate-700 focus:outline-none focus:border-[#008a44] transition-colors"
           />
         </div>
-        <div className="flex gap-1.5">
-          {(['all', 'low', 'ok'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${filter === f ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-            >
-              {f === 'all' ? 'ทั้งหมด' : f === 'low' ? '⚠ ใกล้หมด' : 'ปกติ'}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar shrink-0">
+          <button
+            onClick={() => { setFilter('all'); setPage(1); }}
+            className={`px-5 py-2.5 rounded-lg text-[13px] font-bold whitespace-nowrap transition-colors ${filter === 'all' ? 'bg-[#008a44] text-white shadow-sm shadow-green-500/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+          >
+            ทั้งหมด
+          </button>
+          <button
+            onClick={() => { setFilter('low'); setPage(1); }}
+            className={`px-4 py-2.5 rounded-lg text-[13px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${filter === 'low' ? 'bg-[#008a44] text-white shadow-sm shadow-green-500/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+          >
+            <span className={`text-xs ${filter === 'low' ? 'text-white/80' : 'text-slate-400'}`}>{lowCount}</span> ใกล้หมด
+          </button>
+          <button
+            onClick={() => { setFilter('ok'); setPage(1); }}
+            className={`px-5 py-2.5 rounded-lg text-[13px] font-bold whitespace-nowrap transition-colors ${filter === 'ok' ? 'bg-[#008a44] text-white shadow-sm shadow-green-500/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+          >
+            ปกติ
+          </button>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto flex-1">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-xs text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100 bg-slate-50">
-              <th className="text-left px-4 py-3">สินค้า</th>
-              <th className="text-center px-4 py-3">สต๊อก</th>
-              <th className="text-right px-4 py-3">ราคาทุน</th>
-              <th className="text-right px-4 py-3">มูลค่า</th>
-              <th className="text-center px-4 py-3">สถานะ</th>
-              <th className="px-4 py-3" />
+            <tr className="text-[12px] text-slate-400 font-bold uppercase tracking-wide border-b border-slate-50 bg-slate-50/50">
+              <th className="text-left px-5 py-4">สินค้า</th>
+              <th className="text-center px-5 py-4">สต๊อก</th>
+              <th className="text-right px-5 py-4">ราคาทุน</th>
+              <th className="text-center px-5 py-4">มูลค่า</th>
+              <th className="text-center px-5 py-4">สถานะ</th>
+              <th className="text-center px-5 py-4">จัดการ</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
-            {filtered.length === 0 ? (
+          <tbody className="divide-y divide-slate-50/80">
+            {paginated.length === 0 ? (
               <tr><td colSpan={6} className="text-center py-12 text-slate-400">ไม่พบสินค้า</td></tr>
-            ) : filtered.map(p => (
-              <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <img src={p.image} alt={p.label} className="w-10 h-10 object-cover rounded-lg bg-slate-100 shrink-0" />
+            ) : paginated.map(p => (
+              <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
+                <td className="px-5 py-4">
+                  <div className="flex items-center gap-4">
+                    <img src={p.image} alt={p.label} className="w-10 h-10 object-contain rounded-lg shrink-0" />
                     <div>
-                      <p className="font-semibold text-slate-800 text-sm">{p.brand} {p.model}</p>
-                      <p className="text-xs text-slate-400">{p.size}</p>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        {p.brandLogo && (
+                          <img src={p.brandLogo} alt={p.brand} className="h-3.5 w-auto object-contain" title={p.brand} />
+                        )}
+                        <span className="font-bold text-slate-800 text-[13px] uppercase">{p.brand}</span>
+                        <span className="font-bold text-slate-700 text-[13px] uppercase">{p.model}</span>
+                      </div>
+                      <p className="text-[12px] text-[#008a44] font-medium">{p.size}</p>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`text-lg font-black ${p.stock === 0 ? 'text-red-600' : p.isLow ? 'text-amber-600' : 'text-slate-800'}`}>
+                <td className="px-5 py-4 text-center">
+                  <span className={`text-[13px] font-bold ${p.stock === 0 ? 'text-red-500' : p.isLow ? 'text-amber-500' : 'text-slate-800'}`}>
                     {p.stock}
                   </span>
-                  <span className="text-xs text-slate-400 ml-1">เส้น</span>
+                  <span className="text-[12px] text-slate-400 ml-1.5 font-medium">เส้น</span>
                 </td>
-                <td className="px-4 py-3 text-right text-slate-600">฿{p.priceCash.toLocaleString()}</td>
-                <td className="px-4 py-3 text-right font-semibold text-slate-800">฿{p.stockValue.toLocaleString()}</td>
-                <td className="px-4 py-3 text-center">
+                <td className="px-5 py-4 text-right text-slate-500 font-semibold text-[13px]">฿{p.priceCash.toLocaleString()}</td>
+                <td className="px-5 py-4 text-center font-bold text-slate-700 text-[13px]">฿{p.stockValue.toLocaleString()}</td>
+                <td className="px-5 py-4 text-center">
                   {p.stock === 0
-                    ? <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-600">หมด</span>
+                    ? <span className="inline-flex items-center justify-center min-w-[70px] text-[11px] font-bold px-2 py-1 rounded-full bg-red-50 text-red-500">หมด</span>
                     : p.isLow
-                    ? <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-600">⚠ ใกล้หมด</span>
-                    : <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-600">ปกติ</span>
+                    ? <span className="inline-flex items-center justify-center gap-1 min-w-[70px] text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-600"><AlertTriangle size={10}/> ใกล้หมด</span>
+                    : <span className="inline-flex items-center justify-center min-w-[70px] text-[11px] font-bold px-2 py-1 rounded-full bg-slate-50 text-slate-500">ปกติ</span>
                   }
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td className="px-5 py-4 text-center">
                   <button
                     onClick={() => onAdjust(p.id)}
-                    className="text-xs font-semibold text-slate-500 hover:text-green-600 hover:bg-green-50 px-2.5 py-1.5 rounded-lg transition-colors"
+                    className="text-[12px] font-bold text-slate-400 hover:text-[#008a44] transition-colors"
                   >
-                    ปรับ
+                    ปรับสต็อก
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+      
+      {/* Pagination */}
+      <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="text-[12px] font-medium text-slate-400">
+          แสดง {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filtered.length)} จาก {filtered.length} รายการ
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&lt;</button>
+          
+          <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#008a44] text-white font-bold text-[13px]">{page}</button>
+          {page < totalPages && <button onClick={() => setPage(page + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 1}</button>}
+          {page + 1 < totalPages && <button onClick={() => setPage(page + 2)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 2}</button>}
+          
+          {totalPages > 3 && page + 2 < totalPages && <span className="px-2 text-slate-400 text-xs">...</span>}
+          {totalPages > 3 && page + 2 < totalPages && <button onClick={() => setPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{totalPages}</button>}
+          
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&gt;</button>
+        </div>
+        <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 cursor-pointer transition-colors">
+          <span className="text-[12px] font-bold text-slate-500">10 / หน้า</span>
+          <ArrowDownCircle size={12} className="text-slate-400 opacity-50" />
+        </div>
       </div>
     </div>
   );
@@ -331,6 +377,9 @@ function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: st
 function MovementLog({ movements }: { movements: MovementRow[] }) {
   const [search, setSearch] = useState('');
 
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     if (!q) return movements;
@@ -339,6 +388,9 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
     );
   }, [movements, search]);
 
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div>
       <div className="p-4 border-b border-slate-100">
@@ -346,9 +398,9 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
             placeholder="ค้นหาสินค้า, เลขอ้างอิง..."
-            className="w-full pl-8 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-green-400"
+            className="w-full pl-8 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-[#008a44]"
           />
         </div>
       </div>
@@ -365,13 +417,13 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.length === 0 ? (
+            {paginated.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-center py-12 text-slate-400">
                   {movements.length === 0 ? 'ยังไม่มีประวัติการเคลื่อนไหว' : 'ไม่พบรายการ'}
                 </td>
               </tr>
-            ) : filtered.map(m => (
+            ) : paginated.map(m => (
               <tr key={m.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-3.5 text-slate-400 whitespace-nowrap text-xs">{fmtDate(m.date)}</td>
                 <td className="px-4 py-3.5">
@@ -397,6 +449,29 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="text-[12px] font-medium text-slate-400">
+          แสดง {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filtered.length)} จาก {filtered.length} รายการ
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&lt;</button>
+          
+          <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#008a44] text-white font-bold text-[13px]">{page}</button>
+          {page < totalPages && <button onClick={() => setPage(page + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 1}</button>}
+          {page + 1 < totalPages && <button onClick={() => setPage(page + 2)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 2}</button>}
+          
+          {totalPages > 3 && page + 2 < totalPages && <span className="px-2 text-slate-400 text-xs">...</span>}
+          {totalPages > 3 && page + 2 < totalPages && <button onClick={() => setPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{totalPages}</button>}
+          
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&gt;</button>
+        </div>
+        <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 cursor-pointer transition-colors">
+          <span className="text-[12px] font-bold text-slate-500">10 / หน้า</span>
+          <ArrowDownCircle size={12} className="text-slate-400 opacity-50" />
+        </div>
       </div>
     </div>
   );
@@ -449,13 +524,13 @@ export function WarehouseClient({
             )}
             <button
               onClick={() => setModal('in')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-emerald-600 hover:bg-emerald-50 transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[#008a44] text-[13px] font-bold text-[#008a44] hover:bg-green-50 transition-colors"
             >
               <ArrowDownCircle size={16} /> รับสินค้าเข้า
             </button>
             <button
               onClick={() => setModal('out')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-green-600 hover:bg-green-50 transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#008a44] text-[13px] font-bold text-white hover:bg-[#007339] transition-colors shadow-sm shadow-green-500/20"
             >
               <ArrowUpCircle size={16} /> เบิกสินค้าออก
             </button>
@@ -465,16 +540,21 @@ export function WarehouseClient({
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           {[
-            { label: 'มูลค่าสต๊อกรวม',  value: `฿${(stats.totalValue / 1000).toFixed(0)}K`, sub: `${stats.totalItems} ชิ้น`, color: '' },
-            { label: 'สินค้าใกล้หมด',   value: String(stats.lowStockCount), sub: `< 8 เส้น`, color: stats.lowStockCount > 0 ? 'text-amber-600' : '' },
-            { label: 'รับเข้าวันนี้',   value: `+${stats.todayIn}`,  sub: 'ชิ้น', color: 'text-emerald-600' },
-            { label: 'เบิกออกวันนี้',   value: `-${stats.todayOut}`, sub: 'ชิ้น', color: 'text-green-700' },
-            { label: 'คงเหลือสุทธิ',    value: stats.todayIn - stats.todayOut >= 0 ? `+${stats.todayIn - stats.todayOut}` : String(stats.todayIn - stats.todayOut), sub: 'วันนี้', color: '' },
+            { label: 'มูลค่าสต๊อกรวม', value: `฿${(stats.totalValue / 1000).toFixed(0)}K`, sub: `${stats.totalItems.toLocaleString()} ชิ้น`, color: 'text-[#008a44]', icon: <Package size={20} className="text-[#008a44]" />, bg: 'bg-[#008a44]/10' },
+            { label: 'สินค้าทั้งหมด',   value: String(stats.totalItems), sub: `< 8 เส้น`, color: 'text-amber-500', icon: <Tag size={20} className="text-amber-500" />, bg: 'bg-amber-50' },
+            { label: 'รับเข้าวันนี้',   value: `+${stats.todayIn}`,  sub: '0 ชิ้น', color: 'text-[#008a44]', icon: <Download size={20} className="text-[#008a44]" />, bg: 'bg-[#008a44]/10' },
+            { label: 'เบิกออกวันนี้',   value: `-${stats.todayOut}`, sub: '0 ชิ้น', color: 'text-red-500', icon: <Upload size={20} className="text-red-500" />, bg: 'bg-red-50' },
+            { label: 'คงเหลือสุทธิ',    value: stats.todayIn - stats.todayOut >= 0 ? `+${stats.todayIn - stats.todayOut}` : String(stats.todayIn - stats.todayOut), sub: 'วันนี้', color: 'text-slate-900', icon: <TrendingUp size={20} className="text-slate-500" />, bg: 'bg-slate-100' },
           ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl border border-slate-100 p-4">
-              <p className={`text-xl font-black ${s.color || 'text-slate-900'}`}>{s.value}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
-              <p className="text-[10px] text-slate-300 mt-0.5">{s.sub}</p>
+            <div key={s.label} className="bg-white rounded-lg border border-slate-100 p-5 flex items-center justify-between shadow-[0_1px_3px_rgb(0,0,0,0.01)] hover:shadow-md transition-shadow">
+              <div>
+                <p className="text-[12px] text-slate-400 font-bold">{s.label}</p>
+                <p className={`text-xl font-black mt-1.5 ${s.color}`}>{s.value}</p>
+                <p className="text-[11px] text-slate-400 mt-1 font-medium">{s.sub}</p>
+              </div>
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${s.bg}`}>
+                {s.icon}
+              </div>
             </div>
           ))}
         </div>
@@ -482,9 +562,9 @@ export function WarehouseClient({
         {/* Main content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Tabs */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 overflow-hidden">
+          <div className="lg:col-span-2 bg-white rounded-lg border border-slate-100 overflow-hidden shadow-sm flex flex-col">
             {/* Tab bar */}
-            <div className="flex border-b border-slate-100">
+            <div className="flex border-b border-slate-100 px-2 pt-2">
               {([
                 { key: 'stock',     label: `สต๊อกสินค้า (${stockItems.length})` },
                 { key: 'movements', label: `ประวัติการเคลื่อนไหว (${movements.length})` },
@@ -492,9 +572,9 @@ export function WarehouseClient({
                 <button
                   key={t.key}
                   onClick={() => setTab(t.key)}
-                  className={`flex-1 py-3.5 text-sm font-semibold transition-colors border-b-2 ${
+                  className={`px-6 py-4 text-[14px] font-bold transition-colors border-b-2 ${
                     tab === t.key
-                      ? 'border-green-600 text-green-600'
+                      ? 'border-[#008a44] text-[#008a44]'
                       : 'border-transparent text-slate-400 hover:text-slate-600'
                   }`}
                 >
@@ -510,37 +590,38 @@ export function WarehouseClient({
           </div>
 
           {/* Right sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-5">
             {/* Low stock */}
-            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-              <div className="p-4 border-b border-slate-100 flex items-center gap-2">
-                <AlertTriangle size={15} className="text-amber-500" />
-                <h2 className="font-bold text-slate-900 text-sm">สินค้าใกล้หมด</h2>
+            <div className="bg-white rounded-lg border border-slate-100 p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <AlertTriangle size={18} className="text-amber-500" />
+                <h2 className="font-bold text-slate-800 text-[15px]">สินค้าใกล้หมด</h2>
                 {lowItems.length > 0 && (
-                  <span className="ml-auto text-xs font-bold bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">{lowItems.length}</span>
+                  <span className="ml-auto text-xs font-bold bg-amber-50 text-amber-600 px-3 py-1 rounded-md">{lowItems.length}</span>
                 )}
               </div>
-              <div className="p-4 space-y-3 max-h-72 overflow-y-auto">
+              <div className="space-y-6 max-h-[440px] overflow-y-auto pr-2 custom-scrollbar">
                 {lowItems.length === 0 ? (
                   <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
                     <CheckCircle size={14} /> สต๊อกครบทุกรายการ
                   </div>
                 ) : lowItems.map(item => (
-                  <div key={item.id} className={`rounded-xl p-3 border ${item.stock === 0 ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <p className="text-xs font-semibold text-slate-800 leading-snug">{item.label}</p>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${item.stock === 0 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
-                        {item.stock} เหลือ
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-amber-200 rounded-full h-1.5">
-                        <div
-                          className={`h-1.5 rounded-full ${item.stock === 0 ? 'bg-red-500' : 'bg-amber-500'}`}
-                          style={{ width: `${Math.min((item.stock / 8) * 100, 100)}%` }}
-                        />
+                  <div key={item.id} className="relative">
+                    <div className="flex justify-between items-start mb-2.5">
+                      <p className="text-[13px] font-bold text-slate-700 leading-relaxed pr-4">{item.label}</p>
+                      <div className="text-right shrink-0">
+                        <p className={`text-[14px] font-black ${item.stock === 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                          {item.stock} <span className="text-[12px] font-bold text-slate-400">เส้น</span>
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5 font-medium">ขั้นต่ำ 8</p>
                       </div>
-                      <span className="text-xs text-slate-400">ขั้นต่ำ 8</span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className={`h-1.5 w-full rounded-full ${item.stock === 0 ? 'bg-red-50' : 'bg-amber-50'}`}>
+                      <div
+                        className={`h-1.5 rounded-full ${item.stock === 0 ? 'bg-red-400' : 'bg-amber-400'}`}
+                        style={{ width: `${Math.min((item.stock / 8) * 100, 100)}%` }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -548,25 +629,32 @@ export function WarehouseClient({
             </div>
 
             {/* Today summary */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-4">
-              <h3 className="font-bold text-slate-900 mb-3 flex items-center gap-2 text-sm">
-                <Package size={15} className="text-slate-400" /> สรุปสต๊อกวันนี้
-              </h3>
-              <div className="space-y-2.5">
-                {[
-                  { label: 'รับเข้าทั้งหมด', value: `+${stats.todayIn} ชิ้น`,  color: 'text-emerald-600' },
-                  { label: 'เบิกออกทั้งหมด', value: `-${stats.todayOut} ชิ้น`, color: 'text-green-700'   },
-                  { label: 'คงเหลือสุทธิ',   value: `${stats.todayIn - stats.todayOut >= 0 ? '+' : ''}${stats.todayIn - stats.todayOut} ชิ้น`, color: 'text-slate-900' },
-                ].map(row => (
-                  <div key={row.label} className="flex justify-between items-center">
-                    <span className="text-sm text-slate-500">{row.label}</span>
-                    <span className={`text-sm font-bold ${row.color}`}>{row.value}</span>
-                  </div>
-                ))}
-                <div className="border-t border-slate-100 pt-2.5 mt-2.5 flex justify-between items-center">
-                  <span className="text-sm text-slate-500">มูลค่าสต๊อกรวม</span>
-                  <span className="text-sm font-black text-slate-900">฿{stats.totalValue.toLocaleString()}</span>
+            <div className="bg-white rounded-lg border border-slate-100 p-6 shadow-sm relative overflow-hidden">
+              <div className="flex items-center gap-2 mb-5 relative z-10">
+                <Package size={18} className="text-slate-400" />
+                <h3 className="font-bold text-slate-800 text-[15px]">สรุปสต๊อกวันนี้</h3>
+              </div>
+              
+              <div className="space-y-3.5 relative z-10 w-[70%]">
+                <div className="flex justify-between items-center">
+                  <span className="text-[13px] font-medium text-slate-500">รับเข้าทั้งหมด</span>
+                  <span className="text-[13px] font-bold text-[#008a44]">+{stats.todayIn} ชิ้น</span>
                 </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[13px] font-medium text-slate-500">เบิกออกทั้งหมด</span>
+                  <span className="text-[13px] font-bold text-red-500">-{stats.todayOut} ชิ้น</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t border-slate-50">
+                  <span className="text-[13px] font-medium text-slate-500">คงเหลือสุทธิ</span>
+                  <span className="text-[13px] font-bold text-[#008a44]">{stats.todayIn - stats.todayOut >= 0 ? '+' : ''}{stats.todayIn - stats.todayOut} ชิ้น</span>
+                </div>
+              </div>
+              
+              {/* Fake wave graphic on the right */}
+              <div className="absolute -right-2 bottom-0 w-1/2 h-full pointer-events-none flex items-end justify-end">
+                <svg viewBox="0 0 100 50" className="w-full h-20 text-[#008a44] opacity-[0.25]" preserveAspectRatio="none">
+                  <path d="M0,40 Q10,20 20,30 T40,25 T60,10 T80,35 T100,15 L100,50 L0,50 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </div>
             </div>
           </div>

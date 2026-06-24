@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { CheckCircle2, Clock, ImageOff, Banknote, Landmark, Undo2, Paperclip } from 'lucide-react';
-import { updateDepositAmount, verifyDepositManually, markBalancePaid, revertBalancePayment } from '@/app/actions/payment';
+import { useState, useTransition, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { CheckCircle2, Clock, ImageOff, Banknote, Landmark, CreditCard, Undo2, Paperclip, RotateCcw, AlertTriangle } from 'lucide-react';
+import { updateDepositAmount, verifyDepositManually, markBalancePaid, revertBalancePayment, refundDeposit } from '@/app/actions/payment';
 import type { PaymentReviewRow } from '@/lib/payment-settings';
 
 const STATUS_BADGE: Record<PaymentReviewRow['depositStatus'], { label: string; className: string }> = {
@@ -14,13 +15,18 @@ const STATUS_BADGE: Record<PaymentReviewRow['depositStatus'], { label: string; c
 
 const fmt = (n: number) => n.toLocaleString();
 
-function PaymentRow({ row }: { row: PaymentReviewRow }) {
+function PaymentRow({ row, highlighted }: { row: PaymentReviewRow; highlighted: boolean }) {
   const [amount, setAmount] = useState(row.depositAmount);
   const [status, setStatus] = useState(row.depositStatus);
+  const [depositRefunded, setDepositRefunded] = useState(row.depositRefunded);
   const [balanceStatus, setBalanceStatus] = useState(row.balanceStatus);
   const [balanceMethod, setBalanceMethod] = useState(row.balancePaymentMethod);
+  const [balanceReceivedAmount, setBalanceReceivedAmount] = useState(row.balanceReceivedAmount);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
+
+  const remaining = balanceStatus === 'paid' ? 0 : Math.max(0, row.totalAmount - (status === 'verified' ? amount : 0));
+  const [balanceAmount, setBalanceAmount] = useState(remaining);
 
   function saveAmount() {
     startTransition(async () => {
@@ -39,12 +45,22 @@ function PaymentRow({ row }: { row: PaymentReviewRow }) {
     });
   }
 
-  function payBalance(method: 'cash' | 'transfer') {
+  function doRefundDeposit() {
+    if (!window.confirm(`ยืนยันคืนเงินมัดจำ ฿${fmt(amount)} ให้ลูกค้า ${row.name}?`)) return;
     startTransition(async () => {
       setError('');
-      const result = await markBalancePaid(row.ref, method);
+      const result = await refundDeposit(row.ref);
       if (result.error) setError(result.error);
-      else { setBalanceStatus('paid'); setBalanceMethod(method); }
+      else setDepositRefunded(true);
+    });
+  }
+
+  function payBalance(method: 'cash' | 'transfer' | 'credit_card') {
+    startTransition(async () => {
+      setError('');
+      const result = await markBalancePaid(row.ref, method, balanceAmount);
+      if (result.error) setError(result.error);
+      else { setBalanceStatus('paid'); setBalanceMethod(method); setBalanceReceivedAmount(balanceAmount); }
     });
   }
 
@@ -53,15 +69,25 @@ function PaymentRow({ row }: { row: PaymentReviewRow }) {
       setError('');
       const result = await revertBalancePayment(row.ref);
       if (result.error) setError(result.error);
-      else { setBalanceStatus('unpaid'); setBalanceMethod(''); }
+      else { setBalanceStatus('unpaid'); setBalanceMethod(''); setBalanceReceivedAmount(null); }
     });
   }
 
   const badge = STATUS_BADGE[status];
-  const remaining = balanceStatus === 'paid' ? 0 : Math.max(0, row.totalAmount - (status === 'verified' ? amount : 0));
+  // เตือนเบาๆ ถ้ายอดที่กรอกมากกว่ายอดคงเหลือที่ถูกต้อง (เทียบกับ remaining ไม่ใช่ totalAmount —
+  // เผื่อกรณีมัดจำเป็น 10% ของยอด ยอดคงเหลือ 90% ก็ถือว่าถูกต้องแล้ว ไม่ควรเตือน)
+  const looksLikeForgotDeposit = status === 'verified' && amount > 0 && balanceAmount > remaining * 1.01 + 0.01;
+
+  useEffect(() => {
+    if (!highlighted) return;
+    document.getElementById(`payment-row-${row.ref}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlighted, row.ref]);
 
   return (
-    <div className="group hover:bg-slate-50/50 transition-colors">
+    <div
+      id={`payment-row-${row.ref}`}
+      className={`group hover:bg-slate-50/50 transition-colors ${highlighted ? 'ring-2 ring-inset ring-blue-400 bg-blue-50/40' : ''}`}
+    >
       <div className="flex flex-col md:flex-row md:items-center gap-4 p-5 md:px-6">
         <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center shrink-0 shadow-sm relative">
           {row.depositSlipUrl ? (
@@ -91,15 +117,30 @@ function PaymentRow({ row }: { row: PaymentReviewRow }) {
         </div>
 
         {status !== 'not_required' && (
-          <div className="flex items-center gap-2 shrink-0 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-            <span className="text-xs text-slate-400 pl-2 font-medium">มัดจำ ฿</span>
-            <input
-              type="number" min={0} value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              onBlur={saveAmount}
-              disabled={isPending}
-              className="w-20 bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 py-1 px-1"
-            />
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+              <span className="text-xs text-slate-400 pl-2 font-medium">มัดจำ ฿</span>
+              <input
+                type="number" min={0} value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+                onBlur={saveAmount}
+                disabled={isPending}
+                className="w-20 bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 py-1 px-1"
+              />
+            </div>
+            {status === 'verified' && (
+              depositRefunded ? (
+                <span className="flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                  <RotateCcw size={11} /> คืนมัดจำแล้ว
+                </span>
+              ) : (
+                <button type="button" onClick={doRefundDeposit} disabled={isPending}
+                  title="คืนเงินมัดจำให้ลูกค้า"
+                  className="flex items-center gap-1 text-[11px] font-bold text-orange-500 bg-orange-50 px-2.5 py-1.5 rounded-lg border border-orange-100 hover:bg-orange-100 transition-colors disabled:opacity-50">
+                  <RotateCcw size={11} /> คืนเงินมัดจำ
+                </button>
+              )
+            )}
           </div>
         )}
 
@@ -135,22 +176,44 @@ function PaymentRow({ row }: { row: PaymentReviewRow }) {
 
         {balanceStatus === 'paid' ? (
           <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
-            <CheckCircle2 size={14} /> จ่ายครบแล้ว ({balanceMethod === 'cash' ? 'เงินสด' : 'โอน'})
+            <CheckCircle2 size={14} />
+            จ่ายครบแล้ว ({balanceMethod === 'cash' ? 'เงินสด' : balanceMethod === 'credit_card' ? 'บัตรเครดิต' : 'โอน'}
+            {balanceReceivedAmount != null && balanceReceivedAmount !== remaining ? ` · รับจริง ฿${fmt(balanceReceivedAmount)}` : ''})
             <div className="w-px h-3 bg-green-200 mx-1"></div>
             <button type="button" onClick={undoBalance} disabled={isPending} className="text-green-600/50 hover:text-green-600 transition-colors" title="ยกเลิก/แก้ไข">
               <Undo2 size={14} />
             </button>
           </span>
         ) : remaining > 0 && (status === 'verified' || status === 'not_required') ? (
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => payBalance('cash')} disabled={isPending}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 bg-white hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
-              <Banknote size={14} className="text-slate-400" /> รับเงินสด
-            </button>
-            <button type="button" onClick={() => payBalance('transfer')} disabled={isPending}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 bg-white hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
-              <Landmark size={14} className="text-slate-400" /> รับโอน
-            </button>
+          <div className="flex flex-col items-end gap-1.5 w-full md:w-auto">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-sm">
+                <span className="text-[11px] text-slate-400 font-medium">รับจริง ฿</span>
+                <input
+                  type="number" min={0} value={balanceAmount}
+                  onChange={(e) => setBalanceAmount(Number(e.target.value))}
+                  disabled={isPending}
+                  className="w-20 bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 py-0.5 px-1"
+                />
+              </div>
+              <button type="button" onClick={() => payBalance('cash')} disabled={isPending || !balanceAmount}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 bg-white hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
+                <Banknote size={14} className="text-slate-400" /> เงินสด
+              </button>
+              <button type="button" onClick={() => payBalance('transfer')} disabled={isPending || !balanceAmount}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 bg-white hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
+                <Landmark size={14} className="text-slate-400" /> โอน
+              </button>
+              <button type="button" onClick={() => payBalance('credit_card')} disabled={isPending || !balanceAmount}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 bg-white hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
+                <CreditCard size={14} className="text-slate-400" /> บัตรเครดิต
+              </button>
+            </div>
+            {looksLikeForgotDeposit && (
+              <p className="text-[11px] text-orange-600 flex items-center gap-1">
+                <AlertTriangle size={11} /> ยอดนี้ใกล้เคียงราคาเต็ม ลูกค้าหักมัดจำ ฿{fmt(amount)} ออกแล้วหรือยัง? ถ้าจ่ายซ้ำ กดคืนเงินมัดจำด้านบนได้
+              </p>
+            )}
           </div>
         ) : remaining > 0 ? (
           <span className="text-[11px] font-medium text-amber-500 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">รอตรวจสอบมัดจำก่อนจ่ายส่วนต่าง</span>
@@ -169,11 +232,23 @@ function PaymentRow({ row }: { row: PaymentReviewRow }) {
 }
 
 export function PaymentReviewList({ bookings }: { bookings: PaymentReviewRow[] }) {
-  const [activeTab, setActiveTab] = useState<'deposit' | 'balance' | 'completed'>('deposit');
+  const searchParams = useSearchParams();
+  const highlightRef = searchParams.get('ref');
 
   const pendingDeposits = bookings.filter(b => b.balanceStatus !== 'paid' && (b.depositStatus === 'pending' || b.depositStatus === 'submitted'));
   const pendingBalances = bookings.filter(b => b.balanceStatus === 'unpaid' && (b.depositStatus === 'verified' || b.depositStatus === 'not_required'));
   const completed = bookings.filter(b => b.balanceStatus === 'paid');
+
+  const tabOf = (ref: string | null): 'deposit' | 'balance' | 'completed' => {
+    const row = ref ? bookings.find(b => b.ref === ref) : undefined;
+    if (!row) return 'deposit';
+    if (row.balanceStatus === 'paid') return 'completed';
+    if (row.depositStatus === 'verified' || row.depositStatus === 'not_required') return 'balance';
+    return 'deposit';
+  };
+
+  const [activeTab, setActiveTab] = useState<'deposit' | 'balance' | 'completed'>(() => tabOf(highlightRef));
+  useEffect(() => { if (highlightRef) setActiveTab(tabOf(highlightRef)); }, [highlightRef]);
 
   const getFilteredBookings = () => {
     if (activeTab === 'deposit') return pendingDeposits;
@@ -220,7 +295,7 @@ export function PaymentReviewList({ bookings }: { bookings: PaymentReviewRow[] }
           </div>
         ) : (
           displayedBookings.map((row) => (
-            <PaymentRow key={row.ref} row={row} />
+            <PaymentRow key={row.ref} row={row} highlighted={row.ref === highlightRef} />
           ))
         )}
       </div>

@@ -17,6 +17,7 @@ export type POItem = {
   qty:         number;
   unitPrice:   number;
   discount:    number;
+  year:        string;
   lineTotal:   number;
 };
 
@@ -40,6 +41,9 @@ export type PORow = {
   paymentMethod:string;
   notes:        string;
   status:       POStatusThai;
+  paymentStatus: 'unpaid' | 'partial' | 'paid';
+  amountPaid:   number;
+  paymentDate?: string;
 };
 
 export type SupplierRow = {
@@ -77,6 +81,7 @@ function normalizeDoc(d: any): PORow {
       qty:         i.qty         ?? 0,
       unitPrice:   i.unitPrice   ?? 0,
       discount:    i.discount    ?? 0,
+      year:        i.year        ?? '',
       lineTotal:   i.lineTotal   ?? 0,
     })),
     subtotal:      d.subtotal      ?? 0,
@@ -87,6 +92,9 @@ function normalizeDoc(d: any): PORow {
     paymentMethod: d.paymentMethod ?? 'transfer',
     notes:         d.notes         ?? '',
     status: STATUS_MAP[d.status ?? 'pending'] ?? 'รอรับสินค้า',
+    paymentStatus: d.paymentStatus ?? 'unpaid',
+    amountPaid:    d.amountPaid    ?? 0,
+    paymentDate:   d.paymentDate instanceof Date ? d.paymentDate.toISOString() : (d.paymentDate ? String(d.paymentDate) : undefined),
   };
 }
 

@@ -11,6 +11,8 @@ import {
 import type { ProductRow } from '@/lib/products';
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 
+import type { BrandRow } from '@/app/actions/brands';
+
 type SortKey = keyof ProductRow;
 type SortDir = 'asc' | 'desc';
 
@@ -36,7 +38,7 @@ function SortIcon({ col, sortKey, sortDir }: { col: string; sortKey: string; sor
     : <ChevronDown size={11} className="text-slate-700 ml-1 inline" />;
 }
 
-export function TiresTableClient({ initialProducts }: { initialProducts: ProductRow[] }) {
+export function TiresTableClient({ initialProducts, initialBrands = [] }: { initialProducts: ProductRow[], initialBrands?: BrandRow[] }) {
   const [sizeTab, setSizeTab]         = useState('all');
   const [brandFilter, setBrandFilter] = useState('');
   const [search, setSearch]           = useState('');
@@ -56,11 +58,17 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
+    const qNorm = q.replace(/[\/rR\s-]/g, ''); // e.g. 2155517
     return initialProducts
       .filter(p => {
         const matchSize  = sizeTab === 'all' || p.size === sizeTab;
         const matchBrand = !brandFilter || p.brand === brandFilter;
-        const matchSearch = !q || String(p.brand || '').toLowerCase().includes(q) || String(p.model || '').toLowerCase().includes(q) || String(p.size || '').toLowerCase().includes(q);
+        const sizeNorm = String(p.size || '').toLowerCase().replace(/[\/rR\s-]/g, '');
+        const matchSearch = !q || 
+          String(p.brand || '').toLowerCase().includes(q) || 
+          String(p.model || '').toLowerCase().includes(q) || 
+          String(p.size || '').toLowerCase().includes(q) ||
+          (qNorm.length > 0 && sizeNorm.includes(qNorm));
         return matchSize && matchBrand && matchSearch;
       })
       .sort((a, b) => {
@@ -136,26 +144,26 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider w-10">#</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('brand')}>
-                  ยี่ห้อ / รุ่น <SortIcon col="brand" sortKey={sortKey} sortDir={sortDir} />
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider w-28 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('size')}>
+                  ขนาดยาง <SortIcon col="size" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                {sizeTab === 'all' && (
-                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider w-28 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('size')}>
-                    ขนาด <SortIcon col="size" sortKey={sortKey} sortDir={sortDir} />
-                  </th>
-                )}
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('brand')}>
+                  ยี่ห้อ <SortIcon col="brand" sortKey={sortKey} sortDir={sortDir} />
+                </th>
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('model')}>
+                  รุ่น <SortIcon col="model" sortKey={sortKey} sortDir={sortDir} />
+                </th>
                 <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32">ประเภท</th>
                 <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-700 uppercase tracking-wider w-32 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceCash')}>
-                  เงินสด/โอน <SortIcon col="priceCash" sortKey={sortKey} sortDir={sortDir} />
+                  เงินสด/เงินโอน <SortIcon col="priceCash" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider w-28 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceCredit')}>
-                  รูดบัตร <SortIcon col="priceCredit" sortKey={sortKey} sortDir={sortDir} />
+                  รูดบัตรเต็มจำนวน <SortIcon col="priceCredit" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceInstallment')}>
-                  ผ่อน 0% 4ด. <SortIcon col="priceInstallment" sortKey={sortKey} sortDir={sortDir} />
+                  ผ่อน 4 เดือน <SortIcon col="priceInstallment" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-
-                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-12">ปี</th>
+                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-16">สัปดาห์/ปี</th>
                 <th className="px-4 py-3 w-20"></th>
               </tr>
             </thead>
@@ -164,16 +172,24 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
                 <tr key={p.id} className="hover:bg-slate-50/70 transition-colors group">
                   <td className="px-4 py-3.5 text-[11px] text-slate-300 tabular-nums">{(page - 1) * PAGE_SIZE + idx + 1}</td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md border ${getBrandColor(p.brand)}`}>{p.brand}</span>
-                      <span className="font-semibold text-slate-800 text-[13px]">{p.model}</span>
-                    </div>
+                    <span className="font-mono text-[13px] font-semibold text-slate-900 bg-slate-100/80 border border-slate-200/50 px-2 py-1 rounded-md">{p.size}</span>
                   </td>
-                  {sizeTab === 'all' && (
-                    <td className="px-4 py-3.5">
-                      <span className="font-mono text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{p.size}</span>
-                    </td>
-                  )}
+                  <td className="px-4 py-3.5">
+                    {(() => {
+                      const logo = initialBrands.find(b => b.name === p.brand)?.logo;
+                      return logo ? (
+                        <div className="h-6 w-16 relative flex items-center justify-start shrink-0" title={p.brand}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={logo} alt={p.brand} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                        </div>
+                      ) : (
+                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md border ${getBrandColor(p.brand)}`}>{p.brand}</span>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="font-semibold text-slate-800 text-[13px]">{p.model}</span>
+                  </td>
                   <td className="px-4 py-3.5 text-center">
                     {p.type ? <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{p.type}</span> : <span className="text-slate-200">—</span>}
                   </td>
@@ -182,9 +198,8 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
                   </td>
                   <td className="px-4 py-3.5 text-right text-slate-400 tabular-nums text-xs">{fmt(p.priceCredit)}</td>
                   <td className="px-4 py-3.5 text-right text-slate-500 tabular-nums text-xs font-semibold bg-slate-50/60">{fmt(p.priceInstallment)}</td>
-
                   <td className="px-4 py-3.5 text-center">
-                    <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">'{p.year}</span>
+                    <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60">'{p.year}</span>
                   </td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1.5">
@@ -214,7 +229,17 @@ export function TiresTableClient({ initialProducts }: { initialProducts: Product
               <div className="flex justify-between items-start">
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2">
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${getBrandColor(p.brand)}`}>{p.brand}</span>
+                    {(() => {
+                      const logo = initialBrands.find(b => b.name === p.brand)?.logo;
+                      return logo ? (
+                        <div className="h-5 w-14 relative flex items-center justify-start shrink-0" title={p.brand}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={logo} alt={p.brand} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                        </div>
+                      ) : (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${getBrandColor(p.brand)}`}>{p.brand}</span>
+                      );
+                    })()}
                     {p.type && <span className="text-[9px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{p.type}</span>}
                   </div>
                   <span className="font-bold text-slate-800 text-sm leading-tight">{p.model}</span>

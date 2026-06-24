@@ -42,6 +42,7 @@ interface LineItem {
   qty:         number;
   unitPrice:   number;
   discount:    number;
+  year:        string;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -181,7 +182,7 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
 
   // line items
   const [lines, setLines] = useState<LineItem[]>([
-    { key: 1, productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0 },
+    { key: 1, productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0, year: '' },
   ]);
   const [productPickerLineKey, setProductPickerLineKey] = useState<number | null>(null);
 
@@ -194,6 +195,7 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
 
   // terms
   const [paymentTerm,     setPaymentTerm]     = useState('30');
+  const [paymentDate,     setPaymentDate]     = useState('');
   const [paymentMethod,   setPaymentMethod]   = useState('transfer');
   const [shippingAddress, setShippingAddress] = useState('');
   const [notes,           setNotes]           = useState('');
@@ -221,7 +223,7 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
   };
 
   const addLine = () =>
-    setLines(prev => [...prev, { key: Date.now(), productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0 }]);
+    setLines(prev => [...prev, { key: Date.now(), productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0, year: '' }]);
 
   const removeLine = (key: number) =>
     setLines(prev => prev.filter(l => l.key !== key));
@@ -264,9 +266,11 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
         qty:         l.qty,
         unitPrice:   l.unitPrice,
         discount:    l.discount,
+        year:        l.year,
         lineTotal:   calc.lineCalcs[idx]?.net ?? 0,
       })),
       paymentTerm,
+      paymentDate,
       paymentMethod,
       shippingAddress,
       notes,
@@ -488,7 +492,8 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
               <tr className="bg-slate-50 text-xs text-slate-400 font-semibold border-b border-slate-100">
                 <th className="text-left px-4 py-3 w-8">#</th>
                 <th className="text-left px-3 py-3">ชื่อสินค้า / รุ่น *</th>
-                <th className="text-center px-3 py-3 w-24">หน่วย</th>
+                <th className="text-center px-3 py-3 w-20">ปี (Year)</th>
+                <th className="text-center px-3 py-3 w-20">หน่วย</th>
                 <th className="text-center px-3 py-3 w-24">จำนวน *</th>
                 <th className="text-right px-3 py-3 w-32">ราคา/หน่วย (฿) *</th>
                 <th className="text-right px-3 py-3 w-24">ส่วนลด (%)</th>
@@ -514,6 +519,10 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
                           <Search size={13} />
                         </button>
                       </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <input value={line.year} onChange={e => updateLine(line.key, 'year', e.target.value)} placeholder="เช่น 24" maxLength={4}
+                        className="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 text-center placeholder:text-slate-300" />
                     </td>
                     <td className="px-3 py-2.5">
                       <select value={line.unit} onChange={e => updateLine(line.key, 'unit', e.target.value)}
@@ -559,15 +568,19 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
         <div className="lg:col-span-3 space-y-5">
           <Section title="เงื่อนไขการสั่งซื้อ" icon={<MapPin size={14} />}>
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label>เงื่อนไขการชำระเงิน</Label>
+                  <Label>เงื่อนไขชำระเงิน</Label>
                   <div className="relative">
                     <select value={paymentTerm} onChange={e => setPaymentTerm(e.target.value)} className={inputCls + ' appearance-none pr-9'}>
                       {Object.entries(PAYMENT_TERMS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>
+                </div>
+                <div>
+                  <Label>วันที่ชำระ (ตัวเลือก)</Label>
+                  <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={inputCls} />
                 </div>
                 <div>
                   <Label>วิธีการชำระเงิน</Label>
