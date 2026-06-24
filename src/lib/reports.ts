@@ -3,6 +3,8 @@ import { Income } from '@/models/Income';
 import { Expense } from '@/models/Expense';
 import { PurchaseOrder } from '@/models/PurchaseOrder';
 import { Payslip } from '@/models/Payslip';
+import { FinancialDocument } from '@/models/FinancialDocument';
+import { Customer } from '@/models/Customer';
 
 export type MonthlyBar = {
   year:    number;
@@ -13,6 +15,8 @@ export type MonthlyBar = {
   net:     number;
 };
 
+export type TopProduct = { name: string; qty: number; revenue: number };
+
 export type ReportSummary = {
   totalIncome:  number;
   totalExpense: number;
@@ -20,6 +24,10 @@ export type ReportSummary = {
   monthly:      MonthlyBar[];
   incomeByCategory:  { label: string; amount: number; pct: number }[];
   expenseByCategory: { label: string; amount: number; pct: number }[];
+  billCount:        number;
+  newCustomerCount: number;
+  topProducts:      TopProduct[];
+  ytdIncome:        number;
 };
 
 type AggRow = { _id: { y: number; m: number }; total: number };
@@ -35,7 +43,11 @@ function pct(amount: number, total: number) {
 export async function getReportSummary(start: Date, end: Date): Promise<ReportSummary> {
   await connectDB();
 
-  const [incomeAgg, expenseMiscAgg, poAgg, payslipAgg, incomeCatAgg, expenseCatAgg] = await Promise.all([
+  const yearStart = new Date(start.getFullYear(), 0, 1);
+  const yearEnd   = new Date(start.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+  const [incomeAgg, expenseMiscAgg, poAgg, payslipAgg, incomeCatAgg, expenseCatAgg,
+    billCount, newCustomerCount, topProductsAgg, ytdIncomeAgg] = await Promise.all([
     Income.aggregate<AggRow>([
       { $match: { incomeDate: { $gte: start, $lte: end } } },
       { $group: { _id: { y: { $year: '$incomeDate' }, m: { $month: '$incomeDate' } }, total: { $sum: '$amount' } } },
@@ -63,6 +75,23 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
       { $match: { expenseDate: { $gte: start, $lte: end } } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
       { $sort: { total: -1 } },
+    ]),
+    // จำนวนบิล (invoice ที่จ่ายแล้วในช่วงเวลา)
+    FinancialDocument.countDocuments({ type: 'invoice', status: 'paid', paidAt: { $gte: start, $lte: end } }),
+    // ลูกค้าใหม่ในช่วงเวลา
+    Customer.countDocuments({ createdAt: { $gte: start, $lte: end } }),
+    // สินค้าขายดี — unwind items จาก invoice ที่จ่ายแล้ว
+    FinancialDocument.aggregate<{ _id: string; qty: number; revenue: number }>([
+      { $match: { type: 'invoice', status: 'paid', paidAt: { $gte: start, $lte: end } } },
+      { $unwind: '$items' },
+      { $group: { _id: '$items.description', qty: { $sum: '$items.qty' }, revenue: { $sum: '$items.lineTotal' } } },
+      { $sort: { qty: -1 } },
+      { $limit: 5 },
+    ]),
+    // รายได้ YTD (ตลอดปี)
+    Income.aggregate<{ total: number }>([
+      { $match: { incomeDate: { $gte: yearStart, $lte: yearEnd } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
     ]),
   ]);
 
@@ -102,5 +131,16 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
     ...expenseCatAgg.map((r) => ({ label: r._id || 'อื่นๆ', amount: r.total, pct: pct(r.total, totalExpense) })),
   ].filter((c) => c.amount > 0);
 
-  return { totalIncome, totalExpense, netProfit, monthly, incomeByCategory, expenseByCategory };
+  const topProducts: TopProduct[] = topProductsAgg.map((r) => ({
+    name:    r._id || 'ไม่ระบุ',
+    qty:     r.qty,
+    revenue: r.revenue,
+  }));
+
+  const ytdIncome = ytdIncomeAgg[0]?.total ?? 0;
+
+  return {
+    totalIncome, totalExpense, netProfit, monthly, incomeByCategory, expenseByCategory,
+    billCount, newCustomerCount, topProducts, ytdIncome,
+  };
 }

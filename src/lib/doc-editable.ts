@@ -12,6 +12,7 @@ export function isDocEditable(type: DocType, status: string): boolean {
     case 'billing_note': return status === 'unpaid' || status === 'partial';
     case 'quote':        return status === 'pending_approval';
     case 'credit_note':  return status !== 'cancelled';
+    case 'booking_note': return status === 'reserved' || status === 'deposit_paid';
     case 'payment_note': return false;
     default:             return false;
   }

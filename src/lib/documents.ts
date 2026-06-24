@@ -1,7 +1,7 @@
 import connectDB from './mongodb';
 import { FinancialDocument } from '@/models/FinancialDocument';
 
-export type DocType      = 'invoice' | 'quote' | 'credit_note' | 'billing_note' | 'payment_note';
+export type DocType      = 'invoice' | 'quote' | 'credit_note' | 'billing_note' | 'payment_note' | 'booking_note';
 export type PaymentMethod = 'cash' | 'transfer' | 'credit_card' | 'pending';
 
 export type DocItem = {
@@ -33,6 +33,7 @@ export type DocRow = {
   grandTotal:    number;
   paymentMethod: PaymentMethod;
   technicianName: string;
+  depositAmount:  number;
   status:        string;
   note:          string;
   showPaymentInfo: boolean;
@@ -81,6 +82,7 @@ function normalize(d: any): DocRow {
     grandTotal:    d.grandTotal    ?? 0,
     paymentMethod: d.paymentMethod ?? 'pending',
     technicianName: d.technicianName ?? '',
+    depositAmount:  d.depositAmount  ?? 0,
     status:        d.status        ?? '',
     note:          d.note          ?? '',
     showPaymentInfo: d.showPaymentInfo ?? false,
@@ -158,7 +160,7 @@ export async function getDocStats(): Promise<DocStats> {
 }
 
 export async function generateDocNumber(type: DocType): Promise<string> {
-  const PREFIX = { invoice: 'INV', quote: 'QT', credit_note: 'CR', billing_note: 'BN', payment_note: 'PN' }[type];
+  const PREFIX = { invoice: 'INV', quote: 'QT', credit_note: 'CR', billing_note: 'BN', payment_note: 'PN', booking_note: 'RES' }[type];
   const year    = new Date().getFullYear();
   const pattern = new RegExp(`^${PREFIX}-${year}-`);
   const last    = await FinancialDocument.findOne({ docNumber: pattern }).sort({ docNumber: -1 }).lean() as { docNumber: string } | null;

@@ -16,6 +16,7 @@ const TYPE_LABEL: Record<DocType, string> = {
   credit_note:  'ใบลดหนี้',
   billing_note: 'ใบแจ้งหนี้',
   payment_note: 'ใบรับชำระ',
+  booking_note: 'ใบจอง',
 };
 
 export default async function NewDocumentPage({
@@ -38,7 +39,7 @@ export default async function NewDocumentPage({
   let prefill: DocPrefill | undefined;
   if (sourceDoc) {
     const targetType: DocType =
-      type === 'invoice' || type === 'credit_note' || type === 'billing_note' ? type : 'invoice';
+      type === 'invoice' || type === 'credit_note' || type === 'billing_note' || type === 'booking_note' ? type : 'invoice';
     prefill = {
       docType: targetType,
       customerName:    sourceDoc.customerName,
@@ -54,6 +55,7 @@ export default async function NewDocumentPage({
       sourceDocId:        sourceDoc.id,
       sourceDocNumber:    sourceDoc.docNumber,
       sourceDocTypeLabel: TYPE_LABEL[sourceDoc.type],
+      depositAmount:      sourceDoc.type === 'booking_note' ? sourceDoc.depositAmount : 0,
     };
   }
 

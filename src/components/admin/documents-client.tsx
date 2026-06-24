@@ -8,7 +8,7 @@ import {
   XCircle, MoreHorizontal, ChevronLeft, ChevronRight,
   Import, X, Printer, CreditCard, Banknote, ArrowRightLeft,
   AlertCircle, FileEdit, LayoutGrid, Calendar, Phone, Car, Tag,
-  Receipt, FileMinus, FileClock, Wallet, History, TrendingUp, ArrowRight, Settings, Wrench, Pencil,
+  Receipt, FileMinus, FileClock, Wallet, History, TrendingUp, ArrowRight, Settings, Wrench, Pencil, BookMarked,
 } from 'lucide-react';
 import type { DocRow, DocStats, PaymentMethod } from '@/lib/documents';
 import { isDocEditable } from '@/lib/doc-editable';
@@ -23,6 +23,7 @@ const TYPE_LABEL: Record<string, string> = {
   credit_note:  'ใบลดหนี้',
   billing_note: 'ใบแจ้งหนี้',
   payment_note: 'ใบรับชำระ',
+  booking_note: 'ใบจอง',
 };
 
 const TYPE_STYLE: Record<string, string> = {
@@ -31,6 +32,7 @@ const TYPE_STYLE: Record<string, string> = {
   credit_note:  'bg-orange-50 text-orange-700 border-orange-200/50',
   billing_note: 'bg-amber-50 text-amber-700 border-amber-200/50',
   payment_note: 'bg-teal-50 text-teal-700 border-teal-200/50',
+  booking_note: 'bg-rose-50 text-rose-700 border-rose-200/50',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -43,18 +45,24 @@ const STATUS_LABEL: Record<string, string> = {
   rejected:         'ปฏิเสธแล้ว',
   expired:          'หมดอายุ',
   issued:           'ออกแล้ว',
+  reserved:         'จองแล้ว',
+  deposit_paid:     'รับมัดจำแล้ว',
+  completed:        'เสร็จสิ้น',
 };
 
 const STATUS_STYLE: Record<string, { label: string; className: string; dot: string }> = {
-  paid:             { label: 'ชำระแล้ว', className: 'bg-emerald-50 text-emerald-700 border-emerald-200/50', dot: 'bg-emerald-500' },
-  unpaid:           { label: 'ค้างชำระ', className: 'bg-red-50 text-red-700 border-red-200/50', dot: 'bg-red-500' },
-  partial:          { label: 'ชำระบางส่วน', className: 'bg-amber-50 text-amber-700 border-amber-200/50', dot: 'bg-amber-500' },
-  cancelled:        { label: 'ยกเลิก', className: 'bg-slate-50 text-slate-500 border-slate-200/50', dot: 'bg-slate-400' },
-  pending_approval: { label: 'รอตอบรับ', className: 'bg-amber-50 text-amber-700 border-amber-200/50', dot: 'bg-amber-500' },
-  accepted:         { label: 'อนุมัติแล้ว', className: 'bg-blue-50 text-blue-700 border-blue-200/50', dot: 'bg-blue-500' },
-  rejected:         { label: 'ปฏิเสธแล้ว', className: 'bg-slate-50 text-slate-500 border-slate-200/50', dot: 'bg-slate-400' },
-  expired:          { label: 'หมดอายุ', className: 'bg-slate-50 text-slate-500 border-slate-200/50', dot: 'bg-slate-400' },
-  issued:           { label: 'ออกแล้ว', className: 'bg-purple-50 text-purple-700 border-purple-200/50', dot: 'bg-purple-500' },
+  paid:             { label: 'ชำระแล้ว',    className: 'bg-emerald-50 text-emerald-700 border-emerald-200/50', dot: 'bg-emerald-500' },
+  unpaid:           { label: 'ค้างชำระ',    className: 'bg-red-50 text-red-700 border-red-200/50',             dot: 'bg-red-500'     },
+  partial:          { label: 'ชำระบางส่วน', className: 'bg-amber-50 text-amber-700 border-amber-200/50',       dot: 'bg-amber-500'   },
+  cancelled:        { label: 'ยกเลิก',      className: 'bg-slate-50 text-slate-500 border-slate-200/50',       dot: 'bg-slate-400'   },
+  pending_approval: { label: 'รอตอบรับ',    className: 'bg-amber-50 text-amber-700 border-amber-200/50',       dot: 'bg-amber-500'   },
+  accepted:         { label: 'อนุมัติแล้ว', className: 'bg-blue-50 text-blue-700 border-blue-200/50',          dot: 'bg-blue-500'    },
+  rejected:         { label: 'ปฏิเสธแล้ว', className: 'bg-slate-50 text-slate-500 border-slate-200/50',       dot: 'bg-slate-400'   },
+  expired:          { label: 'หมดอายุ',     className: 'bg-slate-50 text-slate-500 border-slate-200/50',       dot: 'bg-slate-400'   },
+  issued:           { label: 'ออกแล้ว',     className: 'bg-purple-50 text-purple-700 border-purple-200/50',   dot: 'bg-purple-500'  },
+  reserved:         { label: 'จองแล้ว',     className: 'bg-rose-50 text-rose-700 border-rose-200/50',         dot: 'bg-rose-500'    },
+  deposit_paid:     { label: 'รับมัดจำแล้ว', className: 'bg-green-50 text-green-700 border-green-200/50',     dot: 'bg-green-500'   },
+  completed:        { label: 'เสร็จสิ้น',   className: 'bg-emerald-50 text-emerald-700 border-emerald-200/50', dot: 'bg-emerald-500' },
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -354,6 +362,22 @@ function ViewModal({
                   <span className="font-bold text-slate-800">ยอดรวมสุทธิ</span>
                   <span className="text-2xl font-black text-slate-900 tabular-nums tracking-tight">฿{fmtMoney(doc.grandTotal)}</span>
                 </div>
+                {doc.type === 'booking_note' && doc.depositAmount > 0 && (
+                  <>
+                    <div className="flex justify-between text-[13px]">
+                      <span className="text-green-700 font-medium flex items-center gap-1.5">
+                        <CheckCircle size={13} /> มัดจำที่รับแล้ว
+                      </span>
+                      <span className="text-green-700 font-bold tabular-nums">-฿{fmtMoney(doc.depositAmount)}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-green-100 pt-3 mt-1">
+                      <span className="font-bold text-slate-800">ยอดคงเหลือ</span>
+                      <span className="text-2xl font-black text-rose-700 tabular-nums tracking-tight">
+                        ฿{fmtMoney(Math.max(0, doc.grandTotal - doc.depositAmount))}
+                      </span>
+                    </div>
+                  </>
+                )}
                 {bookingStatus && bookingStatus.depositStatus === 'verified' && bookingStatus.depositAmount > 0 && (
                   <>
                     <div className="flex justify-between text-[13px]">
@@ -373,6 +397,15 @@ function ViewModal({
               </div>
             </div>
           </div>
+
+          {/* Booking note: appointment date */}
+          {doc.type === 'booking_note' && doc.dueDate && (
+            <div className="flex flex-wrap items-center gap-3 px-1">
+              <span className="inline-flex items-center gap-1.5 text-[13px] font-bold text-rose-700 bg-rose-50 border border-rose-100 px-3 py-1.5 rounded-lg">
+                <Calendar size={14} /> วันนัดรับรถ {fmtDate(doc.dueDate)}
+              </span>
+            </div>
+          )}
 
           {/* Billing note: due date + payment history + record payment */}
           {doc.type === 'billing_note' && (
@@ -475,7 +508,7 @@ function ViewModal({
                 </button>
               </>
             )}
-            {['unpaid', 'pending_approval', 'issued'].includes(doc.status) && (
+            {['unpaid', 'pending_approval', 'issued', 'reserved', 'deposit_paid'].includes(doc.status) && (
               <button
                 onClick={() => onStatusChange(doc.id, 'cancelled')}
                 disabled={isPending}
@@ -488,6 +521,12 @@ function ViewModal({
             {doc.type === 'quote' && (
               <div className="flex flex-wrap items-center gap-2 ml-auto">
                 <Link
+                  href={`/admin/documents/new?from=${doc.id}&type=booking_note`}
+                  className="flex items-center gap-2 px-4 py-2 border border-rose-200 text-rose-700 bg-rose-50 rounded-xl text-sm font-bold hover:bg-rose-100 transition-colors"
+                >
+                  <BookMarked size={16} /> ออกใบจองมัดจำ
+                </Link>
+                <Link
                   href={`/admin/documents/new?from=${doc.id}&type=billing_note`}
                   className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors"
                 >
@@ -498,6 +537,26 @@ function ViewModal({
                   className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors"
                 >
                   <Receipt size={16} className="text-blue-500" /> สร้างใบเสร็จ
+                </Link>
+              </div>
+            )}
+
+            {doc.type === 'booking_note' && (doc.status === 'reserved' || doc.status === 'deposit_paid') && (
+              <div className="flex flex-wrap items-center gap-2 ml-auto">
+                {doc.status === 'reserved' && (
+                  <button
+                    onClick={() => onStatusChange(doc.id, 'deposit_paid')}
+                    disabled={isPending}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-40 transition-colors shadow-sm"
+                  >
+                    <CheckCircle size={16} /> บันทึกรับมัดจำ
+                  </button>
+                )}
+                <Link
+                  href={`/admin/documents/new?from=${doc.id}&type=invoice`}
+                  className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors"
+                >
+                  <Receipt size={16} className="text-blue-500" /> แปลงเป็นใบเสร็จ
                 </Link>
               </div>
             )}
@@ -818,6 +877,7 @@ export function DocumentsClient({
               <option value="billing_note">ใบแจ้งหนี้</option>
               <option value="payment_note">ใบรับชำระ</option>
               <option value="credit_note">ใบลดหนี้</option>
+              <option value="booking_note">ใบจอง</option>
             </select>
             <select
               value={statFilter}
@@ -831,6 +891,8 @@ export function DocumentsClient({
               <option value="pending_approval">รอตอบรับ</option>
               <option value="accepted">อนุมัติแล้ว</option>
               <option value="cancelled">ยกเลิก</option>
+              <option value="reserved">จองแล้ว</option>
+              <option value="deposit_paid">รับมัดจำแล้ว</option>
             </select>
           </div>
         </div>

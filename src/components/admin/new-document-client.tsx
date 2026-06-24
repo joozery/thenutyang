@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Plus, Trash2, Send, FileText,
   User, Phone, Hash, ChevronDown,
-  AlertCircle, Receipt, FileEdit, FileMinus, FileClock,
-  Search, X, Building2, MapPin, Car, UserPlus, Wrench, PackageSearch, Gauge, HardHat,
+  AlertCircle, Receipt, FileEdit, FileMinus, FileClock, BookMarked,
+  Search, X, Building2, MapPin, Car, UserPlus, Wrench, PackageSearch, Gauge, HardHat, Banknote,
 } from 'lucide-react';
 import { createDocument, updateDocument } from '@/app/actions/documents';
 import type { DocFormPayload } from '@/app/actions/documents';
@@ -29,7 +29,8 @@ const DOC_TYPES: { value: DocType; label: string; desc: string; icon: React.Reac
   { value: 'invoice',      label: 'ใบเสร็จ / ใบกำกับภาษี', desc: 'บันทึกการขายที่ชำระแล้ว',         icon: <Receipt  size={18} /> },
   { value: 'quote',        label: 'ใบเสนอราคา',              desc: 'เสนอราคาให้ลูกค้าก่อนตัดสินใจ',   icon: <FileEdit size={18} /> },
   { value: 'billing_note', label: 'ใบแจ้งหนี้',              desc: 'บิลเครดิต ออกก่อนรับเงิน รอลูกค้าชำระ (จ่ายเป็นงวดได้)', icon: <FileClock size={18} /> },
-  { value: 'credit_note',  label: 'ใบลดหนี้',                desc: 'ลดยอดหนี้จากใบเสร็จที่ออกแล้ว',  icon: <FileMinus size={18} /> },
+  { value: 'credit_note',  label: 'ใบลดหนี้',                desc: 'ลดยอดหนี้จากใบเสร็จที่ออกแล้ว',  icon: <FileMinus   size={18} /> },
+  { value: 'booking_note', label: 'ใบจอง',                  desc: 'จองสินค้าล่วงหน้า รับมัดจำ นัดวันรับรถ', icon: <BookMarked size={18} /> },
 ];
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -67,6 +68,7 @@ export type DocPrefill = {
   sourceDocId:        string;
   sourceDocNumber:    string;
   sourceDocTypeLabel: string;
+  depositAmount?:     number;
 };
 
 // ใช้ตอนแก้ไขเอกสารที่มีอยู่แล้ว — แยกจาก prefill (ที่ใช้กับ flow "สร้างเอกสารอ้างอิงใบนี้") เพราะความหมายต่างกัน:
@@ -267,6 +269,7 @@ export function NewDocumentClient({
 
   // meta
   const [dueDate,         setDueDate]         = useState(prefill?.dueDate ?? '');
+  const [depositAmount,   setDepositAmount]   = useState(prefill?.depositAmount ?? 0);
   const [note,            setNote]            = useState(prefill?.note ?? '');
   const [technicianName,  setTechnicianName]  = useState(prefill?.technicianName ?? '');
   const [showPaymentInfo, setShowPaymentInfo] = useState(prefill?.showPaymentInfo ?? false);
@@ -343,6 +346,7 @@ export function NewDocumentClient({
         grandTotal:    calc.grandTotal,
         paymentMethod,
         technicianName: technicianName.trim(),
+        depositAmount,
         note:          note.trim(),
         showPaymentInfo,
         dueDate,
@@ -453,10 +457,35 @@ export function NewDocumentClient({
                 <input value={today()} disabled className={inputCls} />
               </div>
             </div>
-            {(docType === 'quote' || docType === 'billing_note') && (
+            {(docType === 'quote' || docType === 'billing_note' || docType === 'booking_note') && (
               <div>
-                <Label>{docType === 'billing_note' ? 'วันครบกำหนดชำระ' : 'วันหมดอายุ (ใบเสนอราคา)'}</Label>
+                <Label>
+                  {docType === 'billing_note' ? 'วันครบกำหนดชำระ'
+                    : docType === 'booking_note' ? 'วันนัดรับรถ / คาดว่าสินค้าจะถึง'
+                    : 'วันหมดอายุ (ใบเสนอราคา)'}
+                </Label>
                 <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={inputCls} />
+              </div>
+            )}
+            {docType === 'booking_note' && (
+              <div>
+                <Label>มัดจำที่รับแล้ว (฿)</Label>
+                <div className="relative">
+                  <Banknote size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    type="number"
+                    min={0}
+                    value={depositAmount || ''}
+                    onChange={e => setDepositAmount(Number(e.target.value))}
+                    placeholder="0 = ยังไม่ได้รับมัดจำ"
+                    className={inputCls + ' pl-8'}
+                  />
+                </div>
+                {depositAmount > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    ยอดคงเหลือที่ต้องชำระ: <span className="font-bold text-slate-700">฿{Math.max(0, (calc.grandTotal - depositAmount)).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                  </p>
+                )}
               </div>
             )}
             <div>
@@ -588,6 +617,35 @@ export function NewDocumentClient({
                   onChange={e => setCustomerPhone(e.target.value)}
                   placeholder="08X-XXX-XXXX"
                   className={inputCls + ' pl-8'}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>ยี่ห้อรถ</Label>
+                <input
+                  value={carBrand}
+                  onChange={e => setCarBrand(e.target.value)}
+                  placeholder="Toyota"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <Label>รุ่นรถ</Label>
+                <input
+                  value={carModel}
+                  onChange={e => setCarModel(e.target.value)}
+                  placeholder="Camry"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <Label>สีรถ</Label>
+                <input
+                  value={carColor}
+                  onChange={e => setCarColor(e.target.value)}
+                  placeholder="ขาว"
+                  className={inputCls}
                 />
               </div>
             </div>

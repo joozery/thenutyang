@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import {
   BarChart2, TrendingUp, TrendingDown, Download, Calendar,
-  Users, Package, DollarSign, Car,
+  Users, Package, DollarSign,
 } from 'lucide-react';
 import type { ReportSummary } from '@/lib/reports';
 
@@ -24,23 +24,6 @@ function fmtK(n: number) {
   return `฿${fmt(n)}`;
 }
 
-/* ── static data (ของเดิม) ───────────────────────────────────────── */
-const monthlySales = [
-  { month: 'ม.ค.', revenue: 620000 },
-  { month: 'ก.พ.', revenue: 540000 },
-  { month: 'มี.ค.', revenue: 710000 },
-  { month: 'เม.ย.', revenue: 680000 },
-  { month: 'พ.ค.', revenue: 750000 },
-  { month: 'มิ.ย.', revenue: 892000 },
-];
-const topProducts = [
-  { name: 'Maxxis MA-P5 185/70R14', sold: 210 },
-  { name: 'Michelin Energy XM2+ 195/65R15', sold: 142 },
-  { name: 'Goodyear Assurance 195/65R15', sold: 119 },
-  { name: 'Bridgestone Ecopia EP300 205/55R16', sold: 98 },
-  { name: 'Yokohama BluEarth AE01 185/65R15', sold: 87 },
-];
-const maxRevenue = Math.max(...monthlySales.map((m) => m.revenue));
 
 export function ReportsClient({
   summary,
@@ -259,88 +242,81 @@ export function ReportsClient({
         <div className="flex-1 border-t border-slate-200" />
       </div>
 
-      {/* ── 4 KPI Cards (เดิม) ──────────────────────────────────── */}
+      {/* ── 4 KPI Cards (ข้อมูลจริง) ─────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'รายได้รวม (YTD)', value: '฿4.19M',      change: '+22%', icon: <DollarSign size={18} /> },
-          { label: 'บิลทั้งหมด',       value: '594',         change: '+18%', icon: <BarChart2 size={18} /> },
-          { label: 'ลูกค้าใหม่',        value: '89',          change: '+12%', icon: <Users size={18} /> },
-          { label: 'ยางที่ขาย',          value: '1,248 เส้น', change: '+28%', icon: <Package size={18} /> },
+          {
+            label: `รายได้รวม (ปี ${new Date().getFullYear() + 543})`,
+            value: fmtK(summary.ytdIncome),
+            sub:   'YTD',
+            icon:  <DollarSign size={18} />,
+            color: 'text-emerald-600 bg-emerald-50',
+          },
+          {
+            label: 'จำนวนบิล',
+            value: fmt(summary.billCount),
+            sub:   `ใบ · ${periodLabel}`,
+            icon:  <BarChart2 size={18} />,
+            color: 'text-blue-600 bg-blue-50',
+          },
+          {
+            label: 'ลูกค้าใหม่',
+            value: fmt(summary.newCustomerCount),
+            sub:   `ราย · ${periodLabel}`,
+            icon:  <Users size={18} />,
+            color: 'text-purple-600 bg-purple-50',
+          },
+          {
+            label: 'รายการขายทั้งหมด',
+            value: fmt(summary.topProducts.reduce((s, p) => s + p.qty, 0)),
+            sub:   `ชิ้น · ${periodLabel}`,
+            icon:  <Package size={18} />,
+            color: 'text-orange-600 bg-orange-50',
+          },
         ].map((kpi) => (
           <div key={kpi.label} className="bg-white border border-slate-100 rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="bg-slate-100 p-1.5 rounded-lg text-slate-500">{kpi.icon}</div>
-              <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{kpi.change}</span>
+              <div className={`p-1.5 rounded-lg ${kpi.color}`}>{kpi.icon}</div>
             </div>
             <p className="text-xl font-black text-slate-900 mb-0.5">{kpi.value}</p>
-            <p className="text-xs text-slate-400">{kpi.label}</p>
+            <p className="text-xs text-slate-500 font-medium">{kpi.label}</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">{kpi.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* ── กราฟรายได้รายเดือน + สินค้าขายดี (เดิม) ──────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 p-5">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-bold text-slate-900">รายได้รายเดือน</h2>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="w-3 h-3 bg-green-500 rounded-full inline-block" />รายได้
-            </div>
-          </div>
-          <div className="flex items-end gap-3 h-40">
-            {monthlySales.map((m) => (
-              <div key={m.month} className="flex-1 flex flex-col items-center gap-1.5">
-                <span className="text-xs font-bold text-slate-600">฿{(m.revenue / 1000).toFixed(0)}K</span>
-                <div
-                  className="w-full bg-green-100 rounded-t-lg relative overflow-hidden"
-                  style={{ height: `${(m.revenue / maxRevenue) * 120}px` }}
-                >
-                  <div className="absolute inset-0 bg-green-500 rounded-t-lg" />
-                </div>
-                <span className="text-xs text-slate-400">{m.month}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h2 className="font-bold text-slate-900 mb-4">สินค้าขายดี</h2>
+      {/* ── สินค้าขายดี (ข้อมูลจริง) ─────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <h2 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <Package size={16} className="text-slate-400" /> สินค้า/บริการขายดี
+          <span className="text-xs text-slate-400 font-normal ml-1">({periodLabel})</span>
+        </h2>
+        {summary.topProducts.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-6">ไม่มีข้อมูลในช่วงนี้</p>
+        ) : (
           <div className="space-y-3">
-            {topProducts.map((p, i) => (
+            {summary.topProducts.map((p, i) => (
               <div key={p.name}>
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <div className="flex items-start gap-2 min-w-0">
-                    <span className={`text-xs font-black w-5 shrink-0 mt-0.5 ${i === 0 ? 'text-amber-500' : 'text-slate-400'}`}>#{i + 1}</span>
-                    <p className="text-xs font-medium text-slate-700 leading-snug">{p.name}</p>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`text-xs font-black w-5 shrink-0 ${i === 0 ? 'text-amber-500' : 'text-slate-400'}`}>#{i + 1}</span>
+                    <p className="text-sm font-medium text-slate-700 truncate">{p.name}</p>
                   </div>
-                  <span className="text-xs font-bold text-slate-800 shrink-0">{p.sold} เส้น</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs text-slate-500">{fmt(p.qty)} ชิ้น</span>
+                    <span className="text-sm font-bold text-slate-800">฿{fmt(p.revenue)}</span>
+                  </div>
                 </div>
-                <div className="ml-7 w-full bg-slate-100 rounded-full h-1">
-                  <div className="bg-green-500 h-1 rounded-full" style={{ width: `${(p.sold / topProducts[0].sold) * 100}%` }} />
+                <div className="ml-7 bg-slate-100 rounded-full h-1.5">
+                  <div
+                    className="bg-green-500 h-1.5 rounded-full"
+                    style={{ width: `${summary.topProducts[0].qty > 0 ? (p.qty / summary.topProducts[0].qty) * 100 : 0}%` }}
+                  />
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ── Quick links (เดิม) ──────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pb-6">
-        {[
-          { label: 'รายงานยอดขาย',      icon: <TrendingUp size={20} /> },
-          { label: 'รายงานสต๊อก',        icon: <Package size={20} /> },
-          { label: 'รายงานลูกค้า',       icon: <Users size={20} /> },
-          { label: 'รายงานรถเข้าบริการ', icon: <Car size={20} /> },
-        ].map((r) => (
-          <button
-            key={r.label}
-            className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col items-center gap-3 hover:border-slate-200 hover:shadow-sm transition-all cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-100 text-slate-500">{r.icon}</div>
-            <span className="text-sm font-semibold text-slate-700 text-center leading-snug">{r.label}</span>
-            <span className="text-xs text-green-600 font-medium flex items-center gap-1"><Download size={11} />ดาวน์โหลด</span>
-          </button>
-        ))}
+        )}
       </div>
     </div>
   );

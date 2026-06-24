@@ -10,7 +10,7 @@ const itemSchema = new Schema({
 
 const financialDocSchema = new Schema({
   docNumber:     { type: String, required: true, unique: true },
-  type:          { type: String, enum: ['invoice', 'quote', 'credit_note', 'billing_note', 'payment_note'], required: true },
+  type:          { type: String, enum: ['invoice', 'quote', 'credit_note', 'billing_note', 'payment_note', 'booking_note'], required: true },
   source:        { type: String, enum: ['booking', 'manual'], default: 'manual' },
   bookingId:     { type: Schema.Types.ObjectId, ref: 'Booking', default: null },
   bookingRef:    { type: String, default: '' },
@@ -35,6 +35,7 @@ const financialDocSchema = new Schema({
   paidAt:        { type: Date, default: null },
 
   technicianName: { type: String, default: '' },
+  depositAmount:  { type: Number, default: 0 },
 
   status:        { type: String, required: true, default: 'unpaid' },
   note:          { type: String, default: '' },

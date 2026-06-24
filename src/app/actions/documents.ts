@@ -32,6 +32,7 @@ export type DocFormPayload = {
   grandTotal:    number;
   paymentMethod: PaymentMethod;
   technicianName: string;
+  depositAmount:  number;
   note:          string;
   showPaymentInfo: boolean;
   dueDate:       string;
@@ -51,6 +52,8 @@ export async function createDocument(
         ? 'pending_approval'
         : data.type === 'billing_note'
         ? 'unpaid'
+        : data.type === 'booking_note'
+        ? (data.depositAmount > 0 ? 'deposit_paid' : 'reserved')
         : 'issued';
 
     const doc = await FinancialDocument.create({
@@ -110,10 +113,15 @@ export async function updateDocument(
       grandTotal:      data.grandTotal,
       paymentMethod:   data.paymentMethod,
       technicianName:  data.technicianName,
+      depositAmount:   data.depositAmount,
       note:            data.note,
       showPaymentInfo: data.showPaymentInfo,
       dueDate:         data.dueDate ? new Date(data.dueDate) : null,
     };
+
+    if (existing.type === 'booking_note') {
+      update.status = data.depositAmount > 0 ? 'deposit_paid' : 'reserved';
+    }
 
     // invoice ที่แอดมินแก้วิธีชำระจาก "รอชำระ" เป็นวิธีอื่น ระหว่างแก้ไข ถือว่าจ่ายแล้ว ณ ตอนนี้ — ทำให้สถานะ + ออก Income เหมือนตอนสร้างใหม่
     if (existing.type === 'invoice' && data.paymentMethod !== 'pending') {
