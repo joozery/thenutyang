@@ -36,6 +36,7 @@ const financialDocSchema = new Schema({
 
   status:        { type: String, required: true, default: 'unpaid' },
   note:          { type: String, default: '' },
+  showPaymentInfo: { type: Boolean, default: false },
   issuedAt:      { type: Date, default: Date.now },
   dueDate:       { type: Date, default: null },
   createdAt:     { type: Date, default: Date.now },

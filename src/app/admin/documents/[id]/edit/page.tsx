@@ -41,6 +41,7 @@ export default async function EditDocumentPage({
     vatRate:         doc.vatRate,
     paymentMethod:   doc.paymentMethod,
     note:            doc.note,
+    showPaymentInfo: doc.showPaymentInfo,
     dueDate:         doc.dueDate ? doc.dueDate.slice(0, 10) : '',
     sourceDocId:        '',
     sourceDocNumber:    '',

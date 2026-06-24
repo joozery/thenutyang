@@ -14,6 +14,13 @@ const EMPTY: IDocumentSettings = {
   approverName: '',
   approverSignatureUrl: '',
   stampUrl: '',
+  bankName: '',
+  bankAccountNumber: '',
+  bankAccountName: '',
+  bankBranch: '',
+  promptPay: '',
+  paymentQrUrl: '',
+  paymentNote: '',
   updatedAt: new Date(0),
 };
 
@@ -36,6 +43,13 @@ export async function getDocumentSettings(): Promise<IDocumentSettings> {
     approverName:         doc.approverName ?? '',
     approverSignatureUrl: doc.approverSignatureUrl ?? '',
     stampUrl:             doc.stampUrl ?? '',
+    bankName:             doc.bankName ?? '',
+    bankAccountNumber:    doc.bankAccountNumber ?? '',
+    bankAccountName:      doc.bankAccountName ?? '',
+    bankBranch:           doc.bankBranch ?? '',
+    promptPay:            doc.promptPay ?? '',
+    paymentQrUrl:         doc.paymentQrUrl ?? '',
+    paymentNote:          doc.paymentNote ?? '',
     updatedAt:            doc.updatedAt ?? new Date(0),
   };
 }

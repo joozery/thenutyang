@@ -13,6 +13,13 @@ export interface IDocumentSettings {
   approverName: string;
   approverSignatureUrl: string;
   stampUrl: string;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+  bankBranch: string;
+  promptPay: string;
+  paymentQrUrl: string;
+  paymentNote: string;
   updatedAt: Date;
 }
 
@@ -29,6 +36,13 @@ const DocumentSettingsSchema = new Schema<IDocumentSettings>({
   approverName:         { type: String, default: '' },
   approverSignatureUrl: { type: String, default: '' },
   stampUrl:             { type: String, default: '' },
+  bankName:             { type: String, default: '' },
+  bankAccountNumber:    { type: String, default: '' },
+  bankAccountName:      { type: String, default: '' },
+  bankBranch:           { type: String, default: '' },
+  promptPay:            { type: String, default: '' },
+  paymentQrUrl:         { type: String, default: '' },
+  paymentNote:          { type: String, default: '' },
   updatedAt:            { type: Date, default: Date.now },
 });
 

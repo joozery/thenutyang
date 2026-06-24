@@ -32,6 +32,7 @@ export type DocFormPayload = {
   grandTotal:    number;
   paymentMethod: PaymentMethod;
   note:          string;
+  showPaymentInfo: boolean;
   dueDate:       string;
 };
 
@@ -108,6 +109,7 @@ export async function updateDocument(
       grandTotal:      data.grandTotal,
       paymentMethod:   data.paymentMethod,
       note:            data.note,
+      showPaymentInfo: data.showPaymentInfo,
       dueDate:         data.dueDate ? new Date(data.dueDate) : null,
     };
 

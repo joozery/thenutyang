@@ -34,6 +34,7 @@ export type DocRow = {
   paymentMethod: PaymentMethod;
   status:        string;
   note:          string;
+  showPaymentInfo: boolean;
   issuedAt:      string;
   dueDate:       string;
 };
@@ -80,6 +81,7 @@ function normalize(d: any): DocRow {
     paymentMethod: d.paymentMethod ?? 'pending',
     status:        d.status        ?? '',
     note:          d.note          ?? '',
+    showPaymentInfo: d.showPaymentInfo ?? false,
     issuedAt:      d.issuedAt instanceof Date ? d.issuedAt.toISOString() : String(d.issuedAt ?? ''),
     dueDate:       d.dueDate  instanceof Date ? d.dueDate.toISOString()  : String(d.dueDate  ?? ''),
   };

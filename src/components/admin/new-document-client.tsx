@@ -58,6 +58,7 @@ export type DocPrefill = {
   vatRate:       number;
   paymentMethod: PaymentMethod;
   note:          string;
+  showPaymentInfo?:   boolean;
   dueDate?:           string;
   sourceDocId:        string;
   sourceDocNumber:    string;
@@ -219,6 +220,7 @@ export function NewDocumentClient({
   // meta
   const [dueDate, setDueDate] = useState(prefill?.dueDate ?? '');
   const [note,    setNote]    = useState(prefill?.note ?? '');
+  const [showPaymentInfo, setShowPaymentInfo] = useState(prefill?.showPaymentInfo ?? false);
 
   // error
   const [error, setError] = useState('');
@@ -292,6 +294,7 @@ export function NewDocumentClient({
         grandTotal:    calc.grandTotal,
         paymentMethod,
         note:          note.trim(),
+        showPaymentInfo,
         dueDate,
         ...(prefill && !isEditMode ? { relatedDocId: prefill.sourceDocId, relatedDocNumber: prefill.sourceDocNumber } : {}),
       };
@@ -419,6 +422,18 @@ export function NewDocumentClient({
               <Label>หมายเหตุ</Label>
               <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} placeholder="หมายเหตุเพิ่มเติม..." className={inputCls + ' resize-none'} />
             </div>
+            <label className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+              <input
+                type="checkbox"
+                checked={showPaymentInfo}
+                onChange={e => setShowPaymentInfo(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-green-600 focus:ring-green-500"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-slate-700">แสดงข้อมูลการรับชำระ</span>
+                <span className="block text-xs text-slate-400">เพิ่มหน้าที่ 2 ต่อจากเอกสารนี้ แสดงเลขบัญชี/พร้อมเพย์/QR ตามที่ตั้งค่าไว้</span>
+              </span>
+            </label>
           </div>
         </Section>
 

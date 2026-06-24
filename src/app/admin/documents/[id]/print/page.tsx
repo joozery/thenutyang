@@ -3,6 +3,7 @@ import { getDocumentById } from '@/lib/documents';
 import { getDocumentSettings } from '@/lib/document-settings';
 import { PrintPageShell } from '@/components/admin/documents/print-page-shell';
 import { DocumentTemplate, type DocumentTemplateProps } from '@/components/admin/documents/document-template';
+import { PaymentInfoPage } from '@/components/admin/documents/payment-info-page';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'ตัวอย่างก่อนพิมพ์ | Admin' };
@@ -79,6 +80,14 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
   return (
     <PrintPageShell>
       <DocumentTemplate {...templateProps} />
+      {doc.showPaymentInfo && (
+        <PaymentInfoPage
+          settings={settings}
+          docNumber={doc.docNumber}
+          docTypeLabel={templateProps.docTypeLabel}
+          grandTotal={doc.grandTotal}
+        />
+      )}
     </PrintPageShell>
   );
 }
