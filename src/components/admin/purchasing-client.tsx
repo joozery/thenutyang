@@ -215,7 +215,7 @@ function ActionMenu({ order, onView, onReceive, onCancelRequest, onPayRequest }:
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-1 w-44 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
             <button onClick={() => { setOpen(false); onView(); }} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 font-medium">
               <Eye size={14} className="text-slate-400" /> ดูรายละเอียด
             </button>
@@ -385,7 +385,7 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100">
           <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -408,7 +408,7 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
             </select>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="w-full">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
@@ -425,8 +425,8 @@ export function PurchasingClient({ initialOrders }: { initialOrders: PORow[] }) 
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {paged.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-14 text-slate-400 text-sm">ไม่พบรายการที่ตรงกับเงื่อนไข</td></tr>
-                ) : paged.map(o => (
+                  <tr><td colSpan={9} className="text-center py-14 text-slate-400 text-sm">ไม่พบรายการที่ตรงกับเงื่อนไข</td></tr>
+                ) : paged.map((o, idx) => (
                   <tr key={o.id} onClick={() => setSelectedOrder(o)} className="hover:bg-slate-50 transition-colors cursor-pointer">
                     <td className="px-4 py-3.5 font-bold text-green-600">{o.poNumber}</td>
                     <td className="px-4 py-3.5">

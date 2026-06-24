@@ -3,6 +3,8 @@ import connectDB from '@/lib/mongodb';
 import { FinancialDocument } from '@/models/FinancialDocument';
 import { Product } from '@/models/Product';
 import { Booking } from '@/models/Booking';
+import { Income } from '@/models/Income';
+import { Expense } from '@/models/Expense';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +52,19 @@ export async function GET(req: Request) {
     const todayRevenue = todayDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
     const yesterdayRevenue = yesterdayDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
     const monthRevenue = monthDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
+
+    const [monthIncomes, monthExpenses] = await Promise.all([
+      Income.aggregate([
+        { $match: { incomeDate: { $gte: monthStart, $lt: nextMonthStart } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      Expense.aggregate([
+        { $match: { expenseDate: { $gte: monthStart, $lt: nextMonthStart } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ])
+    ]);
+    const totalIncomeMonth = monthIncomes[0]?.total ?? 0;
+    const totalExpenseMonth = monthExpenses[0]?.total ?? 0;
 
     const todayBills = todayDocs.length;
     const yesterdayBills = yesterdayDocs.length;
@@ -116,6 +131,8 @@ export async function GET(req: Request) {
         todayBookings,
         totalProducts,
         totalStock: totalStock[0]?.total ?? 0,
+        totalIncomeMonth,
+        totalExpenseMonth,
       },
       recentInvoices: recentInvoices.map(inv => ({
         id: inv._id.toString(),

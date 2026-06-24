@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb';
 import { FinancialDocument } from '@/models/FinancialDocument';
 import { Booking } from '@/models/Booking';
 import { generateDocNumber } from '@/lib/documents';
+import { isDocEditable } from '@/lib/doc-editable';
 import type { DocType, PaymentMethod } from '@/lib/documents';
 
 export type DocFormPayload = {
@@ -36,7 +37,7 @@ export type DocFormPayload = {
 
 export async function createDocument(
   data: DocFormPayload,
-): Promise<{ success: boolean; docNumber?: string; error?: string }> {
+): Promise<{ success: boolean; docNumber?: string; id?: string; error?: string }> {
   try {
     await connectDB();
     const docNumber = await generateDocNumber(data.type);
@@ -50,7 +51,7 @@ export async function createDocument(
         ? 'unpaid'
         : 'issued';
 
-    await FinancialDocument.create({
+    const doc = await FinancialDocument.create({
       ...data,
       docNumber,
       source:   'manual',
@@ -60,11 +61,76 @@ export async function createDocument(
       dueDate:  data.dueDate ? new Date(data.dueDate) : null,
     });
 
+    if (defaultStatus === 'paid') {
+      const { Income } = await import('@/models/Income');
+      await Income.create({
+        category: 'Sales',
+        description: `ชำระเงินบิล ${docNumber} (${data.customerName})`,
+        amount: data.grandTotal,
+        incomeDate: new Date(),
+        note: `อ้างอิงเอกสาร ${docNumber}`,
+      });
+    }
+
     revalidatePath('/admin/documents');
-    return { success: true, docNumber };
+    return { success: true, docNumber, id: String(doc._id) };
   } catch (err) {
     console.error('[createDocument]', err);
     return { success: false, error: 'ไม่สามารถสร้างเอกสารได้' };
+  }
+}
+
+// แก้ไขเอกสารที่มีอยู่แล้ว (ไม่เปลี่ยนประเภท/เลขที่เอกสาร) — เช็คสถานะซ้ำฝั่ง server เผื่อสถานะเปลี่ยนไปแล้วระหว่างที่เปิดฟอร์มอยู่
+export async function updateDocument(
+  id: string,
+  data: Omit<DocFormPayload, 'relatedDocId' | 'relatedDocNumber'>,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await connectDB();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existing = await FinancialDocument.findById(id).lean() as any;
+    if (!existing) return { success: false, error: 'ไม่พบเอกสารนี้' };
+    if (!isDocEditable(existing.type, existing.status)) {
+      return { success: false, error: 'เอกสารนี้แก้ไขไม่ได้แล้ว (สถานะเปลี่ยนไปแล้ว)' };
+    }
+
+    const update: Record<string, unknown> = {
+      customerName:    data.customerName,
+      customerPhone:   data.customerPhone,
+      customerCar:     data.customerCar,
+      customerAddress: data.customerAddress,
+      customerTaxId:   data.customerTaxId,
+      items:           data.items,
+      subtotal:        data.subtotal,
+      discountTotal:   data.discountTotal,
+      vatRate:         data.vatRate,
+      vatAmount:       data.vatAmount,
+      grandTotal:      data.grandTotal,
+      paymentMethod:   data.paymentMethod,
+      note:            data.note,
+      dueDate:         data.dueDate ? new Date(data.dueDate) : null,
+    };
+
+    // invoice ที่แอดมินแก้วิธีชำระจาก "รอชำระ" เป็นวิธีอื่น ระหว่างแก้ไข ถือว่าจ่ายแล้ว ณ ตอนนี้ — ทำให้สถานะ + ออก Income เหมือนตอนสร้างใหม่
+    if (existing.type === 'invoice' && data.paymentMethod !== 'pending') {
+      update.status = 'paid';
+      update.paidAt = new Date();
+      const { Income } = await import('@/models/Income');
+      await Income.create({
+        category: 'Sales',
+        description: `ชำระเงินบิล ${existing.docNumber} (${data.customerName})`,
+        amount: data.grandTotal,
+        incomeDate: new Date(),
+        note: `อ้างอิงเอกสาร ${existing.docNumber}`,
+      });
+    }
+
+    await FinancialDocument.findByIdAndUpdate(id, update);
+    revalidatePath('/admin/documents');
+    return { success: true };
+  } catch (err) {
+    console.error('[updateDocument]', err);
+    return { success: false, error: 'ไม่สามารถบันทึกการแก้ไขได้' };
   }
 }
 
@@ -252,6 +318,15 @@ export async function recordPartialPayment(
       note:          note ?? '',
     });
 
+    const { Income } = await import('@/models/Income');
+    await Income.create({
+      category: 'Sales',
+      description: `รับชำระสำหรับใบแจ้งหนี้ ${billingNote.docNumber}`,
+      amount: amount,
+      incomeDate: new Date(),
+      note: `อ้างอิงใบรับชำระ ${docNumber}`,
+    });
+
     const fullyPaid = alreadyPaid + amount >= billingNote.grandTotal - 0.01;
     let invoiceDocNumber: string | undefined;
 
@@ -302,7 +377,21 @@ export async function updateDocStatus(
     await connectDB();
     const update: Record<string, unknown> = { status };
     if (status === 'paid') update.paidAt = new Date();
-    await FinancialDocument.findByIdAndUpdate(id, update);
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = await FinancialDocument.findByIdAndUpdate(id, update) as any;
+    
+    if (status === 'paid' && doc) {
+      const { Income } = await import('@/models/Income');
+      await Income.create({
+        category: 'Sales',
+        description: `ชำระเงินบิล ${doc.docNumber}`,
+        amount: doc.grandTotal,
+        incomeDate: new Date(),
+        note: `อ้างอิงเอกสาร ${doc.docNumber}`,
+      });
+    }
+
     revalidatePath('/admin/documents');
     return { success: true };
   } catch (err) {

@@ -128,10 +128,12 @@ export default async function TireDetailPage({ params }: { params: Promise<{ id:
               >
                 เพิ่มลงตะกร้า
               </AddToCartButton>
-              <Link href={`/booking?tireId=${tire.id}`}
+              <AddToCartButton
+                tire={{ id: tire.id, brand: tire.brand, model: tire.model, size: tire.size, image: tire.image, price: tire.priceCash }}
+                goToCart
                 className="flex-1 text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-6 rounded-xl transition-colors shadow-lg shadow-green-200 text-sm">
                 จองเลย / ขอใบเสนอราคา
-              </Link>
+              </AddToCartButton>
             </div>
             <div className="flex gap-3">
               <Link href={`https://line.me/R/ti/p/@${process.env.NEXT_PUBLIC_LINE_OA_ID ?? '131zpewj'}`}

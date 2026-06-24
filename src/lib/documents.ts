@@ -45,6 +45,8 @@ export type DocStats = {
   pendingQuoteCount: number;
   billingOutstandingCount: number;
   billingOutstandingTotal: number;
+  totalIncomeMonth: number;
+  totalExpenseMonth: number;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,8 +112,10 @@ export async function getDocStats(): Promise<DocStats> {
   await connectDB();
   const now        = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const { Income } = await import('@/models/Income');
+  const { Expense } = await import('@/models/Expense');
 
-  const [monthInvoices, unpaidCount, pendingQuoteCount, outstandingBillingNotes, paymentSums] = await Promise.all([
+  const [monthInvoices, unpaidCount, pendingQuoteCount, outstandingBillingNotes, paymentSums, monthIncomes, monthExpenses] = await Promise.all([
     FinancialDocument.find({ type: 'invoice', issuedAt: { $gte: monthStart } }).lean(),
     FinancialDocument.countDocuments({ type: 'invoice', status: 'unpaid' }),
     FinancialDocument.countDocuments({ type: 'quote',   status: 'pending_approval' }),
@@ -120,6 +124,14 @@ export async function getDocStats(): Promise<DocStats> {
       { $match: { type: 'payment_note' } },
       { $group: { _id: '$relatedDocId', paid: { $sum: '$grandTotal' } } },
     ]),
+    Income.aggregate([
+      { $match: { incomeDate: { $gte: monthStart } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]),
+    Expense.aggregate([
+      { $match: { expenseDate: { $gte: monthStart } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ])
   ]);
 
   const paidMap = new Map(paymentSums.map((p) => [String(p._id), p.paid as number]));
@@ -136,6 +148,8 @@ export async function getDocStats(): Promise<DocStats> {
     pendingQuoteCount,
     billingOutstandingCount: outstandingBillingNotes.length,
     billingOutstandingTotal,
+    totalIncomeMonth: monthIncomes[0]?.total ?? 0,
+    totalExpenseMonth: monthExpenses[0]?.total ?? 0,
   };
 }
 

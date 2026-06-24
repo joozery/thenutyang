@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { Customer } from '@/models/Customer';
 
-type ActionResult = { error?: string; ok?: boolean };
+type SavedCustomer = { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string };
+type ActionResult = { error?: string; ok?: boolean; customer?: SavedCustomer };
 
 export type CustomerFormInput = {
   customerType: 'individual' | 'corporate';
@@ -31,9 +32,15 @@ export async function createCustomer(input: CustomerFormInput): Promise<ActionRe
     if (error) return { error };
 
     await connectDB();
-    await Customer.create({ ...input, source: 'walkin' });
+    const doc = await Customer.create({ ...input, source: 'walkin' });
     revalidatePath('/admin/customers');
-    return { ok: true };
+    const name = input.customerType === 'corporate' && input.companyName.trim()
+      ? input.companyName.trim()
+      : `${input.firstName} ${input.lastName}`.trim();
+    return {
+      ok: true,
+      customer: { id: String(doc._id), name, phone: input.phone, address: input.address, taxId: input.taxId, carInfo: input.carInfo },
+    };
   } catch (err) {
     console.error('[createCustomer]', err);
     return { error: 'บันทึกไม่สำเร็จ' };

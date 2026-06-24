@@ -1,6 +1,7 @@
 import connectDB from './mongodb';
 import { Booking } from '@/models/Booking';
 import type { CustomerDirectoryRow } from './customer-directory';
+import { composeCarInfo } from './car-info';
 
 export type CustomerRow = {
   phone: string;
@@ -8,6 +9,7 @@ export type CustomerRow = {
   lineUserId?: string;
   lineId?: string;
   cars: string[];           // unique "carModel ปี carYear"
+  carInfo: string;          // ทะเบียน/ไมล์ ล่าสุดจากการจองครั้งล่าสุด
   totalBills: number;
   totalSpent: number;
   lastVisit: string;        // ISO date string
@@ -50,7 +52,7 @@ export function mergeCustomerSources(
       name: b.name,
       firstName: '', lastName: '', companyName: '',
       phone: b.phone,
-      email: '', address: '', taxId: '', carInfo: '', note: '',
+      email: '', address: '', taxId: '', carInfo: b.carInfo, note: '',
       lineUserId: b.lineUserId,
       cars: b.cars,
       totalBills: b.totalBills,
@@ -63,6 +65,7 @@ export function mergeCustomerSources(
 
   for (const d of directoryRows) {
     const existing = d.phone ? byPhone.get(d.phone) : undefined;
+    // ถ้า Customer directory ไม่มี carInfo (เช่น sync มาจาก booking แต่ยังไม่เคยแก้ในหน้าลูกค้า) ใช้ของจากการจองล่าสุดแทน
     const merged: UnifiedCustomerRow = {
       id: d.id,
       customerType: d.customerType,
@@ -74,7 +77,7 @@ export function mergeCustomerSources(
       email: d.email,
       address: d.address,
       taxId: d.taxId,
-      carInfo: d.carInfo,
+      carInfo: d.carInfo || existing?.carInfo || '',
       note: d.note,
       lineUserId: existing?.lineUserId,
       cars: existing
@@ -96,34 +99,56 @@ export function mergeCustomerSources(
 export async function getCustomers(): Promise<CustomerRow[]> {
   await connectDB();
 
-  const rows = await Booking.aggregate([
-    // group by phone
-    {
-      $group: {
-        _id: '$phone',
-        name:        { $last: '$name' },
-        lineUserId:  { $last: '$lineUserId' },
-        lineId:      { $last: '$lineId' },
-        cars:        { $addToSet: { $concat: ['$carModel', ' ปี ', '$carYear'] } },
-        totalBills:  { $sum: 1 },
-        totalSpent:  { $sum: { $multiply: ['$tirePrice', '$quantity'] } },
-        lastVisit:   { $max: '$createdAt' },
+  const [rows, carInfoRows] = await Promise.all([
+    Booking.aggregate([
+      { $sort: { createdAt: 1 } },
+      {
+        $group: {
+          _id: '$phone',
+          name:       { $last: '$name' },
+          lineUserId: { $last: '$lineUserId' },
+          lineId:     { $last: '$lineId' },
+          cars:       { $addToSet: { $concat: ['$carModel', ' ปี ', '$carYear'] } },
+          totalBills: { $sum: 1 },
+          totalSpent: { $sum: { $multiply: ['$tirePrice', '$quantity'] } },
+          lastVisit:  { $max: '$createdAt' },
+        },
       },
-    },
-    { $sort: { totalSpent: -1 } },
+      { $sort: { totalSpent: -1 } },
+    ]),
+    // แยกอีกชุดเฉพาะการจองที่มีข้อมูลรถกรอกไว้จริง แล้วหาตัวล่าสุด — กันเคส "การจองล่าสุด" ดันไม่มีใครกรอกทะเบียน/ไมล์
+    Booking.aggregate([
+      { $match: { $or: [{ licensePlate: { $ne: '' } }, { mileageBefore: { $ne: null } }, { mileageAfter: { $ne: null } }] } },
+      { $sort: { createdAt: 1 } },
+      {
+        $group: {
+          _id: '$phone',
+          licensePlate:  { $last: '$licensePlate' },
+          mileageBefore: { $last: '$mileageBefore' },
+          mileageAfter:  { $last: '$mileageAfter' },
+        },
+      },
+    ]),
   ]);
 
-  return rows.map(r => ({
-    phone:      r._id as string,
-    name:       r.name as string,
-    lineUserId: r.lineUserId as string | undefined,
-    lineId:     r.lineId as string | undefined,
-    cars:       r.cars as string[],
-    totalBills: r.totalBills as number,
-    totalSpent: r.totalSpent as number,
-    lastVisit:  r.lastVisit instanceof Date ? r.lastVisit.toISOString() : String(r.lastVisit),
-    tag:        r.totalSpent >= 50000 ? 'VIP' : r.totalBills === 1 ? 'ใหม่' : 'ปกติ',
-  }));
+  const carInfoByPhone = new Map(carInfoRows.map((c) => [c._id as string, c]));
+
+  return rows.map(r => {
+    const c = carInfoByPhone.get(r._id as string);
+    const mileage = c ? ((c.mileageAfter ?? c.mileageBefore) as number | null) : null;
+    return {
+      phone:      r._id as string,
+      name:       r.name as string,
+      lineUserId: r.lineUserId as string | undefined,
+      lineId:     r.lineId as string | undefined,
+      cars:       r.cars as string[],
+      carInfo:    composeCarInfo((c?.licensePlate as string) ?? '', mileage != null ? String(mileage) : ''),
+      totalBills: r.totalBills as number,
+      totalSpent: r.totalSpent as number,
+      lastVisit:  r.lastVisit instanceof Date ? r.lastVisit.toISOString() : String(r.lastVisit),
+      tag:        (r.totalSpent >= 50000 ? 'VIP' : r.totalBills === 1 ? 'ใหม่' : 'ปกติ') as 'VIP' | 'ปกติ' | 'ใหม่',
+    };
+  });
 }
 
 export function formatLastVisit(iso: string): string {

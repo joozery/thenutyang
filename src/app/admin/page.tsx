@@ -20,6 +20,8 @@ interface DashboardData {
     todayBookings: number;
     totalProducts: number;
     totalStock: number;
+    totalIncomeMonth: number;
+    totalExpenseMonth: number;
   };
   recentInvoices: {
     id: string;
@@ -92,7 +94,34 @@ export default function AdminDashboard() {
 
   const { summary, recentInvoices, lowStock, chartData, categoryData } = data;
 
-  const summaryCards = [
+  const financeCards = [
+    {
+      title: 'ยอดขายเดือนนี้',
+      value: `฿${fmt(summary.monthRevenue)}`,
+      trend: 'ยอดสะสมเดือนปัจจุบัน',
+      trendUp: true, isNeutral: true,
+      icon: <TrendingUp size={18} />,
+      iconClass: 'text-emerald-600', iconBg: 'bg-emerald-50',
+    },
+    {
+      title: 'รายรับเดือนนี้',
+      value: `฿${fmt(summary.totalIncomeMonth)}`,
+      trend: 'รวมทุกช่องทาง',
+      trendUp: true, isNeutral: true,
+      icon: <DollarSign size={18} />,
+      iconClass: 'text-teal-600', iconBg: 'bg-teal-50',
+    },
+    {
+      title: 'รายจ่ายเดือนนี้',
+      value: `฿${fmt(summary.totalExpenseMonth)}`,
+      trend: 'ค่าสินค้าและจิปาถะ',
+      trendUp: false, isNeutral: true,
+      icon: <AlertTriangle size={18} />,
+      iconClass: 'text-rose-600', iconBg: 'bg-rose-50',
+    },
+  ];
+
+  const opsCards = [
     {
       title: 'ยอดขายวันนี้',
       value: `฿${fmt(summary.todayRevenue)}`,
@@ -112,14 +141,6 @@ export default function AdminDashboard() {
       iconClass: 'text-blue-600', iconBg: 'bg-blue-50',
     },
     {
-      title: 'ยอดขายเดือนนี้',
-      value: `฿${fmt(summary.monthRevenue)}`,
-      trend: 'ยอดสะสมเดือนปัจจุบัน',
-      trendUp: true, isNeutral: true,
-      icon: <TrendingUp size={18} />,
-      iconClass: 'text-emerald-600', iconBg: 'bg-emerald-50',
-    },
-    {
       title: 'การจองรออนุมัติ',
       value: `${summary.pendingBookings} รายการ`,
       trend: `จองใหม่วันนี้ ${summary.todayBookings} ราย`,
@@ -136,6 +157,7 @@ export default function AdminDashboard() {
       iconClass: 'text-slate-600', iconBg: 'bg-slate-100',
     },
   ];
+
 
   const displayDate = selectedDate ? new Date(selectedDate) : new Date();
   const thDate = displayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -168,16 +190,37 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        {summaryCards.map((card, idx) => (
-          <div key={idx} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-            <div className={`${card.iconBg} w-9 h-9 rounded-lg flex items-center justify-center mb-3 ${card.iconClass}`}>
+      {/* Finance Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {financeCards.map((card, idx) => (
+          <div key={`fin-${idx}`} className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm relative overflow-hidden group">
+            <div className="absolute right-0 top-0 opacity-[0.03] group-hover:opacity-[0.06] group-hover:scale-110 transition-transform pointer-events-none -mr-4 -mt-4">
+               <DollarSign size={100} className={card.iconClass} />
+            </div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`${card.iconBg} w-10 h-10 rounded-xl flex items-center justify-center ${card.iconClass}`}>
+                {card.icon}
+              </div>
+              <p className="text-sm text-slate-500 font-bold">{card.title}</p>
+            </div>
+            <div className="text-3xl font-black text-slate-900 leading-tight mb-2 tracking-tight">{card.value}</div>
+            <div className={`text-xs font-semibold ${card.isNeutral ? 'text-slate-400' : (card.trendUp ? 'text-emerald-600' : 'text-rose-500')}`}>
+              {card.trend}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Ops Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {opsCards.map((card, idx) => (
+          <div key={`ops-${idx}`} className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
+            <div className={`${card.iconBg} w-8 h-8 rounded-lg flex items-center justify-center mb-2.5 ${card.iconClass}`}>
               {card.icon}
             </div>
-            <p className="text-xs text-slate-400 font-medium mb-1">{card.title}</p>
-            <div className="text-xl font-black text-slate-900 leading-tight">{card.value}</div>
-            <div className={`text-xs font-medium mt-1.5 ${card.isNeutral ? 'text-slate-400' : (card.trendUp ? 'text-emerald-600' : 'text-red-500')}`}>
+            <p className="text-[11px] text-slate-400 font-semibold mb-1 uppercase tracking-wide">{card.title}</p>
+            <div className="text-xl font-black text-slate-800 leading-tight">{card.value}</div>
+            <div className={`text-[10px] font-bold mt-1.5 ${card.isNeutral ? 'text-slate-400' : (card.trendUp ? 'text-emerald-600' : 'text-red-500')}`}>
               {card.trend}
             </div>
           </div>

@@ -4,10 +4,11 @@ import { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, Phone, FileText, ChevronLeft, ChevronRight, Crown, UserCheck, Sparkles,
-  Download, Filter, Plus, X, Pencil, Trash2, Building2, Mail, MapPin, Hash,
+  Download, Filter, Plus, X, Pencil, Trash2, Building2, Mail, MapPin, Hash, Car, Gauge,
 } from 'lucide-react';
 import type { UnifiedCustomerRow } from '@/lib/customers';
 import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput } from '@/app/actions/customers';
+import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
 
 function formatLastVisit(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -42,12 +43,12 @@ const EMPTY_FORM: CustomerFormInput = {
 
 type EditableCustomer = UnifiedCustomerRow & { id: string };
 
-function CustomerModal({
+export function CustomerModal({
   initial, onClose, onSaved,
 }: {
   initial: EditableCustomer | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (customer?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string }) => void;
 }) {
   const [form, setForm] = useState<CustomerFormInput>(
     initial
@@ -65,6 +66,9 @@ function CustomerModal({
         }
       : EMPTY_FORM
   );
+  const initialCar = parseCarInfo(initial?.carInfo ?? '');
+  const [licensePlate, setLicensePlate] = useState(initialCar.licensePlate);
+  const [mileage,      setMileage]      = useState(initialCar.mileage);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -75,10 +79,11 @@ function CustomerModal({
 
   function handleSubmit() {
     setError('');
+    const finalForm = { ...form, carInfo: composeCarInfo(licensePlate, mileage) };
     startTransition(async () => {
-      const result = initial ? await updateCustomer(initial.id, form) : await createCustomer(form);
+      const result = initial ? await updateCustomer(initial.id, finalForm) : await createCustomer(finalForm);
       if (result.error) setError(result.error);
-      else { router.refresh(); onSaved(); }
+      else { router.refresh(); onSaved(result.customer); }
     });
   }
 
@@ -150,6 +155,22 @@ function CustomerModal({
           <div>
             <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Hash size={11} /> เลขที่ผู้เสียภาษี</label>
             <input value={form.taxId} onChange={(e) => set('taxId', e.target.value)} placeholder="0-0000-00000-00-0" className={inputCls} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Car size={11} /> ทะเบียนรถ</label>
+              <input value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} placeholder="กก-1234 กรุงเทพฯ" className={inputCls} />
+            </div>
+            <div>
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Gauge size={11} /> ไมล์ปัจจุบัน (กม.)</label>
+              <input
+                value={mileage}
+                onChange={(e) => setMileage(e.target.value.replace(/[^\d,]/g, ''))}
+                placeholder="45,000"
+                className={inputCls}
+              />
+            </div>
           </div>
 
           <div>

@@ -188,7 +188,7 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
 
   function selectProduct(key: number, p: ProductRow) {
     setLines(prev => prev.map(l => l.key === key
-      ? { ...l, productName: `${p.brand} ${p.model} ${p.size}`, unitPrice: p.costPrice || l.unitPrice }
+      ? { ...l, productName: `${p.brand} ${p.model} ${p.size}`, unitPrice: p.costPrice || l.unitPrice, year: p.year || l.year }
       : l));
     setProductPickerLineKey(null);
   }

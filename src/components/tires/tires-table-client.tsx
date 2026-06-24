@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import Link from 'next/link';
 import {
   Search,
   ChevronUp, ChevronDown, ChevronsUpDown,
@@ -207,10 +206,12 @@ export function TiresTableClient({ initialProducts, initialBrands = [] }: { init
                         tire={{ id: p.id, brand: p.brand, model: p.model, size: p.size, image: p.image, price: p.priceCash }}
                         className="w-8 h-8 flex items-center justify-center rounded-lg border border-green-200 text-green-600 hover:bg-green-50 shrink-0 transition-colors"
                       />
-                      <Link href={`/booking?tireId=${p.id}`}
+                      <AddToCartButton
+                        tire={{ id: p.id, brand: p.brand, model: p.model, size: p.size, image: p.image, price: p.priceCash }}
+                        goToCart
                         className="flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-1.5 text-xs font-bold transition-colors">
                         จอง
-                      </Link>
+                      </AddToCartButton>
                     </div>
                   </td>
                 </tr>
@@ -263,10 +264,12 @@ export function TiresTableClient({ initialProducts, initialBrands = [] }: { init
                     tire={{ id: p.id, brand: p.brand, model: p.model, size: p.size, image: p.image, price: p.priceCash }}
                     className="w-7 h-7 flex items-center justify-center rounded border border-green-200 text-green-600 hover:bg-green-50 shrink-0 transition-colors"
                   />
-                  <Link href={`/booking?tireId=${p.id}`}
+                  <AddToCartButton
+                    tire={{ id: p.id, brand: p.brand, model: p.model, size: p.size, image: p.image, price: p.priceCash }}
+                    goToCart
                     className="flex items-center justify-center bg-green-600 text-white rounded px-3 py-1.5 text-xs font-bold shadow-sm">
                     จอง
-                  </Link>
+                  </AddToCartButton>
                 </div>
               </div>
             </div>

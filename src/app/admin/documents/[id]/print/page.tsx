@@ -15,6 +15,12 @@ const DOC_TYPE_PRINT_LABEL: Record<string, string> = {
   payment_note: 'ใบรับชำระ',
 };
 
+// ใบเสร็จที่ไม่มี VAT ใช้ชื่อ "ใบเสร็จรับเงิน" เฉยๆ — มี VAT ถึงจะนับเป็นใบกำกับภาษีได้ด้วย
+function docTypePrintLabel(type: string, vatRate: number): string {
+  if (type === 'invoice' && vatRate <= 0) return 'ใบเสร็จรับเงิน';
+  return DOC_TYPE_PRINT_LABEL[type] ?? type;
+}
+
 const PAYMENT_LABEL: Record<string, string> = {
   cash:        'เงินสด',
   transfer:    'โอนเงิน',
@@ -41,7 +47,7 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
   if (!doc) notFound();
 
   const templateProps: DocumentTemplateProps = {
-    docTypeLabel: DOC_TYPE_PRINT_LABEL[doc.type] ?? doc.type,
+    docTypeLabel: docTypePrintLabel(doc.type, doc.vatRate),
     docNumber: doc.docNumber,
     issueDate: fmtDate(doc.issuedAt),
     reference: doc.relatedDocNumber || doc.bookingRef || undefined,
@@ -62,7 +68,7 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
       lineTotal: item.lineTotal,
     })),
     vatRate: doc.vatRate,
-    vatBase: doc.subtotal - doc.discountTotal,
+    vatBase: doc.grandTotal - doc.vatAmount,
     vatAmount: doc.vatAmount,
     grandTotal: doc.grandTotal,
     payment: doc.paymentMethod !== 'pending' ? { method: PAYMENT_LABEL[doc.paymentMethod], date: fmtDate(doc.issuedAt) } : undefined,

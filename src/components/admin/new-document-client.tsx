@@ -2,18 +2,23 @@
 
 import { useState, useMemo, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Plus, Trash2, Send, FileText,
   User, Phone, Hash, ChevronDown,
-  AlertCircle, CheckCircle, Receipt, FileEdit, FileMinus, FileClock,
-  Search, X, Building2, MapPin,
+  AlertCircle, Receipt, FileEdit, FileMinus, FileClock,
+  Search, X, Building2, MapPin, Car, UserPlus, Wrench, PackageSearch, Gauge,
 } from 'lucide-react';
-import { createDocument } from '@/app/actions/documents';
+import { createDocument, updateDocument } from '@/app/actions/documents';
 import type { DocFormPayload } from '@/app/actions/documents';
 import type { DocType, PaymentMethod } from '@/lib/documents';
 import type { UnifiedCustomerRow } from '@/lib/customers';
 import type { ProductRow } from '@/lib/products';
+import type { ServiceItemRow } from '@/lib/service-items';
+import { createServiceItem } from '@/app/actions/service-items';
 import { PickerModal } from '@/components/admin/picker-modal';
+import { CustomerModal } from '@/components/admin/customers-client';
+import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -53,9 +58,17 @@ export type DocPrefill = {
   vatRate:       number;
   paymentMethod: PaymentMethod;
   note:          string;
+  dueDate?:           string;
   sourceDocId:        string;
   sourceDocNumber:    string;
   sourceDocTypeLabel: string;
+};
+
+// ใช้ตอนแก้ไขเอกสารที่มีอยู่แล้ว — แยกจาก prefill (ที่ใช้กับ flow "สร้างเอกสารอ้างอิงใบนี้") เพราะความหมายต่างกัน:
+// edit = บันทึกทับเอกสารเดิม ไม่สร้างใบใหม่ ไม่เปลี่ยนประเภทเอกสาร
+export type DocEditTarget = {
+  docId:     string;
+  docNumber: string;
 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -91,13 +104,19 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
 export function NewDocumentClient({
   customers = [],
   products = [],
+  serviceItems = [],
   prefill,
+  editTarget,
 }: {
   customers?: UnifiedCustomerRow[];
   products?: ProductRow[];
+  serviceItems?: ServiceItemRow[];
   prefill?: DocPrefill;
+  editTarget?: DocEditTarget;
 }) {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const isEditMode = !!editTarget;
 
   // doc type
   const [docType, setDocType] = useState<DocType>(prefill?.docType ?? 'invoice');
@@ -105,18 +124,24 @@ export function NewDocumentClient({
   // customer
   const [customerName,    setCustomerName]    = useState(prefill?.customerName ?? '');
   const [customerPhone,   setCustomerPhone]   = useState(prefill?.customerPhone ?? '');
-  const [customerCar]                         = useState(prefill?.customerCar ?? '');
+  const prefillCar = parseCarInfo(prefill?.customerCar ?? '');
+  const [licensePlate, setLicensePlate] = useState(prefillCar.licensePlate);
+  const [mileage,      setMileage]      = useState(prefillCar.mileage);
   const [bookingRef]                          = useState(prefill?.bookingRef ?? '');
   const [customerAddress, setCustomerAddress] = useState(prefill?.customerAddress ?? '');
   const [customerTaxId,   setCustomerTaxId]   = useState(prefill?.customerTaxId ?? '');
   const [customerSelected, setCustomerSelected] = useState(false);
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
+  const [addCustomerOpen, setAddCustomerOpen] = useState(false);
 
   function selectCustomer(c: UnifiedCustomerRow) {
     setCustomerName(c.name);
     setCustomerPhone(c.phone);
     setCustomerAddress(c.address);
     setCustomerTaxId(c.taxId);
+    const car = parseCarInfo(c.carInfo);
+    setLicensePlate(car.licensePlate);
+    setMileage(car.mileage);
     setCustomerSelected(true);
   }
 
@@ -126,6 +151,21 @@ export function NewDocumentClient({
     setCustomerPhone('');
     setCustomerAddress('');
     setCustomerTaxId('');
+    setLicensePlate('');
+    setMileage('');
+  }
+
+  function handleNewCustomerSaved(c?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string }) {
+    setAddCustomerOpen(false);
+    if (!c) return;
+    setCustomerName(c.name);
+    setCustomerPhone(c.phone);
+    setCustomerAddress(c.address);
+    setCustomerTaxId(c.taxId);
+    const car = parseCarInfo(c.carInfo);
+    setLicensePlate(car.licensePlate);
+    setMileage(car.mileage);
+    setCustomerSelected(true);
   }
 
   // line items
@@ -136,11 +176,40 @@ export function NewDocumentClient({
   );
   const [productPickerLineKey, setProductPickerLineKey] = useState<number | null>(null);
 
-  function selectProduct(key: number, p: ProductRow) {
-    setLines((prev) => prev.map((l) => l.key === key
-      ? { ...l, description: `${p.brand} ${p.model} ${p.size}`, unitPrice: p.priceCash }
-      : l));
+  // รวมสินค้า (ยาง) + บริการ/ค่าแรง เป็นรายการเดียวให้เลือกจากช่องค้นหาเดียวกัน
+  const [serviceItemsState, setServiceItemsState] = useState<ServiceItemRow[]>(serviceItems);
+  type PickerEntry = { kind: 'product'; data: ProductRow } | { kind: 'service'; data: ServiceItemRow };
+  const pickerEntries = useMemo<PickerEntry[]>(() => [
+    ...products.map((p) => ({ kind: 'product' as const, data: p })),
+    ...serviceItemsState.map((s) => ({ kind: 'service' as const, data: s })),
+  ], [products, serviceItemsState]);
+
+  function selectPickerEntry(key: number, entry: PickerEntry) {
+    setLines((prev) => prev.map((l) => l.key !== key ? l : entry.kind === 'product'
+      ? { ...l, description: `${entry.data.brand} ${entry.data.model} ${entry.data.size}`, unitPrice: entry.data.priceCash }
+      : { ...l, description: entry.data.name, unitPrice: entry.data.price }
+    ));
     setProductPickerLineKey(null);
+  }
+
+  // เพิ่มบริการใหม่แบบรวดเร็วจากในช่องค้นหา ไม่ต้องออกไปหน้าตั้งค่า
+  const [newServiceName,  setNewServiceName]  = useState('');
+  const [newServicePrice, setNewServicePrice] = useState('');
+  const [quickAddPending, setQuickAddPending] = useState(false);
+  const [quickAddError,   setQuickAddError]   = useState('');
+
+  async function handleQuickAddService(key: number) {
+    if (!newServiceName.trim()) return;
+    setQuickAddPending(true);
+    setQuickAddError('');
+    const price = Number(newServicePrice) || 0;
+    const res = await createServiceItem({ name: newServiceName.trim(), price, unit: 'ครั้ง', note: '' });
+    setQuickAddPending(false);
+    if (res.error || !res.item) { setQuickAddError(res.error ?? 'เพิ่มไม่สำเร็จ'); return; }
+    setServiceItemsState((prev) => [...prev, { id: res.item!.id, name: res.item!.name, price: res.item!.price, unit: res.item!.unit, note: res.item!.note }]);
+    selectPickerEntry(key, { kind: 'service', data: { id: res.item.id, name: res.item.name, price: res.item.price, unit: res.item.unit, note: res.item.note } });
+    setNewServiceName('');
+    setNewServicePrice('');
   }
 
   // financial
@@ -148,17 +217,23 @@ export function NewDocumentClient({
   const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>(prefill?.paymentMethod ?? 'cash');
 
   // meta
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(prefill?.dueDate ?? '');
   const [note,    setNote]    = useState(prefill?.note ?? '');
 
-  // result / error
-  const [result, setResult] = useState<string | null>(null);
-  const [error,  setError]  = useState('');
+  // error
+  const [error, setError] = useState('');
 
   // ── line item helpers ──────────────────────────────────────────────────────
 
   const addLine = () =>
     setLines(p => [...p, { key: Date.now(), description: '', qty: 1, unitPrice: 0, discount: 0 }]);
+
+  // เพิ่มแถวใหม่พร้อมเปิดตัวเลือก สินค้า/บริการ ทันที ไม่ต้องกดค้นหาซ้ำอีกที
+  const addLineAndOpenPicker = () => {
+    const key = Date.now();
+    setLines(p => [...p, { key, description: '', qty: 1, unitPrice: 0, discount: 0 }]);
+    setProductPickerLineKey(key);
+  };
 
   const removeLine = (key: number) =>
     setLines(p => p.filter(l => l.key !== key));
@@ -168,6 +243,8 @@ export function NewDocumentClient({
 
   // ── calculations ──────────────────────────────────────────────────────────
 
+  // ราคาต่อหน่วยที่กรอกถือเป็นราคารวม VAT แล้ว (ตามราคาขายจริงหน้าร้าน) — ถ้าเปิด VAT
+  // จะ "ถอด" VAT 7% ออกมาจากยอดนี้เพื่อโชว์ในใบกำกับภาษี โดยยอดรวมที่ลูกค้าจ่ายไม่เปลี่ยน
   const calc = useMemo(() => {
     const lineCalcs = lines.map(l => {
       const gross  = l.qty * l.unitPrice;
@@ -177,9 +254,10 @@ export function NewDocumentClient({
     const subtotal      = lineCalcs.reduce((s, l) => s + l.gross, 0);
     const discountTotal = lineCalcs.reduce((s, l) => s + l.discAmt, 0);
     const afterDisc     = subtotal - discountTotal;
-    const vatAmount     = vatEnabled ? afterDisc * 0.07 : 0;
-    const grandTotal    = afterDisc + vatAmount;
-    return { lineCalcs, subtotal, discountTotal, afterDisc, vatAmount, grandTotal };
+    const grandTotal    = afterDisc;
+    const vatAmount     = vatEnabled ? afterDisc - afterDisc / 1.07 : 0;
+    const preVatAmount  = afterDisc - vatAmount;
+    return { lineCalcs, subtotal, discountTotal, afterDisc, vatAmount, preVatAmount, grandTotal };
   }, [lines, vatEnabled]);
 
   // ── validation ─────────────────────────────────────────────────────────────
@@ -196,7 +274,7 @@ export function NewDocumentClient({
         type:         docType,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        customerCar:   customerCar,
+        customerCar:   composeCarInfo(licensePlate, mileage),
         bookingRef:    bookingRef,
         customerAddress: customerAddress.trim(),
         customerTaxId:   customerTaxId.trim(),
@@ -215,38 +293,23 @@ export function NewDocumentClient({
         paymentMethod,
         note:          note.trim(),
         dueDate,
-        ...(prefill ? { relatedDocId: prefill.sourceDocId, relatedDocNumber: prefill.sourceDocNumber } : {}),
+        ...(prefill && !isEditMode ? { relatedDocId: prefill.sourceDocId, relatedDocNumber: prefill.sourceDocNumber } : {}),
       };
+
+      if (isEditMode) {
+        const res = await updateDocument(editTarget.docId, payload);
+        if (res.error) setError(res.error);
+        else router.push(`/admin/documents/${editTarget.docId}/print`);
+        return;
+      }
+
       const res = await createDocument(payload);
       if (res.error) setError(res.error);
-      else setResult(res.docNumber!);
+      // ไปหน้าตัวอย่างก่อนพิมพ์ในแท็บเดิมเลย ไม่เปิดแท็บใหม่ — กดปุ่ม "พิมพ์เอกสาร" ในหน้านั้นได้ทันที
+      else if (res.id) router.push(`/admin/documents/${res.id}/print`);
+      else router.push('/admin/documents');
     });
   };
-
-  // ── success screen ──────────────────────────────────────────────────────────
-
-  if (result) {
-    const typeLabel = DOC_TYPES.find(t => t.value === docType)?.label ?? 'เอกสาร';
-    return (
-      <div className="max-w-md mx-auto mt-24 text-center px-4">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={32} className="text-emerald-500" />
-        </div>
-        <h2 className="text-2xl font-black text-slate-900 mb-2">สร้าง{typeLabel}สำเร็จ</h2>
-        <p className="text-slate-500 mb-1">เลขที่เอกสาร</p>
-        <p className="text-xl font-black text-green-600 mb-6">{result}</p>
-        <div className="flex gap-3 justify-center">
-          <Link href="/admin/documents" className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50">
-            กลับหน้ารายการ
-          </Link>
-          <button onClick={() => { setResult(null); clearCustomerSelection(); setLines([{ key: 1, description: '', qty: 1, unitPrice: 0, discount: 0 }]); setNote(''); setDueDate(''); }}
-            className="px-5 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700">
-            สร้างเอกสารใหม่
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // ── form ────────────────────────────────────────────────────────────────────
 
@@ -259,8 +322,10 @@ export function NewDocumentClient({
             <ArrowLeft size={16} />
           </Link>
           <div>
-            <h1 className="text-xl font-black text-slate-900">สร้างเอกสารใหม่</h1>
-            <p className="text-xs text-slate-400 mt-0.5">ออกเลขที่อัตโนมัติ &nbsp;·&nbsp; {today()}</p>
+            <h1 className="text-xl font-black text-slate-900">{isEditMode ? 'แก้ไขเอกสาร' : 'สร้างเอกสารใหม่'}</h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {isEditMode ? <>เลขที่เอกสาร <span className="font-bold text-slate-600">{editTarget.docNumber}</span></> : 'ออกเลขที่อัตโนมัติ'} &nbsp;·&nbsp; {today()}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -274,12 +339,12 @@ export function NewDocumentClient({
             disabled={!isValid || isPending}
             className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <Send size={15} /> {isPending ? 'กำลังบันทึก...' : 'สร้างเอกสาร'}
+            <Send size={15} /> {isPending ? 'กำลังบันทึก...' : isEditMode ? 'บันทึกการแก้ไข' : 'สร้างเอกสาร'}
           </button>
         </div>
       </div>
 
-      {prefill && (
+      {prefill && !isEditMode && (
         <div className="flex items-center gap-2.5 px-4 py-3 bg-blue-50 border border-blue-100 rounded-xl text-sm">
           <FileEdit size={15} className="text-blue-500 shrink-0" />
           <span className="text-blue-700 font-medium">
@@ -293,21 +358,26 @@ export function NewDocumentClient({
         <div className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-100">
           <div className="w-7 h-7 bg-green-50 rounded-lg flex items-center justify-center text-green-500"><FileText size={14} /></div>
           <h2 className="font-bold text-slate-800 text-sm">ประเภทเอกสาร</h2>
+          {isEditMode && <span className="text-[11px] text-slate-400 font-medium">(เปลี่ยนประเภทไม่ได้ตอนแก้ไข)</span>}
         </div>
         <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
           {DOC_TYPES.map(t => (
             <button
               key={t.value}
-              onClick={() => setDocType(t.value)}
+              type="button"
+              onClick={() => !isEditMode && setDocType(t.value)}
+              disabled={isEditMode && docType !== t.value}
               className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
                 docType === t.value
                   ? 'border-green-500 bg-green-50'
-                  : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                  : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed'
               }`}
             >
               <div className={`mt-0.5 ${docType === t.value ? 'text-green-600' : 'text-slate-400'}`}>{t.icon}</div>
               <div>
-                <p className={`font-bold text-sm ${docType === t.value ? 'text-green-700' : 'text-slate-700'}`}>{t.label}</p>
+                <p className={`font-bold text-sm ${docType === t.value ? 'text-green-700' : 'text-slate-700'}`}>
+                  {t.value === 'invoice' ? (vatEnabled ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : t.label}
+                </p>
                 <p className="text-xs text-slate-400 mt-0.5">{t.desc}</p>
               </div>
             </button>
@@ -323,7 +393,7 @@ export function NewDocumentClient({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>เลขที่เอกสาร</Label>
-                <input value="ออกอัตโนมัติ" disabled className={inputCls} />
+                <input value={isEditMode ? editTarget.docNumber : 'ออกอัตโนมัติ'} disabled className={inputCls} />
               </div>
               <div>
                 <Label>วันที่ออกเอกสาร</Label>
@@ -384,6 +454,13 @@ export function NewDocumentClient({
                   >
                     <Search size={16} />
                   </button>
+                  <button
+                    type="button" onClick={() => setAddCustomerOpen(true)}
+                    className="shrink-0 w-11 h-11 rounded-xl border border-slate-200 text-slate-500 hover:border-green-300 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors"
+                    title="เพิ่มลูกค้าใหม่"
+                  >
+                    <UserPlus size={16} />
+                  </button>
                 </div>
               )}
             </div>
@@ -398,9 +475,32 @@ export function NewDocumentClient({
                   className={inputCls + ' pl-8'}
                 />
               </div>
-              {customerCar && (
-                <p className="text-[11px] text-slate-400 mt-1.5">ข้อมูลรถ: {customerCar}</p>
-              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>ทะเบียนรถ</Label>
+                <div className="relative">
+                  <Car size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={licensePlate}
+                    onChange={e => setLicensePlate(e.target.value)}
+                    placeholder="กก-1234 กรุงเทพฯ"
+                    className={inputCls + ' pl-8'}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>ไมล์ปัจจุบัน (กม.)</Label>
+                <div className="relative">
+                  <Gauge size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={mileage}
+                    onChange={e => setMileage(e.target.value.replace(/[^\d,]/g, ''))}
+                    placeholder="45,000"
+                    className={inputCls + ' pl-8'}
+                  />
+                </div>
+              </div>
             </div>
             <div>
               <Label>ที่อยู่ (สำหรับออกเอกสาร)</Label>
@@ -441,9 +541,14 @@ export function NewDocumentClient({
             <h2 className="font-bold text-slate-800 text-sm">รายการสินค้า / บริการ</h2>
             <span className="text-xs bg-slate-100 text-slate-500 rounded-full px-2 py-0.5 font-semibold">{lines.length} รายการ</span>
           </div>
-          <button onClick={addLine} className="flex items-center gap-1.5 text-xs font-bold text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg">
-            <Plus size={13} /> เพิ่มรายการ
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={addLineAndOpenPicker} className="flex items-center gap-1.5 text-xs font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg">
+              <Wrench size={13} /> เพิ่มบริการ / ค่าแรง
+            </button>
+            <button onClick={addLine} className="flex items-center gap-1.5 text-xs font-bold text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg">
+              <Plus size={13} /> เพิ่มรายการ
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -452,9 +557,10 @@ export function NewDocumentClient({
                 <th className="text-left px-4 py-3 w-8">#</th>
                 <th className="text-left px-3 py-3">รายการ / รุ่นยาง *</th>
                 <th className="text-center px-3 py-3 w-24">จำนวน *</th>
-                <th className="text-right px-3 py-3 w-36">ราคา/หน่วย (฿) *</th>
+                <th className="text-right px-3 py-3 w-32">ราคา/หน่วย (฿) *</th>
                 <th className="text-right px-3 py-3 w-24">ส่วนลด (%)</th>
-                <th className="text-right px-4 py-3 w-36">รวม (฿)</th>
+                <th className="text-center px-3 py-3 w-16">VAT</th>
+                <th className="text-right px-4 py-3 w-32">มูลค่าก่อนภาษี</th>
                 <th className="w-10 px-2 py-3" />
               </tr>
             </thead>
@@ -469,13 +575,13 @@ export function NewDocumentClient({
                         <input
                           value={line.description}
                           onChange={e => updateLine(line.key, 'description', e.target.value)}
-                          placeholder="พิมพ์ชื่อรายการ หรือกดค้นหา"
+                          placeholder="พิมพ์ชื่อรายการ หรือกดค้นหา (ยาง/สินค้า หรือ บริการ)"
                           className="flex-1 px-2.5 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 placeholder:text-slate-300"
                         />
                         <button
                           type="button" onClick={() => setProductPickerLineKey(line.key)}
                           className="shrink-0 w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:border-green-300 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors"
-                          title="ค้นหาสินค้าจากคลัง"
+                          title="ค้นหาสินค้า/ยาง หรือบริการ"
                         >
                           <Search size={13} />
                         </button>
@@ -505,8 +611,11 @@ export function NewDocumentClient({
                         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
                       </div>
                     </td>
+                    <td className="px-3 py-2.5 text-center text-xs font-medium text-slate-500">
+                      {vatEnabled ? '7%' : '-'}
+                    </td>
                     <td className="px-4 py-2.5 text-right font-bold text-slate-800 text-xs tabular-nums">
-                      ฿{net.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {(vatEnabled ? net / 1.07 : net).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-2 py-2.5">
                       <button
@@ -534,8 +643,8 @@ export function NewDocumentClient({
           </div>
           <div className="p-5 space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">ราคารวมก่อนหักส่วนลด</span>
-              <span className="font-semibold tabular-nums">฿{calc.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+              <span className="text-slate-500">{vatEnabled ? 'มูลค่าสินค้า (ไม่รวม VAT)' : 'ราคารวมก่อนหักส่วนลด'}</span>
+              <span className="font-semibold tabular-nums">฿{(vatEnabled ? calc.preVatAmount : calc.subtotal).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
             </div>
             {calc.discountTotal > 0 && (
               <div className="flex justify-between text-sm">
@@ -550,21 +659,28 @@ export function NewDocumentClient({
               </div>
             )}
 
-            {/* VAT toggle */}
+            {/* VAT toggle — ถอด VAT ออกจากราคาข้างบน ไม่บวกเพิ่ม ยอดที่ลูกค้าจ่ายเท่าเดิม */}
             <div className="flex items-center justify-between text-sm border-t border-slate-100 pt-3">
-              <span className="text-slate-500">ภาษีมูลค่าเพิ่ม VAT 7%</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setVatEnabled(!vatEnabled)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${vatEnabled ? 'bg-green-500' : 'bg-slate-200'}`}
-                >
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${vatEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
-                <span className={`font-semibold tabular-nums ${vatEnabled ? '' : 'text-slate-300'}`}>
-                  ฿{calc.vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+              <span className="text-slate-500">ออกใบกำกับภาษี (ถอด VAT 7%)</span>
+              <button
+                onClick={() => setVatEnabled(!vatEnabled)}
+                className={`relative w-10 h-5 rounded-full transition-colors ${vatEnabled ? 'bg-green-500' : 'bg-slate-200'}`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${vatEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
             </div>
+            {vatEnabled && (
+              <div className="space-y-1.5 bg-slate-50 rounded-lg px-3 py-2.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400">ราคารวมก่อนหักส่วนลด</span>
+                  <span className="font-medium tabular-nums text-slate-600">฿{calc.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-slate-400">ภาษีมูลค่าเพิ่ม VAT 7% (ถอดจากยอดขาย)</span>
+                  <span className="font-medium tabular-nums text-slate-600">฿{calc.vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            )}
 
             <div className="border-t border-slate-100 pt-3">
               <div className="flex justify-between items-center">
@@ -585,7 +701,7 @@ export function NewDocumentClient({
               disabled={!isValid || isPending}
               className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed mt-2"
             >
-              <Send size={15} /> {isPending ? 'กำลังบันทึก...' : 'สร้างเอกสาร'}
+              <Send size={15} /> {isPending ? 'กำลังบันทึก...' : isEditMode ? 'บันทึกการแก้ไข' : 'สร้างเอกสาร'}
             </button>
           </div>
         </div>
@@ -616,26 +732,75 @@ export function NewDocumentClient({
         />
       )}
 
+      {addCustomerOpen && (
+        <CustomerModal
+          initial={null}
+          onClose={() => setAddCustomerOpen(false)}
+          onSaved={handleNewCustomerSaved}
+        />
+      )}
+
       {productPickerLineKey !== null && (
         <PickerModal
-          title="เลือกสินค้า / ยาง"
-          placeholder="ค้นหายี่ห้อ รุ่น หรือขนาดยาง..."
-          items={products}
-          filterFn={(p, q) => `${p.brand} ${p.model} ${p.size}`.toLowerCase().includes(q)}
-          renderItem={(p) => (
+          title="เลือกสินค้า / ยาง / บริการ"
+          placeholder="ค้นหายี่ห้อ รุ่น ขนาดยาง หรือชื่อบริการ..."
+          items={pickerEntries}
+          filterFn={(entry, q) => entry.kind === 'product'
+            ? `${entry.data.brand} ${entry.data.model} ${entry.data.size}`.toLowerCase().includes(q)
+            : entry.data.name.toLowerCase().includes(q)}
+          renderItem={(entry) => entry.kind === 'product' ? (
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">{p.brand} {p.model}</p>
-                <p className="text-xs text-slate-400">{p.size}</p>
+                <p className="text-sm font-semibold text-slate-800 truncate">{entry.data.brand} {entry.data.model}</p>
+                <p className="text-xs text-slate-400">{entry.data.size}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-sm font-bold text-green-600">฿{p.priceCash.toLocaleString()}</p>
-                <p className={`text-[10px] font-semibold ${p.stock === 0 ? 'text-red-500' : 'text-slate-400'}`}>สต็อก {p.stock}</p>
+                <p className="text-sm font-bold text-green-600">฿{entry.data.priceCash.toLocaleString()}</p>
+                <p className={`text-[10px] font-semibold ${entry.data.stock === 0 ? 'text-red-500' : 'text-slate-400'}`}>สต็อก {entry.data.stock}</p>
               </div>
             </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex items-center gap-2">
+                <span className="shrink-0 w-6 h-6 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center"><Wrench size={12} /></span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{entry.data.name}</p>
+                  <p className="text-[10px] font-bold text-amber-600 tracking-wide">บริการ</p>
+                </div>
+              </div>
+              <p className="text-sm font-bold text-green-600 shrink-0">฿{entry.data.price.toLocaleString()} / {entry.data.unit}</p>
+            </div>
           )}
-          onSelect={(p) => selectProduct(productPickerLineKey, p)}
-          onClose={() => setProductPickerLineKey(null)}
+          onSelect={(entry) => selectPickerEntry(productPickerLineKey, entry)}
+          onClose={() => { setProductPickerLineKey(null); setNewServiceName(''); setNewServicePrice(''); setQuickAddError(''); }}
+          footer={
+            <div className="space-y-2">
+              {quickAddError && <p className="text-xs text-red-500">{quickAddError}</p>}
+              <div className="flex items-center gap-2">
+                <Wrench size={13} className="text-slate-400 shrink-0" />
+                <input
+                  value={newServiceName}
+                  onChange={(e) => setNewServiceName(e.target.value)}
+                  placeholder="ไม่เจอที่ต้องการ? พิมพ์ชื่อบริการใหม่..."
+                  className="flex-1 px-2.5 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400"
+                />
+                <input
+                  type="number" min={0} value={newServicePrice}
+                  onChange={(e) => setNewServicePrice(e.target.value)}
+                  placeholder="ราคา"
+                  className="w-20 px-2.5 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 text-right"
+                />
+                <button
+                  type="button"
+                  disabled={!newServiceName.trim() || quickAddPending}
+                  onClick={() => handleQuickAddService(productPickerLineKey)}
+                  className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-lg bg-green-600 text-white text-xs font-bold hover:bg-green-700 disabled:opacity-40"
+                >
+                  <PackageSearch size={13} /> เพิ่ม
+                </button>
+              </div>
+            </div>
+          }
         />
       )}
     </div>

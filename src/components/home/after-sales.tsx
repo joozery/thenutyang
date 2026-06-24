@@ -132,7 +132,12 @@ export function AfterSales({ services = [] }: { services?: any[] }) {
                     <div className="absolute top-4 right-4 bg-green-600 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider z-10">BEST SELLER</div>
                   )}
                   
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform ${isWide ? '' : 'mb-4'} ${colors.bg} ${colors.text}`}>
+                  <div className={[
+                    'w-16 h-16 rounded-full flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform',
+                    isWide ? '' : 'mb-4',
+                    colors.bg,
+                    colors.text
+                  ].filter(Boolean).join(' ')}>
                     <div className={colors.text}>
                       {IconComp}
                     </div>

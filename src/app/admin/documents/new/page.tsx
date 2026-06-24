@@ -1,6 +1,7 @@
 import { getCustomers, mergeCustomerSources } from '@/lib/customers';
 import { getCustomerDirectory } from '@/lib/customer-directory';
 import { getAllProductsAdmin } from '@/lib/products';
+import { getServiceItems } from '@/lib/service-items';
 import { getDocumentById } from '@/lib/documents';
 import type { DocType } from '@/lib/documents';
 import { NewDocumentClient, type DocPrefill } from '@/components/admin/new-document-client';
@@ -23,10 +24,11 @@ export default async function NewDocumentPage({
 }) {
   const { from, type } = await searchParams;
 
-  const [bookingCustomers, directoryCustomers, products, sourceDoc] = await Promise.all([
+  const [bookingCustomers, directoryCustomers, products, serviceItems, sourceDoc] = await Promise.all([
     getCustomers(),
     getCustomerDirectory(),
     getAllProductsAdmin(),
+    getServiceItems(),
     from ? getDocumentById(from) : Promise.resolve(null),
   ]);
   const customers = mergeCustomerSources(bookingCustomers, directoryCustomers);
@@ -53,5 +55,5 @@ export default async function NewDocumentPage({
     };
   }
 
-  return <NewDocumentClient customers={customers} products={products} prefill={prefill} />;
+  return <NewDocumentClient customers={customers} products={products} serviceItems={serviceItems} prefill={prefill} />;
 }

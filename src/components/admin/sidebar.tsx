@@ -7,7 +7,7 @@ import {
   ShoppingBag, Warehouse, FileText, DollarSign,
   UserCircle, UserCircle2, CalendarDays, BarChart2, Settings,
   Settings2, HeadphonesIcon, ChevronRight, ClipboardList, ShieldCheck, Tag,
-  CalendarClock, CalendarOff, Layout, QrCode, Sparkles
+  CalendarClock, CalendarOff, Layout, QrCode, Sparkles, Wrench
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -32,7 +32,8 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
         { icon: <QrCode size={20} />, label: "การชำระเงิน", href: "/admin/payments", active: pathname.startsWith("/admin/payments") },
         { icon: <Users size={20} />, label: "ลูกค้า", href: "/admin/customers", active: pathname === "/admin/customers" },
         { icon: <Car size={20} />, label: "ยี่ห้อ/รุ่นรถ", href: "/admin/car-data", active: pathname.startsWith("/admin/car-data") },
-        { icon: <FileText size={20} />, label: "บิล/เอกสาร", href: "/admin/documents", active: pathname.startsWith("/admin/documents"), hasSub: true },
+        { icon: <FileText size={20} />, label: "บิล/เอกสาร", href: "/admin/documents", active: pathname.startsWith("/admin/documents") && !pathname.startsWith("/admin/documents/settings/services"), hasSub: true },
+        { icon: <Wrench size={20} />, label: "บริการ/ค่าแรง", href: "/admin/documents/settings/services", active: pathname.startsWith("/admin/documents/settings/services") },
       ]
     },
     {

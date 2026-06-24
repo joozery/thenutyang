@@ -58,58 +58,6 @@ async function resolveDepositStatus(tireId: string, quantity: number): Promise<'
   return (product.stock ?? 0) >= quantity ? 'not_required' : 'pending';
 }
 
-export async function createBooking(
-  _prev: { error?: string } | null,
-  formData: FormData
-): Promise<{ error?: string }> {
-  try {
-    await connectDB();
-
-    const ref = await generateRef();
-    const lineUserId = (formData.get('lineUserId') as string) || undefined;
-    const tireId = formData.get('tireId') as string;
-    const quantity = Number(formData.get('quantity') ?? 4);
-    const depositStatus = await resolveDepositStatus(tireId, quantity);
-    const customerFields = getCustomerFields(formData);
-    const phone = formData.get('phone') as string;
-
-    const booking = await Booking.create({
-      ref,
-      orderRef: ref,
-      tireId,
-      tireName:        formData.get('tireName') as string,
-      tirePrice:       Number(formData.get('tirePrice')),
-      quantity,
-      depositStatus,
-      ...customerFields,
-      phone,
-      lineId:          (formData.get('lineId') as string) || '',
-      appointmentDate: formData.get('appointmentDate') as string,
-      note:            (formData.get('note') as string) ?? '',
-      lineUserId,
-    });
-
-    await createQuoteFromBooking(booking.toObject());
-    await upsertCustomerFromBooking({ lineUserId, phone, ...customerFields });
-
-    let sent = false;
-    if (lineUserId) {
-      try {
-        await pushMessage(lineUserId, [buildQuoteFlexMessage(booking.toObject())]);
-        sent = true;
-      } catch {
-        // push ล้มเหลว (ยังไม่ add OA) — บันทึก booking ไว้ก่อน
-      }
-    }
-
-    redirect(`/booking/success?ref=${ref}&sent=${sent ? '1' : '0'}`);
-  } catch (err) {
-    if (isRedirectError(err)) throw err;
-    console.error('[createBooking]', err);
-    return { error: 'เกิดข้อผิดพลาด กรุณาลองใหม่ หรือติดต่อร้านโดยตรง' };
-  }
-}
-
 type CartCheckoutItem = { id: string; name: string; price: number; quantity: number };
 
 export async function createCartBooking(

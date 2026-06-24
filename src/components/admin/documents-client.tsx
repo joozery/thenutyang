@@ -8,9 +8,10 @@ import {
   XCircle, MoreHorizontal, ChevronLeft, ChevronRight,
   Import, X, Printer, CreditCard, Banknote, ArrowRightLeft,
   AlertCircle, FileEdit, LayoutGrid, Calendar, Phone, Car, Tag,
-  Receipt, FileMinus, FileClock, Wallet, History, TrendingUp, ArrowRight,
+  Receipt, FileMinus, FileClock, Wallet, History, TrendingUp, ArrowRight, Settings, Wrench, Pencil,
 } from 'lucide-react';
 import type { DocRow, DocStats, PaymentMethod } from '@/lib/documents';
+import { isDocEditable } from '@/lib/doc-editable';
 import type { OrderBooking } from '@/lib/payment-settings';
 import { updateDocStatus, importFromBookings, deleteDocument, recordPartialPayment } from '@/app/actions/documents';
 
@@ -209,6 +210,11 @@ function ViewModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {isDocEditable(doc.type, doc.status) && (
+              <Link href={`/admin/documents/${doc.id}/edit`} className="flex items-center justify-center w-10 h-10 rounded-full text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors" title="แก้ไขเอกสาร">
+                <Pencil size={18} />
+              </Link>
+            )}
             <button onClick={() => onPrint(doc.id)} className="flex items-center justify-center w-10 h-10 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" title="พิมพ์">
               <Printer size={18} />
             </button>
@@ -332,7 +338,7 @@ function ViewModal({
                 {[
                   ['ราคาก่อนหักส่วนลด', fmtMoney(doc.subtotal)],
                   ...(doc.discountTotal > 0 ? [['ส่วนลดรวม', `-฿${fmtMoney(doc.discountTotal)}`, 'text-emerald-600 font-bold']] : []),
-                  doc.vatRate > 0 ? [`VAT ${doc.vatRate}%`, fmtMoney(doc.vatAmount)] : null,
+                  doc.vatRate > 0 ? [`VAT ${doc.vatRate}% (รวมอยู่ในยอดข้างต้นแล้ว)`, fmtMoney(doc.vatAmount), 'text-slate-400'] : null,
                 ].filter(Boolean).map((row) => {
                   const [label, value, cls] = row as string[];
                   return (
@@ -648,6 +654,13 @@ export function DocumentsClient({
             <LayoutGrid className="w-4 h-4 text-slate-500" />
             <span className="text-[13px] font-bold text-slate-600">ทั้งหมด <span className="text-blue-600 font-black ml-1">{docs.length}</span> <span className="font-medium text-slate-500">ฉบับ</span></span>
           </div>
+          <Link
+            href="/admin/documents/settings"
+            title="ตั้งค่าเอกสาร / รายการบริการ"
+            className="flex items-center justify-center w-11 h-11 rounded-xl border border-slate-200/80 text-slate-500 hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300 transition-colors shrink-0"
+          >
+            <Settings size={18} />
+          </Link>
         </div>
       </div>
 
@@ -671,6 +684,12 @@ export function DocumentsClient({
             >
               <Import size={18} className="text-slate-400" /> นำเข้าจากระบบจอง (Booking)
             </button>
+            <Link
+              href="/admin/documents/settings/services"
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+            >
+              <Wrench size={18} className="text-slate-400" /> จัดการรายการบริการ/ค่าแรง
+            </Link>
           </div>
 
           {/* Main Stat (Green Card) */}
@@ -702,12 +721,14 @@ export function DocumentsClient({
         </div>
 
         {/* Bottom Row: Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
           {[
             { label: 'ใบเสร็จรับเงิน', label2: 'เดือนนี้', value: `${stats.invoiceCountMonth}`, sub: 'ใบ', icon: <FileText className="w-4 h-4 text-blue-600" />, iconBg: 'bg-blue-100/80 text-blue-600', cardBg: 'bg-blue-50/50 border-blue-100/40', textColor: 'text-slate-800' },
             { label: 'บิลค้างชำระ', label2: 'ทั้งหมด', value: `${stats.unpaidCount}`, sub: 'บิล', icon: <AlertCircle className="w-4 h-4 text-red-500" />, iconBg: 'bg-red-100/80 text-red-600', cardBg: 'bg-red-50/50 border-red-100/40', textColor: 'text-slate-800' },
             { label: 'ใบเสนอราคา', label2: 'รอดำเนินการ', value: `${stats.pendingQuoteCount}`, sub: 'ใบ', icon: <Clock className="w-4 h-4 text-amber-500" />, iconBg: 'bg-amber-100/80 text-amber-600', cardBg: 'bg-amber-50/40 border-amber-100/40', textColor: 'text-slate-800' },
             { label: 'ใบแจ้งหนี้', label2: `ค้างชำระ (฿${fmtMoney(stats.billingOutstandingTotal)})`, value: `${stats.billingOutstandingCount}`, sub: 'บิล', icon: <FileClock className="w-4 h-4 text-purple-600" />, iconBg: 'bg-purple-100/80 text-purple-600', cardBg: 'bg-purple-50/40 border-purple-100/40', textColor: 'text-slate-800' },
+            { label: 'รายรับ (Income)', label2: 'เดือนนี้', value: `฿${(stats.totalIncomeMonth / 1000).toFixed(1)}k`, sub: 'รวม', icon: <Wallet className="w-4 h-4 text-emerald-600" />, iconBg: 'bg-emerald-100/80 text-emerald-600', cardBg: 'bg-emerald-50/40 border-emerald-100/40', textColor: 'text-slate-800' },
+            { label: 'รายจ่าย (Expense)', label2: 'เดือนนี้', value: `฿${(stats.totalExpenseMonth / 1000).toFixed(1)}k`, sub: 'รวม', icon: <TrendingUp className="w-4 h-4 text-rose-600" />, iconBg: 'bg-rose-100/80 text-rose-600', cardBg: 'bg-rose-50/40 border-rose-100/40', textColor: 'text-slate-800' },
           ].map(s => (
             <div key={s.label} className={`${s.cardBg} rounded-2xl border p-5 shadow-[0_1px_3px_rgb(0,0,0,0.01)] hover:shadow-md transition-all relative overflow-hidden group flex flex-col justify-between min-h-[130px]`}>
               <div className="absolute -right-6 -bottom-6 opacity-[0.04] group-hover:opacity-[0.06] group-hover:scale-110 transition-all duration-500 pointer-events-none">
@@ -873,6 +894,15 @@ export function DocumentsClient({
                       >
                         <Eye size={15} />
                       </button>
+                      {isDocEditable(d.type, d.status) && (
+                        <Link
+                          href={`/admin/documents/${d.id}/edit`}
+                          className="p-2 rounded-lg bg-amber-50 text-amber-600 border border-amber-100/60 hover:bg-amber-600 hover:text-white hover:border-transparent transition-all duration-200"
+                          title="แก้ไขเอกสาร"
+                        >
+                          <Pencil size={15} />
+                        </Link>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDirectPrint(d.id); }}
                         className="p-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/60 hover:bg-emerald-600 hover:text-white hover:border-transparent transition-all duration-200"

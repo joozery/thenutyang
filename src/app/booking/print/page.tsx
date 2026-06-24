@@ -68,7 +68,7 @@ export default async function BookingPrintPage({
       lineTotal: item.lineTotal,
     })),
     vatRate: doc.vatRate,
-    vatBase: doc.subtotal - doc.discountTotal,
+    vatBase: doc.grandTotal - doc.vatAmount,
     vatAmount: doc.vatAmount,
     grandTotal: doc.grandTotal,
     payment: doc.paymentMethod !== 'pending' ? { method: PAYMENT_LABEL[doc.paymentMethod], date: fmtDate(doc.issuedAt) } : undefined,
