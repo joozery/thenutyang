@@ -14,7 +14,7 @@ import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
 
 function emptyVehicle(): VehicleEntry {
-  return { carBrand: '', carModel: '', carColor: '', licensePlate: '', mileage: '' };
+  return { carBrand: '', carModel: '', carColor: '', licensePlate: '', mileage: '', chassisNo: '' };
 }
 
 function formatLastVisit(iso: string): string {
@@ -65,7 +65,7 @@ export function CustomerModal({
     if (initial?.vehicles?.length) return initial.vehicles.map(v => ({ ...v }));
     const p = parseCarInfo(initial?.carInfo ?? '');
     if (p.licensePlate || p.carBrand || p.carModel) {
-      return [{ carBrand: p.carBrand, carModel: p.carModel, carColor: p.carColor, licensePlate: p.licensePlate, mileage: p.mileage }];
+      return [{ carBrand: p.carBrand, carModel: p.carModel, carColor: p.carColor, licensePlate: p.licensePlate, mileage: p.mileage, chassisNo: p.chassisNo }];
     }
     return [emptyVehicle()];
   }

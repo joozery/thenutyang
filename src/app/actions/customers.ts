@@ -10,6 +10,7 @@ export type VehicleEntry = {
   carColor:     string;
   licensePlate: string;
   mileage:      string;
+  chassisNo:    string;
 };
 
 type SavedCustomer = { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string; vehicles: VehicleEntry[] };

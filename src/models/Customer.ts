@@ -6,6 +6,7 @@ export type VehicleEntry = {
   carColor:     string;
   licensePlate: string;
   mileage:      string;
+  chassisNo:    string;
 };
 
 export interface ICustomer {
@@ -32,6 +33,7 @@ const vehicleSchema = new Schema<VehicleEntry>({
   carColor:     { type: String, default: '' },
   licensePlate: { type: String, default: '' },
   mileage:      { type: String, default: '' },
+  chassisNo:    { type: String, default: '' },
 }, { _id: false });
 
 const CustomerSchema = new Schema<ICustomer>({
