@@ -36,6 +36,7 @@ export type DocumentTemplateProps = {
     taxId?: string;
     phone?: string;
     email?: string;
+    lineId?: string;
     note?: string;
     attn?: string;
   };
@@ -138,33 +139,39 @@ export function DocumentTemplate({
       </div>
 
       {/* Customer */}
-      <div className="grid grid-cols-2 gap-3 mb-4 pb-3 border-b border-slate-100">
-        <div className="space-y-0.5 text-[11px]">
-          {customer.code && <p><span className="text-slate-600">ลูกค้า:</span> <span className="font-semibold text-slate-800">{customer.code}</span></p>}
-          <p className="font-bold text-slate-900">{customer.name}</p>
-          {customer.address && <p className="text-slate-800">ที่อยู่: {customer.address}</p>}
-          {customer.taxId && <p className="text-slate-800">เลขที่ผู้เสียภาษี: {customer.taxId}</p>}
-          <p className="text-slate-600">เรียน: {customer.attn || '-'}</p>
+      <div className="grid grid-cols-3 gap-4 mb-4 pb-3 border-b border-slate-100 items-start">
+        {/* Left Column */}
+        <div className="space-y-1.5 text-[11px] text-slate-800">
+          <p><span className="text-slate-500 w-20 inline-block">ลูกค้า:</span> <span className="font-bold text-slate-900">{customer.name}</span> {customer.code && <span className="text-slate-500 font-normal">({customer.code})</span>}</p>
+          {customer.address && <p><span className="text-slate-500 w-20 inline-block align-top">ที่อยู่:</span> <span className="inline-block w-[calc(100%-5rem)]">{customer.address}</span></p>}
+          {customer.taxId && <p><span className="text-slate-500 w-20 inline-block">เลขผู้เสียภาษี:</span> <span>{customer.taxId}</span></p>}
+          {customer.attn && <p><span className="text-slate-500 w-20 inline-block">เรียน:</span> <span>{customer.attn}</span></p>}
         </div>
-        <div className="space-y-0.5 text-[11px] text-right">
-          {customer.phone && <p className="text-slate-900 flex items-center justify-end gap-1"><Phone size={10} className="text-slate-600" />{customer.phone}</p>}
-          {customer.email && <p className="text-slate-900 flex items-center justify-end gap-1"><Mail size={10} className="text-slate-600" />{customer.email}</p>}
+
+        {/* Middle Column */}
+        <div className="space-y-1.5 text-[11px] text-slate-800 pl-4 border-l border-slate-100">
+          <p><span className="text-slate-500 w-[70px] inline-block">เบอร์โทรศัพท์</span> <span>{customer.phone || '-'}</span></p>
+          <p><span className="text-slate-500 w-[70px] inline-block">email</span> <span>{customer.email || '-'}</span></p>
+          <p><span className="text-slate-500 w-[70px] inline-block">line</span> <span>{customer.lineId || '-'}</span></p>
+        </div>
+
+        {/* Right Column */}
+        <div className="text-[11px] pl-4 border-l border-slate-100">
           {customer.note && (() => {
             const car = parseCarInfo(customer.note);
             if (!car.carBrand && !car.carModel && !car.licensePlate) {
               return customer.note.split(' • ').map((line, i) => <p key={i} className="text-slate-900">{line}</p>);
             }
             return (
-              <div className="mt-1 inline-block text-left w-fit ml-auto">
-                <table className="text-[10px] text-slate-800 border-separate" style={{ borderSpacing: '8px 1px' }}>
-                  <tbody>
-                    {car.licensePlate && <tr><td className="text-slate-500 font-semibold text-right">ทะเบียนรถ</td><td className="font-bold">: {car.licensePlate}</td></tr>}
-                    {(car.carBrand || car.carModel) && <tr><td className="text-slate-500 font-semibold text-right">ยี่ห้อ/รุ่น</td><td className="font-bold uppercase">: {[car.carBrand, car.carModel].filter(Boolean).join(' / ')}</td></tr>}
-                    {car.carColor && <tr><td className="text-slate-500 font-semibold text-right">สีรถ</td><td className="font-bold">: {car.carColor}</td></tr>}
-                    {car.mileage && <tr><td className="text-slate-500 font-semibold text-right">เลขไมล์</td><td className="font-bold">: {car.mileage} กม.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
+              <table className="text-[10px] text-slate-800 border-separate" style={{ borderSpacing: '8px 2px', marginTop: '-2px', marginLeft: '-8px' }}>
+                <tbody>
+                  {car.licensePlate && <tr><td className="text-slate-500 font-semibold text-right whitespace-nowrap">ทะเบียนรถ</td><td className="font-bold">: {car.licensePlate}</td></tr>}
+                  {(car.carBrand || car.carModel) && <tr><td className="text-slate-500 font-semibold text-right whitespace-nowrap">ยี่ห้อ/รุ่น</td><td className="font-bold uppercase">: {[car.carBrand, car.carModel].filter(Boolean).join(' / ')}</td></tr>}
+                  {car.carColor && <tr><td className="text-slate-500 font-semibold text-right whitespace-nowrap">สีรถ</td><td className="font-bold">: {car.carColor}</td></tr>}
+                  {car.mileage && <tr><td className="text-slate-500 font-semibold text-right whitespace-nowrap">เลขไมล์</td><td className="font-bold">: {car.mileage} กม.</td></tr>}
+                  {car.chassisNo && <tr><td className="text-slate-500 font-semibold text-right whitespace-nowrap">เลขตัวถัง</td><td className="font-bold">: {car.chassisNo}</td></tr>}
+                </tbody>
+              </table>
             );
           })()}
         </div>
