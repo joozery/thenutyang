@@ -58,7 +58,6 @@ export default async function BookingPrintPage({
       note: doc.customerCar || undefined,
       address: doc.customerAddress || undefined,
       taxId: doc.customerTaxId || undefined,
-      attn: doc.customerName,
     },
     items: doc.items.map((item) => ({
       description: item.description,

@@ -38,7 +38,6 @@ export type DocumentTemplateProps = {
     email?: string;
     lineId?: string;
     note?: string;
-    attn?: string;
   };
   items: DocumentTemplateItem[];
   vatRate: number;
@@ -145,7 +144,6 @@ export function DocumentTemplate({
           <p><span className="text-slate-500 w-20 inline-block">ลูกค้า:</span> <span className="font-bold text-slate-900">{customer.name}</span> {customer.code && <span className="text-slate-500 font-normal">({customer.code})</span>}</p>
           {customer.address && <p><span className="text-slate-500 w-20 inline-block align-top">ที่อยู่:</span> <span className="inline-block w-[calc(100%-5rem)]">{customer.address}</span></p>}
           {customer.taxId && <p><span className="text-slate-500 w-20 inline-block">เลขผู้เสียภาษี:</span> <span>{customer.taxId}</span></p>}
-          {customer.attn && <p><span className="text-slate-500 w-20 inline-block">เรียน:</span> <span>{customer.attn}</span></p>}
         </div>
 
         {/* Middle Column */}
