@@ -419,9 +419,25 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
   const router = useRouter();
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = search.toLowerCase().trim();
     return customers.filter(c => {
-      const matchSearch = !q || c.name.toLowerCase().includes(q) || c.phone.includes(q);
+      let matchSearch = true;
+      if (q) {
+        const plates  = c.vehicles.map(v => v.licensePlate.toLowerCase()).join(' ');
+        const brands  = c.vehicles.map(v => v.carBrand.toLowerCase()).join(' ');
+        const models  = c.vehicles.map(v => v.carModel.toLowerCase()).join(' ');
+        const carInfo = (c.carInfo ?? '').toLowerCase();
+        matchSearch =
+          c.name.toLowerCase().includes(q) ||
+          c.phone.includes(q) ||
+          plates.includes(q) ||
+          brands.includes(q) ||
+          models.includes(q) ||
+          carInfo.includes(q) ||
+          (c.address ?? '').toLowerCase().includes(q) ||
+          (c.taxId ?? '').includes(q) ||
+          (c.companyName ?? '').toLowerCase().includes(q);
+      }
       const matchTag    = tagFilter === 'ทั้งหมด' || c.tag === tagFilter;
       const matchSource = sourceFilter === 'ทั้งหมด'
         || (sourceFilter === 'ออนไลน์' && c.source === 'online')
@@ -563,7 +579,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center text-green-700 font-black text-sm shrink-0 border border-green-200 shadow-sm group-hover:scale-105 transition-transform">
-                          {c.name.charAt(0)}
+                          {c.name.charAt(0) || <Car size={13} />}
                         </div>
                         {c.customerType === 'corporate' ? (
                           <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-purple-600 rounded-full border border-white flex items-center justify-center shadow-sm" title="นิติบุคคล">
@@ -578,17 +594,25 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
                       <div>
                         {c.id ? (
                           <Link href={`/admin/customers/${c.id}`} className="font-bold text-slate-800 text-sm hover:text-green-700 transition-colors">
-                            {c.name}
+                            {c.name || <span className="text-slate-400 italic text-xs">ไม่มีชื่อ</span>}
                           </Link>
                         ) : (
-                          <p className="font-bold text-slate-800 text-sm">{c.name}</p>
+                          <p className="font-bold text-slate-800 text-sm">{c.name || <span className="text-slate-400 italic text-xs">ไม่มีชื่อ</span>}</p>
                         )}
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">#{(page - 1) * PAGE_SIZE + i + 1}</p>
                           {c.vehicles.length > 0 && (
                             <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-100">
                               <Car size={9} /> {c.vehicles.length} คัน
                             </span>
+                          )}
+                          {c.vehicles.slice(0, 2).map((v, vi) => v.licensePlate && (
+                            <span key={vi} className="inline-flex items-center gap-0.5 text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                              {v.licensePlate}
+                            </span>
+                          ))}
+                          {c.vehicles.length > 2 && (
+                            <span className="text-[10px] text-slate-400">+{c.vehicles.length - 2}</span>
                           )}
                         </div>
                       </div>
