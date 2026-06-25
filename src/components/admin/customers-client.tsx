@@ -163,7 +163,14 @@ export function CustomerModal({
     setForm(f => ({ ...f, vehicles: f.vehicles.filter((_, i) => i !== idx) }));
   }
 
+  const hasVehicle = form.vehicles.some(v => v.licensePlate.trim() || v.carBrand.trim());
+  const isFormValid =
+    form.customerType === 'corporate'
+      ? !!form.companyName.trim()
+      : !!form.firstName.trim() || hasVehicle;
+
   function handleSubmit() {
+    if (!isFormValid) return;
     setError('');
     const validVehicles = form.vehicles.filter(v => v.licensePlate.trim() || v.carBrand.trim() || v.carModel.trim());
     const carInfo = validVehicles.length > 0 ? composeCarInfo(validVehicles[0]) : '';
@@ -374,9 +381,25 @@ export function CustomerModal({
           </div>
         </div>
 
+        <div className="px-6 pb-2 pt-0 space-y-2">
+          {error && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">{error}</p>
+          )}
+          {!isFormValid && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">
+              {form.customerType === 'corporate'
+                ? 'กรุณากรอกชื่อบริษัท'
+                : 'กรุณากรอกชื่อลูกค้า หรือข้อมูลรถ (ยี่ห้อ/ทะเบียน) อย่างน้อย 1 คัน'}
+            </p>
+          )}
+        </div>
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
           <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">ยกเลิก</button>
-          <button onClick={handleSubmit} disabled={isPending} className="px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50">
+          <button
+            onClick={handleSubmit}
+            disabled={isPending || !isFormValid}
+            className="px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          >
             {isPending ? 'กำลังบันทึก...' : 'บันทึก'}
           </button>
         </div>

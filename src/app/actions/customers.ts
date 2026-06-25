@@ -31,7 +31,10 @@ export type CustomerFormInput = {
 
 function validate(input: CustomerFormInput): string | null {
   if (input.customerType === 'corporate' && !input.companyName.trim()) return 'กรุณากรอกชื่อบริษัท';
-  if (input.customerType === 'individual' && !input.firstName.trim()) return 'กรุณากรอกชื่อลูกค้า';
+  const hasVehicle = input.vehicles.some(v => v.licensePlate.trim() || v.carBrand.trim());
+  if (input.customerType === 'individual' && !input.firstName.trim() && !hasVehicle) {
+    return 'กรุณากรอกชื่อลูกค้า หรือข้อมูลรถอย่างน้อย 1 คัน';
+  }
   return null;
 }
 
