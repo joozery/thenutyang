@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Search, Plus, ShoppingBag, Clock, CheckCircle, XCircle,
   MoreHorizontal, ChevronLeft, ChevronRight, X,
-  Eye, Ban, Truck, Printer, FileEdit,
+  Eye, Ban, Truck, Printer, FileEdit, Pencil,
 } from 'lucide-react';
 import type { PORow, POStatusThai } from '@/lib/purchasing';
 import { receivePO, cancelPO, updatePOPayment } from '@/app/actions/purchasing';
@@ -132,6 +132,22 @@ function PODetailModal({
             </div>
           </div>
 
+          {order.status === 'ร่าง' && (
+            <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
+              <button
+                onClick={() => { onCancel(order.id); onClose(); }}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-2"
+              >
+                <Ban size={14} /> ยกเลิก
+              </button>
+              <Link
+                href={`/admin/purchasing/${order.id}/edit`}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-amber-600 border border-amber-200 hover:bg-amber-50 flex items-center gap-2"
+              >
+                <Pencil size={14} /> แก้ไข
+              </Link>
+            </div>
+          )}
           {order.status === 'รอรับสินค้า' && (
             <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
               <button
@@ -140,10 +156,16 @@ function PODetailModal({
               >
                 <Ban size={14} /> ยกเลิก PO
               </button>
+              <Link
+                href={`/admin/purchasing/${order.id}/edit`}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-amber-600 border border-amber-200 hover:bg-amber-50 flex items-center gap-2"
+              >
+                <Pencil size={14} /> แก้ไข
+              </Link>
               {order.paymentStatus !== 'paid' && (
                 <button
                   onClick={() => { onPay(order.id); onClose(); }}
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-amber-600 border border-amber-200 hover:bg-amber-50 flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 flex items-center gap-2"
                 >
                   ชำระเงิน
                 </button>
@@ -156,14 +178,24 @@ function PODetailModal({
               </button>
             </div>
           )}
-          {order.status === 'รับสินค้าแล้ว' && order.paymentStatus !== 'paid' && (
+          {order.status === 'รับสินค้าแล้ว' && (
             <div className="p-5 border-t border-slate-100 flex justify-end gap-3">
-              <button
-                onClick={() => { onPay(order.id); onClose(); }}
-                className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 flex items-center gap-2"
-              >
-                ชำระเงิน
-              </button>
+              {order.paymentStatus !== 'paid' && (
+                <button
+                  onClick={() => { onCancel(order.id); onClose(); }}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 flex items-center gap-2"
+                >
+                  <Ban size={14} /> ยกเลิก PO
+                </button>
+              )}
+              {order.paymentStatus !== 'paid' && (
+                <button
+                  onClick={() => { onPay(order.id); onClose(); }}
+                  className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 flex items-center gap-2"
+                >
+                  ชำระเงิน
+                </button>
+              )}
             </div>
           )}
         </div>

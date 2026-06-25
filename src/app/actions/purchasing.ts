@@ -84,6 +84,40 @@ export async function saveDraftPO(
   }
 }
 
+export async function updatePO(
+  id: string,
+  data: POFormPayload,
+  status: 'pending' | 'draft',
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await connectDB();
+    await PurchaseOrder.findByIdAndUpdate(id, {
+      poType: data.poType,
+      supplierId: data.supplierId || undefined,
+      supplierSnapshot: data.supplierSnapshot,
+      reference:  data.reference ?? '',
+      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+      items: data.items,
+      paymentTerm:     data.paymentTerm,
+      paymentDate:     data.paymentDate ? new Date(data.paymentDate) : undefined,
+      paymentMethod:   data.paymentMethod,
+      shippingAddress: data.shippingAddress,
+      notes:           data.notes,
+      specialTerms:    data.specialTerms,
+      subtotal:        data.subtotal,
+      totalDiscount:   data.totalDiscount,
+      vat:             data.vat,
+      grandTotal:      data.grandTotal,
+      status,
+    });
+    revalidatePath('/admin/purchasing');
+    return { success: true };
+  } catch (err) {
+    console.error('[updatePO]', err);
+    return { success: false, error: 'ไม่สามารถบันทึกได้' };
+  }
+}
+
 export async function receivePO(id: string): Promise<{ error?: string }> {
   try {
     await connectDB();

@@ -11,8 +11,9 @@ import {
 } from 'lucide-react';
 import type { SupplierRow } from '@/lib/purchasing';
 import type { ProductRow } from '@/lib/products';
-import { createPO, saveDraftPO } from '@/app/actions/purchasing';
+import { createPO, saveDraftPO, updatePO } from '@/app/actions/purchasing';
 import type { POFormPayload } from '@/app/actions/purchasing';
+import type { PORow } from '@/lib/purchasing';
 import { createSupplier, type SupplierFormInput } from '@/app/actions/suppliers';
 import { PickerModal } from '@/components/admin/picker-modal';
 
@@ -152,22 +153,33 @@ function SupplierModal({
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: SupplierRow[]; products?: ProductRow[] }) {
+export function NewPurchasingClient({
+  suppliers,
+  products = [],
+  initialData,
+  poId,
+}: {
+  suppliers: SupplierRow[];
+  products?: ProductRow[];
+  initialData?: PORow;
+  poId?: string;
+}) {
+  const isEditMode = !!poId;
   const [isPending, startTransition] = useTransition();
 
   // header
-  const [poType, setPOType] = useState<POType>('standard');
-  const [dueDate, setDueDate] = useState('');
+  const [poType, setPOType] = useState<POType>(initialData?.poType ?? 'standard');
+  const [dueDate, setDueDate] = useState(initialData?.dueDate ? initialData.dueDate.slice(0, 10) : '');
 
   // supplier
-  const [supplierId, setSupplierId] = useState('');
+  const [supplierId, setSupplierId] = useState(initialData?.supplierSnapshot ? (suppliers.find(s => s.name === initialData.supplierSnapshot.name)?.id ?? '') : '');
   const [justCreatedSupplier, setJustCreatedSupplier] = useState<SupplierRow | null>(null);
   const supplier = suppliers.find(s => s.id === supplierId)
     ?? (justCreatedSupplier?.id === supplierId ? justCreatedSupplier : null);
-  const [overrideAddress, setOverrideAddress] = useState('');
-  const [overrideContact, setOverrideContact] = useState('');
-  const [overridePhone,   setOverridePhone]   = useState('');
-  const [overrideEmail,   setOverrideEmail]   = useState('');
+  const [overrideAddress, setOverrideAddress] = useState(initialData?.supplierSnapshot.address ?? '');
+  const [overrideContact, setOverrideContact] = useState(initialData?.supplierSnapshot.contact ?? '');
+  const [overridePhone,   setOverridePhone]   = useState(initialData?.supplierSnapshot.phone ?? '');
+  const [overrideEmail,   setOverrideEmail]   = useState(initialData?.supplierSnapshot.email ?? '');
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
 
   function handleSupplierCreated(id: string, data: SupplierFormInput) {
@@ -181,9 +193,11 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
   }
 
   // line items
-  const [lines, setLines] = useState<LineItem[]>([
-    { key: 1, productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0, year: '' },
-  ]);
+  const [lines, setLines] = useState<LineItem[]>(
+    initialData?.items.length
+      ? initialData.items.map((item, i) => ({ key: i + 1, ...item }))
+      : [{ key: 1, productName: '', unit: 'เส้น', qty: 1, unitPrice: 0, discount: 0, year: '' }],
+  );
   const [productPickerLineKey, setProductPickerLineKey] = useState<number | null>(null);
 
   function selectProduct(key: number, p: ProductRow) {
@@ -194,12 +208,12 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
   }
 
   // terms
-  const [reference,       setReference]       = useState('');
-  const [paymentTerm,     setPaymentTerm]     = useState('30');
+  const [reference,       setReference]       = useState(initialData?.notes ?? '');
+  const [paymentTerm,     setPaymentTerm]     = useState(initialData?.paymentTerm ?? '30');
   const [paymentDate,     setPaymentDate]     = useState('');
-  const [paymentMethod,   setPaymentMethod]   = useState('transfer');
+  const [paymentMethod,   setPaymentMethod]   = useState(initialData?.paymentMethod ?? 'transfer');
   const [shippingAddress, setShippingAddress] = useState('');
-  const [notes,           setNotes]           = useState('');
+  const [notes,           setNotes]           = useState(initialData?.notes ?? '');
   const [specialTerms,    setSpecialTerms]    = useState('');
 
   // result
@@ -288,20 +302,35 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
     if (!isValid) return;
     setError('');
     startTransition(async () => {
-      const res = await createPO(buildPayload());
-      if (res.error) setError(res.error);
-      else setResult({ poNumber: res.poNumber! });
+      if (isEditMode) {
+        const res = await updatePO(poId!, buildPayload(), 'pending');
+        if (res.error) setError(res.error);
+        else setResult({ poNumber: initialData!.poNumber });
+      } else {
+        const res = await createPO(buildPayload());
+        if (res.error) setError(res.error);
+        else setResult({ poNumber: res.poNumber! });
+      }
     });
   };
 
   const handleSaveDraft = () => {
     setError('');
     startTransition(async () => {
-      const res = await saveDraftPO(buildPayload());
-      if (res.error) setError(res.error);
-      else {
-        setDraftSaved(`บันทึกร่าง ${res.poNumber} แล้ว`);
-        setTimeout(() => setDraftSaved(''), 3000);
+      if (isEditMode) {
+        const res = await updatePO(poId!, buildPayload(), 'draft');
+        if (res.error) setError(res.error);
+        else {
+          setDraftSaved(`บันทึกร่าง ${initialData!.poNumber} แล้ว`);
+          setTimeout(() => setDraftSaved(''), 3000);
+        }
+      } else {
+        const res = await saveDraftPO(buildPayload());
+        if (res.error) setError(res.error);
+        else {
+          setDraftSaved(`บันทึกร่าง ${res.poNumber} แล้ว`);
+          setTimeout(() => setDraftSaved(''), 3000);
+        }
       }
     });
   };
@@ -342,8 +371,12 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
             <ArrowLeft size={16} />
           </Link>
           <div>
-            <h1 className="text-xl font-black text-slate-900">สร้างใบสั่งซื้อใหม่</h1>
-            <p className="text-xs text-slate-400 mt-0.5">ออกเลขที่อัตโนมัติ &nbsp;·&nbsp; {today()}</p>
+            <h1 className="text-xl font-black text-slate-900">
+              {isEditMode ? `แก้ไข ${initialData!.poNumber}` : 'สร้างใบสั่งซื้อใหม่'}
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {isEditMode ? initialData!.poNumber : 'ออกเลขที่อัตโนมัติ'} &nbsp;·&nbsp; {today()}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
