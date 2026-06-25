@@ -224,13 +224,11 @@ export function DocumentTemplate({
       {/* Certification / signatures */}
       <div className="pt-4 border-t border-slate-200">
         <p className="font-semibold text-slate-900 text-[11px] mb-3 flex items-center gap-1"><BadgeCheck size={12} /> รับรอง</p>
-        <div className="grid grid-cols-5 gap-2 text-center">
+        <div className="grid grid-cols-3 gap-4 text-center">
           {[
-            { role: 'ผู้ออกเอกสาร (ผู้ขาย)', sig: seller.issuerSignatureUrl, name: seller.issuerName },
+            { role: 'ลูกค้า', sig: '', name: '' },
+            { role: 'ผู้ส่งสินค้า / ผู้รับเงิน', sig: seller.issuerSignatureUrl, name: seller.issuerName },
             { role: 'ช่างผู้รับผิดชอบ', sig: '', name: technicianName ?? '' },
-            { role: 'ตราประทับ (ผู้ขาย)', sig: seller.stampUrl, name: '' },
-            { role: 'ผู้รับเอกสาร (ลูกค้า)', sig: '', name: '' },
-            { role: 'ผู้ประทับตรา (ลูกค้า)', sig: '', name: '' },
           ].map((col) => (
             <div key={col.role} className="space-y-1">
               <div className="h-10 flex items-center justify-center border-b border-dashed border-slate-300">
