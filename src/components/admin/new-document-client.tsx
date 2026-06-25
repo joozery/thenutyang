@@ -375,7 +375,7 @@ export function NewDocumentClient({
     const subtotal      = lineCalcs.reduce((s, l) => s + l.gross, 0);
     const lineDiscTotal = lineCalcs.reduce((s, l) => s + l.discAmt, 0);
     const afterLineDisc = subtotal - lineDiscTotal;
-    const globalDiscAmt = afterLineDisc * (globalDiscount / 100);
+    const globalDiscAmt = Math.min(globalDiscount, afterLineDisc);
     const discountTotal = lineDiscTotal + globalDiscAmt;
     const afterDisc     = afterLineDisc - globalDiscAmt;
     const grandTotal    = afterDisc;
@@ -984,18 +984,17 @@ export function NewDocumentClient({
             </div>
             {/* ส่วนลดรวมทั้งบิล */}
             <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">ส่วนลดรวมทั้งบิล (%)</span>
+              <span className="text-slate-500">ส่วนลด (฿)</span>
               <div className="flex items-center gap-1.5">
+                <span className="text-slate-400 text-sm">฿</span>
                 <input
                   type="number"
                   min={0}
-                  max={100}
                   value={globalDiscount || ''}
-                  onChange={e => setGlobalDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
+                  onChange={e => setGlobalDiscount(Math.max(0, Number(e.target.value)))}
                   placeholder="0"
-                  className="w-20 px-2 py-1 text-right rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-green-400 tabular-nums"
+                  className="w-28 px-2 py-1 text-right rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-green-400 tabular-nums"
                 />
-                <span className="text-slate-400 text-sm">%</span>
               </div>
             </div>
             {calc.discountTotal > 0 && (
