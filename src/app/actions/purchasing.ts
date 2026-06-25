@@ -18,6 +18,7 @@ export type POFormPayload = {
     productName: string; unit: string;
     qty: number; unitPrice: number; discount: number; year: string; lineTotal: number;
   }[];
+  reference?:      string;
   paymentTerm:     string;
   paymentDate?:    string;
   paymentMethod:   string;
@@ -39,6 +40,7 @@ async function savePO(data: POFormPayload, status: 'pending' | 'draft') {
     poType: data.poType,
     supplierId: data.supplierId || undefined,
     supplierSnapshot: data.supplierSnapshot,
+    reference:  data.reference ?? '',
     dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
     items: data.items,
     paymentTerm:     data.paymentTerm,

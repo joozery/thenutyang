@@ -157,11 +157,12 @@ type BookingForDoc = {
   status?: string; createdAt?: Date; note?: string;
 };
 
-// รวมข้อมูลรถ (ยี่ห้อ/รุ่น/ทะเบียน/เลขไมล์) เป็นข้อความเดียว ใช้แสดงในช่อง customerCar ของเอกสาร
+// รวมข้อมูลรถ (ยี่ห้อ/รุ่น/ปี/ทะเบียน/เลขไมล์) เป็นข้อความเดียว ใช้แสดงในช่อง customerCar ของเอกสาร
 function formatCarInfo(b: BookingForDoc): string {
   const parts: string[] = [];
-  const brandModel = `${b.carBrand ?? ''} ${b.carModel ?? ''}`.trim();
-  if (brandModel) parts.push(brandModel);
+  if (b.carBrand) parts.push(`ยี่ห้อ ${b.carBrand}`);
+  if (b.carModel) parts.push(`รุ่น ${b.carModel}`);
+  if (b.carYear)  parts.push(`ปี ${b.carYear}`);
   if (b.licensePlate) parts.push(`ทะเบียน ${b.licensePlate}`);
   if (b.mileageBefore != null) {
     parts.push(

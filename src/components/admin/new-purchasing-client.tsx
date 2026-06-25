@@ -194,6 +194,7 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
   }
 
   // terms
+  const [reference,       setReference]       = useState('');
   const [paymentTerm,     setPaymentTerm]     = useState('30');
   const [paymentDate,     setPaymentDate]     = useState('');
   const [paymentMethod,   setPaymentMethod]   = useState('transfer');
@@ -259,6 +260,7 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
         taxId:   supplier?.taxId  ?? '',
       },
       poType,
+      reference,
       dueDate,
       items: lines.map((l, idx) => ({
         productName: l.productName,
@@ -388,6 +390,18 @@ export function NewPurchasingClient({ suppliers, products = [] }: { suppliers: S
                 <Label required>กำหนดรับสินค้า</Label>
                 <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={inputCls} />
               </div>
+              <div>
+                <Label>เลขที่อ้างอิง</Label>
+                <input
+                  value={reference}
+                  onChange={e => setReference(e.target.value)}
+                  placeholder="เช่น INV-2025-001, QT-0045"
+                  className={inputCls}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div />
               <div>
                 <Label>ประเภทการสั่งซื้อ</Label>
                 <div className="flex gap-2 mt-0.5">

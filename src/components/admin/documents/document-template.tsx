@@ -1,5 +1,6 @@
 import { Phone, Mail, Globe, User, CreditCard, StickyNote, BadgeCheck } from 'lucide-react';
 import { numberToThaiBahtText } from '@/lib/thai-baht-text';
+import { parseCarInfo } from '@/lib/car-info';
 import type { IDocumentSettings } from '@/models/DocumentSettings';
 
 function IconText({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
@@ -148,7 +149,24 @@ export function DocumentTemplate({
         <div className="space-y-0.5 text-[11px] text-right">
           {customer.phone && <p className="text-slate-900 flex items-center justify-end gap-1"><Phone size={10} className="text-slate-600" />{customer.phone}</p>}
           {customer.email && <p className="text-slate-900 flex items-center justify-end gap-1"><Mail size={10} className="text-slate-600" />{customer.email}</p>}
-          {customer.note && <p className="text-slate-900">{customer.note}</p>}
+          {customer.note && (() => {
+            const car = parseCarInfo(customer.note);
+            if (!car.carBrand && !car.carModel && !car.licensePlate) {
+              return customer.note.split(' • ').map((line, i) => <p key={i} className="text-slate-900">{line}</p>);
+            }
+            return (
+              <div className="mt-1 inline-block text-left w-fit ml-auto">
+                <table className="text-[10px] text-slate-800 border-separate" style={{ borderSpacing: '8px 1px' }}>
+                  <tbody>
+                    {car.licensePlate && <tr><td className="text-slate-500 font-semibold text-right">ทะเบียนรถ</td><td className="font-bold">: {car.licensePlate}</td></tr>}
+                    {(car.carBrand || car.carModel) && <tr><td className="text-slate-500 font-semibold text-right">ยี่ห้อ/รุ่น</td><td className="font-bold uppercase">: {[car.carBrand, car.carModel].filter(Boolean).join(' / ')}</td></tr>}
+                    {car.carColor && <tr><td className="text-slate-500 font-semibold text-right">สีรถ</td><td className="font-bold">: {car.carColor}</td></tr>}
+                    {car.mileage && <tr><td className="text-slate-500 font-semibold text-right">เลขไมล์</td><td className="font-bold">: {car.mileage} กม.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

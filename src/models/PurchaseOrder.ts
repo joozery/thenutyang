@@ -24,6 +24,7 @@ const purchaseOrderSchema = new Schema({
     taxId:   { type: String, default: '' },
   },
 
+  reference: { type: String, default: '' },
   dueDate: { type: Date },
   items:   [lineItemSchema],
 
