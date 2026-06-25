@@ -38,6 +38,7 @@ type POType = 'standard' | 'urgent';
 
 interface LineItem {
   key:         number;
+  productId?:  string;
   productName: string;
   unit:        string;
   qty:         number;
@@ -202,7 +203,7 @@ export function NewPurchasingClient({
 
   function selectProduct(key: number, p: ProductRow) {
     setLines(prev => prev.map(l => l.key === key
-      ? { ...l, productName: `${p.brand} ${p.model} ${p.size}`, unitPrice: p.costPrice || l.unitPrice, year: p.year || l.year }
+      ? { ...l, productId: p.id, productName: `${p.brand} ${p.model} ${p.size}`, unitPrice: p.costPrice || l.unitPrice, year: p.year || l.year }
       : l));
     setProductPickerLineKey(null);
   }
@@ -277,6 +278,7 @@ export function NewPurchasingClient({
       reference,
       dueDate,
       items: lines.map((l, idx) => ({
+        productId:   l.productId,
         productName: l.productName,
         unit:        l.unit,
         qty:         l.qty,

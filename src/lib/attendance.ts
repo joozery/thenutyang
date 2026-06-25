@@ -1,6 +1,11 @@
 import connectDB from './mongodb';
 import { Attendance, AttendanceStatus } from '@/models/Attendance';
 
+export {
+  calcLateMinutes, calcOTMinutes, minutesToBilledHours,
+  calcLateDeduct, calcOTPay, calcParttimeOTPay,
+} from './attendance-calc';
+
 export type AttendanceRow = {
   id: string;
   employeeId: string;

@@ -1,6 +1,7 @@
 import { Schema, model, models } from 'mongoose';
 
 const lineItemSchema = new Schema({
+  productId:   { type: Schema.Types.ObjectId, ref: 'Product', default: null },
   productName: { type: String, required: true },
   unit:        { type: String, default: 'เส้น' },
   qty:         { type: Number, required: true, min: 1 },

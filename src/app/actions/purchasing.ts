@@ -15,7 +15,7 @@ export type POFormPayload = {
   poType: 'standard' | 'urgent';
   dueDate: string;
   items: {
-    productName: string; unit: string;
+    productId?: string; productName: string; unit: string;
     qty: number; unitPrice: number; discount: number; year: string; lineTotal: number;
   }[];
   reference?:      string;
@@ -118,24 +118,88 @@ export async function updatePO(
   }
 }
 
-export async function receivePO(id: string): Promise<{ error?: string }> {
+export async function receivePO(id: string): Promise<{ error?: string; warnings?: string[] }> {
   try {
     await connectDB();
+    const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; items: { productId?: string; productName: string; qty: number }[] } | null;
+    if (!po) return { error: 'ไม่พบใบสั่งซื้อ' };
+
     await PurchaseOrder.findByIdAndUpdate(id, { status: 'received' });
+
+    const { Product } = await import('@/models/Product');
+    const { StockMovement } = await import('@/models/StockMovement');
+    const warnings: string[] = [];
+
+    for (const item of po.items) {
+      if (!item.productId) {
+        warnings.push(`"${item.productName}" ไม่ได้ผูก ID สินค้า — กรุณาบวกสต๊อกเองใน Warehouse`);
+        continue;
+      }
+      const product = await Product.findById(item.productId).lean() as { stock?: number; brand?: string; model?: string; size?: string } | null;
+      if (!product) {
+        warnings.push(`ไม่พบสินค้า "${item.productName}" ใน DB`);
+        continue;
+      }
+      const stockBefore = product.stock ?? 0;
+      const stockAfter  = stockBefore + item.qty;
+      const productName = `${product.brand ?? ''} ${product.model ?? ''} ${product.size ?? ''}`.trim();
+      await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.qty } });
+      await StockMovement.create({
+        productId: item.productId, productName, type: 'in',
+        qty: item.qty, stockBefore, stockAfter,
+        refNo: po.poNumber, note: `รับสินค้าจาก ${po.poNumber}`,
+      });
+    }
+
     revalidatePath('/admin/purchasing');
-    return {};
+    revalidatePath('/admin/warehouse');
+    return warnings.length ? { warnings } : {};
   } catch (err) {
     console.error('[receivePO]', err);
     return { error: 'ไม่สามารถอัปเดตสถานะได้' };
   }
 }
 
-export async function cancelPO(id: string): Promise<{ error?: string }> {
+export async function cancelPO(id: string): Promise<{ error?: string; warnings?: string[] }> {
   try {
     await connectDB();
+    const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; status: string; items: { productId?: string; productName: string; qty: number }[] } | null;
+    if (!po) return { error: 'ไม่พบใบสั่งซื้อ' };
+
+    const wasReceived = po.status === 'received';
     await PurchaseOrder.findByIdAndUpdate(id, { status: 'cancelled' });
+
+    const warnings: string[] = [];
+    if (wasReceived) {
+      const { Product } = await import('@/models/Product');
+      const { StockMovement } = await import('@/models/StockMovement');
+
+      for (const item of po.items) {
+        if (!item.productId) {
+          warnings.push(`"${item.productName}" ไม่ได้ผูก ID — กรุณาลบสต๊อกเองใน Warehouse`);
+          continue;
+        }
+        const product = await Product.findById(item.productId).lean() as { stock?: number; brand?: string; model?: string; size?: string } | null;
+        if (!product) {
+          warnings.push(`ไม่พบสินค้า "${item.productName}" ใน DB`);
+          continue;
+        }
+        const stockBefore = product.stock ?? 0;
+        const returnQty   = Math.min(item.qty, stockBefore);
+        const stockAfter  = stockBefore - returnQty;
+        const productName = `${product.brand ?? ''} ${product.model ?? ''} ${product.size ?? ''}`.trim();
+        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -returnQty } });
+        await StockMovement.create({
+          productId: item.productId, productName, type: 'out',
+          qty: returnQty, stockBefore, stockAfter,
+          refNo: po.poNumber, note: `คืนสินค้าจากยกเลิก ${po.poNumber}`,
+        });
+      }
+    }
+
     revalidatePath('/admin/purchasing');
-    return {};
+    revalidatePath('/admin/warehouse');
+    return warnings.length ? { warnings } : {};
   } catch (err) {
     console.error('[cancelPO]', err);
     return { error: 'ไม่สามารถยกเลิกได้' };

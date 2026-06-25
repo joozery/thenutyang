@@ -11,8 +11,15 @@ type EmployeeInput = {
   phone?: string;
   idCard?: string;
   role: string;
+  employeeType?: 'fulltime' | 'parttime';
   status?: 'active' | 'on_leave' | 'resigned';
-  baseSalary: number;
+  baseSalary?: number;
+  dailyRate?: number;
+  hourlyRate?: number;
+  shiftStart?: string;
+  shiftEnd?: string;
+  lateDeductRate?: number;
+  otRate?: number;
   startDate: string;
   bankAccount?: string;
   bankName?: string;

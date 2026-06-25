@@ -12,6 +12,7 @@ const STATUS_MAP: Record<string, POStatusThai> = {
 };
 
 export type POItem = {
+  productId?:  string;
   productName: string;
   unit:        string;
   qty:         number;
@@ -76,6 +77,7 @@ function normalizeDoc(d: any): PORow {
     dueDate:       d.dueDate instanceof Date   ? d.dueDate.toISOString()   : String(d.dueDate   ?? ''),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items: (d.items ?? []).map((i: any) => ({
+      productId:   i.productId ? String(i.productId) : undefined,
       productName: i.productName ?? '',
       unit:        i.unit        ?? 'เส้น',
       qty:         i.qty         ?? 0,

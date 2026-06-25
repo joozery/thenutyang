@@ -3,9 +3,10 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, CheckCircle, Save, UserCircle, Users } from 'lucide-react';
+import { CalendarDays, CheckCircle, Save, UserCircle, Users, Clock, AlertTriangle } from 'lucide-react';
 import { saveAttendanceBulk } from '@/app/actions/attendance';
 import type { AttendanceRow } from '@/lib/attendance';
+import { calcLateMinutes, calcOTMinutes, minutesToBilledHours } from '@/lib/attendance-calc';
 import type { EmployeeRow } from '@/lib/employees';
 import type { AttendanceStatus } from '@/models/Attendance';
 
@@ -64,6 +65,24 @@ export function AttendanceClient({
 
   function update(id: string, patch: Partial<RowState>) {
     setRows(r => ({ ...r, [id]: { ...r[id], ...patch } }));
+  }
+
+  function updateWithAutoCalc(emp: EmployeeRow, patch: Partial<RowState>) {
+    setRows(r => {
+      const cur = { ...r[emp.id], ...patch };
+      // auto-calc สาย
+      if (patch.checkIn !== undefined) {
+        const lateMin = calcLateMinutes(emp.shiftStart, cur.checkIn);
+        cur.lateMinutes = lateMin;
+        if (lateMin > 10) cur.status = 'late';
+        else if (cur.status === 'late') cur.status = 'present';
+      }
+      // auto-calc OT
+      if (patch.checkOut !== undefined) {
+        cur.otMinutes = calcOTMinutes(emp.shiftEnd, cur.checkOut);
+      }
+      return { ...r, [emp.id]: cur };
+    });
   }
 
   function setAllPresent() {
@@ -163,12 +182,12 @@ export function AttendanceClient({
             <table className="w-full text-sm text-left">
               <thead>
                 <tr className="bg-white border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
-                  <th className="px-6 py-4">พนักงาน</th>
-                  <th className="px-6 py-4 w-40">สถานะ</th>
+                  <th className="px-6 py-4">พนักงาน / เวร</th>
+                  <th className="px-6 py-4 w-36">สถานะ</th>
                   <th className="text-center px-4 py-4 w-28">เวลาเข้า</th>
                   <th className="text-center px-4 py-4 w-28">เวลาออก</th>
-                  <th className="text-center px-4 py-4 w-24">สาย (นาที)</th>
-                  <th className="text-center px-4 py-4 w-24">OT (นาที)</th>
+                  <th className="text-center px-4 py-4 w-32">มาสาย</th>
+                  <th className="text-center px-4 py-4 w-32">OT</th>
                   <th className="text-left px-6 py-4">หมายเหตุ</th>
                 </tr>
               </thead>
@@ -176,6 +195,9 @@ export function AttendanceClient({
                 {employees.map(e => {
                   const r = rows[e.id];
                   const st = STATUS_OPTS.find(o => o.value === r.status);
+                  const lateHrs = minutesToBilledHours(r.lateMinutes);
+                  const otHrs   = minutesToBilledHours(r.otMinutes);
+                  const isOff   = r.status === 'absent' || r.status === 'leave' || r.status === 'holiday';
                   return (
                     <tr key={e.id} className="hover:bg-slate-50/80 transition-colors group">
                       <td className="px-6 py-4">
@@ -186,6 +208,9 @@ export function AttendanceClient({
                           <div>
                             <p className="font-bold text-slate-900">{e.name}</p>
                             <p className="text-[11px] font-medium text-slate-400 tracking-wider mt-0.5">{ROLE_LABELS[e.role] ?? e.role}</p>
+                            <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                              <Clock size={9} /> {e.shiftStart ?? '09:00'} – {e.shiftEnd ?? '18:00'}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -199,16 +224,34 @@ export function AttendanceClient({
                         </select>
                       </td>
                       <td className="px-4 py-4">
-                        <input type="time" value={r.checkIn} onChange={ev => update(e.id, { checkIn: ev.target.value })} disabled={r.status === 'absent' || r.status === 'leave' || r.status === 'holiday'} className={cellCls} />
+                        <input type="time" value={r.checkIn} onChange={ev => updateWithAutoCalc(e, { checkIn: ev.target.value })} disabled={isOff} className={cellCls} />
                       </td>
                       <td className="px-4 py-4">
-                        <input type="time" value={r.checkOut} onChange={ev => update(e.id, { checkOut: ev.target.value })} disabled={r.status === 'absent' || r.status === 'leave' || r.status === 'holiday'} className={cellCls} />
+                        <input type="time" value={r.checkOut} onChange={ev => updateWithAutoCalc(e, { checkOut: ev.target.value })} disabled={isOff} className={cellCls} />
                       </td>
-                      <td className="px-4 py-4">
-                        <input type="number" min={0} value={r.lateMinutes || ''} onChange={ev => update(e.id, { lateMinutes: +ev.target.value })} disabled={r.status !== 'late'} className={`${cellCls} text-center font-bold text-amber-600 disabled:text-transparent disabled:placeholder-transparent placeholder-amber-200`} placeholder="0" />
+                      <td className="px-4 py-4 text-center">
+                        <div className="space-y-0.5">
+                          <p className={`text-xs font-bold ${r.lateMinutes > 10 ? 'text-amber-600' : 'text-slate-300'}`}>
+                            {r.lateMinutes > 0 ? `${r.lateMinutes} นาที` : '—'}
+                          </p>
+                          {lateHrs > 0 && (
+                            <p className="text-[10px] font-bold text-red-500 flex items-center justify-center gap-0.5">
+                              <AlertTriangle size={9} /> นับ {lateHrs} ชม. (-฿{lateHrs * (e.lateDeductRate ?? 300)})
+                            </p>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <input type="number" min={0} value={r.otMinutes || ''} onChange={ev => update(e.id, { otMinutes: +ev.target.value })} className={`${cellCls} text-center font-bold text-blue-600 placeholder-slate-300`} placeholder="0" />
+                      <td className="px-4 py-4 text-center">
+                        <div className="space-y-0.5">
+                          <p className={`text-xs font-bold ${r.otMinutes > 10 ? 'text-blue-600' : 'text-slate-300'}`}>
+                            {r.otMinutes > 0 ? `${r.otMinutes} นาที` : '—'}
+                          </p>
+                          {otHrs > 0 && (
+                            <p className="text-[10px] font-bold text-blue-500 flex items-center justify-center gap-0.5">
+                              +{otHrs} ชม. (+฿{otHrs * (e.otRate ?? 200)})
+                            </p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <input value={r.note} onChange={ev => update(e.id, { note: ev.target.value })} className={`${cellCls} w-full placeholder-slate-300 text-slate-600`} placeholder="หมายเหตุ..." />

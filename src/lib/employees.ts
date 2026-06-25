@@ -9,8 +9,15 @@ export type EmployeeRow = {
   phone: string;
   idCard: string;
   role: string;
+  employeeType: 'fulltime' | 'parttime';
   status: 'active' | 'on_leave' | 'resigned';
   baseSalary: number;
+  dailyRate: number;
+  hourlyRate: number;
+  shiftStart: string;
+  shiftEnd: string;
+  lateDeductRate: number;
+  otRate: number;
   startDate: string;
   bankAccount: string;
   bankName: string;
@@ -23,6 +30,13 @@ function normalize(doc: Record<string, unknown>): EmployeeRow {
   return {
     id: String(_id),
     startDate: startDate ? new Date(startDate as string).toISOString() : '',
+    employeeType: (rest.employeeType as string) || 'fulltime',
+    dailyRate:    Number(rest.dailyRate ?? 0),
+    hourlyRate:   Number(rest.hourlyRate ?? 0),
+    shiftStart:   (rest.shiftStart as string) || '09:00',
+    shiftEnd:     (rest.shiftEnd as string) || '18:00',
+    lateDeductRate: Number(rest.lateDeductRate ?? 300),
+    otRate:         Number(rest.otRate ?? 200),
     ...rest,
   } as unknown as EmployeeRow;
 }

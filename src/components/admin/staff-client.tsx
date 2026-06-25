@@ -48,8 +48,15 @@ const EMPTY_FORM = {
   phone: '',
   idCard: '',
   role: 'ช่างยาง',
+  employeeType: 'fulltime' as 'fulltime' | 'parttime',
   status: 'active' as EmployeeRow['status'],
   baseSalary: 15000,
+  dailyRate: 0,
+  hourlyRate: 0,
+  shiftStart: '09:00',
+  shiftEnd: '18:00',
+  lateDeductRate: 300,
+  otRate: 200,
   startDate: '',
   bankAccount: '',
   bankName: '',
@@ -115,7 +122,11 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
     const translatedRole = ROLE_LABELS[e.role as EmpRole] || e.role;
     setForm({
       name: e.name, nickname: e.nickname, phone: e.phone, idCard: e.idCard,
-      role: translatedRole, status: e.status, baseSalary: e.baseSalary,
+      role: translatedRole, employeeType: e.employeeType ?? 'fulltime',
+      status: e.status, baseSalary: e.baseSalary,
+      dailyRate: e.dailyRate ?? 0, hourlyRate: e.hourlyRate ?? 0,
+      shiftStart: e.shiftStart ?? '09:00', shiftEnd: e.shiftEnd ?? '18:00',
+      lateDeductRate: e.lateDeductRate ?? 300, otRate: e.otRate ?? 200,
       startDate: e.startDate ? e.startDate.slice(0, 10) : '',
       bankAccount: e.bankAccount, bankName: e.bankName, address: e.address, note: e.note,
     });
@@ -224,7 +235,12 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50 shadow-sm">{ROLE_LABELS[s.role as EmpRole] || s.role}</span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200/50 shadow-sm w-fit">{ROLE_LABELS[s.role as EmpRole] || s.role}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full w-fit ${s.employeeType === 'parttime' ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600'}`}>
+                        {s.employeeType === 'parttime' ? 'พาร์ทไทม์' : 'ประจำ'}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     {s.phone ? <span className="flex items-center gap-1.5 text-slate-600 font-medium text-xs"><Phone size={13} className="text-slate-400" />{s.phone}</span> : <span className="text-slate-300">—</span>}
@@ -312,6 +328,50 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
 
               <div className="h-px bg-slate-100"></div>
 
+              {/* ประเภทพนักงาน + เวรงาน */}
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">ประเภท & เวรงาน</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="ประเภทพนักงาน">
+                    <div className="flex gap-2">
+                      {(['fulltime', 'parttime'] as const).map(t => (
+                        <button key={t} type="button"
+                          onClick={() => setForm(f => ({ ...f, employeeType: t }))}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                            form.employeeType === t
+                              ? t === 'fulltime' ? 'bg-slate-800 text-white border-slate-800' : 'bg-amber-500 text-white border-amber-500'
+                              : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                          }`}>
+                          {t === 'fulltime' ? 'ประจำ' : 'พาร์ทไทม์'}
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
+                  <div />
+                  <Field label="เวลาเข้าเวร">
+                    <input type="time" value={form.shiftStart} onChange={e => setForm(f => ({ ...f, shiftStart: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="เวลาออกเวร">
+                    <input type="time" value={form.shiftEnd} onChange={e => setForm(f => ({ ...f, shiftEnd: e.target.value }))} className={inputCls} />
+                  </Field>
+                  <Field label="ค่าปรับสาย (บาท/ชม.)">
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
+                      <input type="number" value={form.lateDeductRate || ''} onChange={e => setForm(f => ({ ...f, lateDeductRate: +e.target.value }))} className={`${inputCls} pl-8`} placeholder="300" />
+                    </div>
+                  </Field>
+                  <Field label="อัตรา OT (บาท/ชม.)">
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
+                      <input type="number" value={form.otRate || ''} onChange={e => setForm(f => ({ ...f, otRate: +e.target.value }))} className={`${inputCls} pl-8`} placeholder={form.employeeType === 'parttime' ? 'คิดจาก hourly×1.5' : '200'} disabled={form.employeeType === 'parttime'} />
+                    </div>
+                    {form.employeeType === 'parttime' && <p className="text-[10px] text-slate-400 mt-1">พาร์ทไทม์: ชั่วโมงละ × 1.5 อัตโนมัติ</p>}
+                  </Field>
+                </div>
+              </div>
+
+              <div className="h-px bg-slate-100"></div>
+
               <div>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">ข้อมูลการทำงาน & การเงิน</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -365,12 +425,29 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
                   <Field label="วันที่เริ่มงาน *">
                     <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
                   </Field>
-                  <Field label="ฐานเงินเดือน (บาท)">
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
-                      <input type="number" value={form.baseSalary || ''} onChange={e => setForm(f => ({ ...f, baseSalary: +e.target.value }))} className={`${inputCls} pl-8`} placeholder="15000" />
+                  {form.employeeType === 'fulltime' ? (
+                    <Field label="ฐานเงินเดือน (บาท)">
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
+                        <input type="number" value={form.baseSalary || ''} onChange={e => setForm(f => ({ ...f, baseSalary: +e.target.value }))} className={`${inputCls} pl-8`} placeholder="15000" />
+                      </div>
+                    </Field>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 sm:col-span-2">
+                      <Field label="ค่าจ้างรายวัน (บาท)">
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
+                          <input type="number" value={form.dailyRate || ''} onChange={e => setForm(f => ({ ...f, dailyRate: +e.target.value }))} className={`${inputCls} pl-8`} placeholder="600" />
+                        </div>
+                      </Field>
+                      <Field label="ค่าจ้างรายชั่วโมง (บาท)">
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-medium">฿</span>
+                          <input type="number" value={form.hourlyRate || ''} onChange={e => setForm(f => ({ ...f, hourlyRate: +e.target.value }))} className={`${inputCls} pl-8`} placeholder="60" />
+                        </div>
+                      </Field>
                     </div>
-                  </Field>
+                  )}
                   <Field label="ธนาคารที่รับเงิน">
                     {!isCustomBank ? (
                       <div className="relative">

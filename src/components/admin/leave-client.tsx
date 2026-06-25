@@ -6,20 +6,25 @@ import {
   Plus, CheckCircle, XCircle, Clock, X, CalendarRange,
   Trash2, AlertCircle, FileText, Users, CalendarDays, Filter,
 } from 'lucide-react';
-import { createLeave, approveLeave, rejectLeave, deleteLeave } from '@/app/actions/leaves';
-import type { LeaveRow, LeaveStatus } from '@/lib/leaves';
+import { createLeaveRequest as createLeave, approveLeave, rejectLeave, deleteLeaveRequest as deleteLeave } from '@/app/actions/leave';
+import type { LeaveRequestRow as LeaveRow } from '@/lib/leave';
 import type { EmployeeRow } from '@/lib/employees';
+import { LEAVE_LABELS, LEAVE_QUOTA } from '@/lib/leave-constants';
 import type { LeaveType } from '@/models/LeaveRequest';
 
-const TYPE_LABELS: Record<LeaveType, string> = {
-  sick: 'ลาป่วย', vacation: 'ลาพักร้อน', personal: 'ลากิจ', other: 'อื่นๆ',
-};
-const TYPE_PAID: Record<LeaveType, boolean> = { sick: true, vacation: true, personal: false, other: false };
+type LeaveStatus = 'pending' | 'approved' | 'rejected';
+
+const TYPE_LABELS = LEAVE_LABELS;
+const TYPE_PAID: Record<LeaveType, boolean> = Object.fromEntries(
+  Object.entries(LEAVE_QUOTA).map(([k, v]) => [k, !v.deductPay])
+) as Record<LeaveType, boolean>;
 const TYPE_COLOR: Record<LeaveType, string> = {
-  sick: 'bg-red-50 text-red-600',
-  vacation: 'bg-blue-50 text-blue-600',
-  personal: 'bg-purple-50 text-purple-600',
-  other: 'bg-slate-100 text-slate-600',
+  sick:      'bg-red-50 text-red-600',
+  vacation:  'bg-blue-50 text-blue-600',
+  personal:  'bg-purple-50 text-purple-600',
+  maternity: 'bg-pink-50 text-pink-600',
+  military:  'bg-slate-100 text-slate-600',
+  other:     'bg-slate-100 text-slate-600',
 };
 
 const STATUS_META: Record<LeaveStatus, { label: string; cls: string; icon: React.ReactNode }> = {
@@ -39,7 +44,7 @@ const EMPTY_FORM = {
   reason: '',
 };
 
-export function LeaveClient({ leaves, employees }: { leaves: LeaveRow[]; employees: EmployeeRow[] }) {
+export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRow[]; employees: EmployeeRow[] }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [filter, setFilter] = useState<'all' | LeaveStatus>('all');
@@ -61,8 +66,12 @@ export function LeaveClient({ leaves, employees }: { leaves: LeaveRow[]; employe
 
   function handleCreate() {
     if (!form.employeeId || !form.startDate || !form.endDate) { setError('กรุณากรอกข้อมูลให้ครบ'); return; }
+    const start = new Date(form.startDate);
+    const end   = new Date(form.endDate);
+    const days  = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+    const employeeName = empName.get(form.employeeId) ?? '';
     startTransition(async () => {
-      const res = await createLeave(form);
+      const res = await createLeave({ ...form, employeeName, days, reason: form.reason });
       if (!res.ok) { setError(res.error); return; }
       setShowAdd(false); setForm(EMPTY_FORM); setError(''); flash('บันทึกคำขอลาแล้ว'); router.refresh();
     });
