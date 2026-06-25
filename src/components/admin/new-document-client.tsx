@@ -14,6 +14,7 @@ import type { DocFormPayload } from '@/app/actions/documents';
 import type { DocType, PaymentMethod } from '@/lib/documents';
 import type { UnifiedCustomerRow } from '@/lib/customers';
 import type { VehicleEntry } from '@/app/actions/customers';
+import { addVehicleToCustomer } from '@/app/actions/customers';
 import type { ProductRow } from '@/lib/products';
 import type { ServiceItemRow } from '@/lib/service-items';
 import type { getActiveEmployees } from '@/lib/employees';
@@ -153,6 +154,9 @@ export function NewDocumentClient({
   const [customerAddress, setCustomerAddress] = useState(prefill?.customerAddress ?? '');
   const [customerTaxId,   setCustomerTaxId]   = useState(prefill?.customerTaxId ?? '');
   const [customerSelected, setCustomerSelected] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [saveVehiclePending, setSaveVehiclePending] = useState(false);
+  const [saveVehicleMsg, setSaveVehicleMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false);
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
   const [customerVehicles, setCustomerVehicles] = useState<VehicleEntry[]>([]);
@@ -229,6 +233,8 @@ export function NewDocumentClient({
     setCustomerAddress(c.address);
     setCustomerTaxId(c.taxId);
     setCustomerSelected(true);
+    setSelectedCustomerId(c.id);
+    setSaveVehicleMsg(null);
 
     if (c.vehicles && c.vehicles.length > 0) {
       setCustomerVehicles(c.vehicles);
@@ -249,6 +255,8 @@ export function NewDocumentClient({
 
   function clearCustomerSelection() {
     setCustomerSelected(false);
+    setSelectedCustomerId(null);
+    setSaveVehicleMsg(null);
     setCustomerName('');
     setCustomerPhone('');
     setCustomerAddress('');
@@ -271,6 +279,8 @@ export function NewDocumentClient({
     setCustomerAddress(c.address);
     setCustomerTaxId(c.taxId);
     setCustomerSelected(true);
+    setSelectedCustomerId(c.id);
+    setSaveVehicleMsg(null);
 
     if (c.vehicles && c.vehicles.length > 0) {
       setCustomerVehicles(c.vehicles);
@@ -286,6 +296,22 @@ export function NewDocumentClient({
       setLicensePlate(car.licensePlate);
       setMileage(car.mileage);
       setChassisNo(car.chassisNo);
+    }
+  }
+
+  async function handleSaveVehicleToCustomer() {
+    if (!selectedCustomerId) return;
+    setSaveVehiclePending(true);
+    setSaveVehicleMsg(null);
+    const result = await addVehicleToCustomer(selectedCustomerId, {
+      carBrand, carModel, carColor, licensePlate, mileage, chassisNo,
+    });
+    setSaveVehiclePending(false);
+    if (result.ok) {
+      setCustomerVehicles(prev => [...prev, { carBrand, carModel, carColor, licensePlate, mileage, chassisNo }]);
+      setSaveVehicleMsg({ ok: true, text: 'บันทึกรถไว้กับลูกค้าแล้ว' });
+    } else {
+      setSaveVehicleMsg({ ok: false, text: result.error ?? 'บันทึกไม่สำเร็จ' });
     }
   }
 
@@ -855,6 +881,26 @@ export function NewDocumentClient({
                 />
               </div>
             </div>
+
+            {selectedCustomerId && (carBrand || licensePlate) && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleSaveVehicleToCustomer}
+                  disabled={saveVehiclePending}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-dashed border-blue-300 text-blue-600 text-xs font-semibold hover:bg-blue-50 hover:border-blue-400 disabled:opacity-50 transition-colors"
+                >
+                  <Car size={13} />
+                  {saveVehiclePending ? 'กำลังบันทึก...' : 'บันทึกรถนี้ไว้กับลูกค้า'}
+                </button>
+                {saveVehicleMsg && (
+                  <p className={`text-xs mt-1.5 text-center font-medium ${saveVehicleMsg.ok ? 'text-green-600' : 'text-red-500'}`}>
+                    {saveVehicleMsg.text}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <Label>ที่อยู่ (สำหรับออกเอกสาร)</Label>
               <div className="relative">

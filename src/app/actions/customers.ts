@@ -114,6 +114,26 @@ export async function upsertCustomerFromBooking(input: {
   }
 }
 
+export async function addVehicleToCustomer(
+  customerId: string,
+  vehicle: VehicleEntry,
+): Promise<{ ok?: boolean; error?: string }> {
+  try {
+    if (!customerId) return { error: 'ไม่พบลูกค้า' };
+    if (!vehicle.licensePlate.trim() && !vehicle.carBrand.trim()) return { error: 'กรุณากรอกทะเบียนหรือยี่ห้อรถ' };
+    await connectDB();
+    await Customer.findByIdAndUpdate(customerId, {
+      $push: { vehicles: vehicle },
+      $set:  { updatedAt: new Date() },
+    });
+    revalidatePath('/admin/customers');
+    return { ok: true };
+  } catch (err) {
+    console.error('[addVehicleToCustomer]', err);
+    return { error: 'บันทึกไม่สำเร็จ' };
+  }
+}
+
 export async function deleteCustomer(id: string): Promise<ActionResult> {
   try {
     await connectDB();
