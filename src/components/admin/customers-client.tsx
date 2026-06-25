@@ -371,6 +371,10 @@ export function CustomerModal({
                     <input value={v.mileage} onChange={e => setVehicle(idx, 'mileage', e.target.value.replace(/[^\d,]/g, ''))} placeholder="45,000" className={inputCls} />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1">เลขที่ตัวถัง (Chassis No.)</label>
+                  <input value={v.chassisNo} onChange={e => setVehicle(idx, 'chassisNo', e.target.value)} placeholder="เช่น JTMHX3JH50D000001" className={inputCls} />
+                </div>
               </div>
             ))}
           </div>
