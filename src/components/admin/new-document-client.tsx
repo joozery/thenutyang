@@ -148,6 +148,7 @@ export function NewDocumentClient({
   const [carColor,     setCarColor]     = useState(prefillCar.carColor);
   const [licensePlate, setLicensePlate] = useState(prefillCar.licensePlate);
   const [mileage,      setMileage]      = useState(prefillCar.mileage);
+  const [chassisNo,    setChassisNo]    = useState(prefillCar.chassisNo);
   const [bookingRef]                          = useState(prefill?.bookingRef ?? '');
   const [customerAddress, setCustomerAddress] = useState(prefill?.customerAddress ?? '');
   const [customerTaxId,   setCustomerTaxId]   = useState(prefill?.customerTaxId ?? '');
@@ -219,6 +220,7 @@ export function NewDocumentClient({
     setCarColor(v.carColor);
     setLicensePlate(v.licensePlate);
     setMileage(v.mileage);
+    setChassisNo(v.chassisNo);
   }
 
   function selectCustomer(c: UnifiedCustomerRow) {
@@ -241,6 +243,7 @@ export function NewDocumentClient({
       setCarColor(car.carColor);
       setLicensePlate(car.licensePlate);
       setMileage(car.mileage);
+      setChassisNo(car.chassisNo);
     }
   }
 
@@ -257,6 +260,7 @@ export function NewDocumentClient({
     setCarColor('');
     setLicensePlate('');
     setMileage('');
+    setChassisNo('');
   }
 
   function handleNewCustomerSaved(c?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string; vehicles: VehicleEntry[] }) {
@@ -281,6 +285,7 @@ export function NewDocumentClient({
       setCarColor(car.carColor);
       setLicensePlate(car.licensePlate);
       setMileage(car.mileage);
+      setChassisNo(car.chassisNo);
     }
   }
 
@@ -399,7 +404,7 @@ export function NewDocumentClient({
         type:         docType,
         customerName: effectiveCustomerName,
         customerPhone: customerPhone.trim(),
-        customerCar:   composeCarInfo({ carBrand, carModel, carColor, licensePlate, mileage }),
+        customerCar:   composeCarInfo({ carBrand, carModel, carColor, licensePlate, mileage, chassisNo }),
         bookingRef:    bookingRef,
         customerAddress: customerAddress.trim(),
         customerTaxId:   customerTaxId.trim(),
@@ -836,6 +841,18 @@ export function NewDocumentClient({
                     className={inputCls + ' pl-8'}
                   />
                 </div>
+              </div>
+            </div>
+            <div>
+              <Label>เลขที่ตัวถัง (Chassis No.)</Label>
+              <div className="relative">
+                <Hash size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={chassisNo}
+                  onChange={e => setChassisNo(e.target.value)}
+                  placeholder="เช่น JTMHX3JH50D000001"
+                  className={inputCls + ' pl-8'}
+                />
               </div>
             </div>
             <div>
