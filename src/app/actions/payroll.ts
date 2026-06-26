@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { Payslip } from '@/models/Payslip';
+import { Expense } from '@/models/Expense';
 import { Employee } from '@/models/Employee';
 import { computePay } from '@/lib/payroll';
 import { getAttendanceSummary } from '@/lib/attendance';
@@ -95,14 +96,13 @@ export async function generatePayroll(period: string): Promise<Result> {
   }
 }
 
-// แก้ไขโบนัส / หักอื่นๆ แล้วคำนวณ net ใหม่
+// แก้ไขโบนัส / หักอื่นๆ แล้วคำนวณ net ใหม่ — แก้ได้แม้จ่ายแล้ว (Expense เดิมจะถูก sync)
 export async function updatePayslip(id: string, bonus: number, otherDeduct: number): Promise<Result> {
   try {
     await connectDB();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = await Payslip.findById(id).lean() as any;
     if (!p) return { ok: false, error: 'ไม่พบรายการ' };
-    if (p.status === 'paid') return { ok: false, error: 'รายการนี้จ่ายแล้ว แก้ไขไม่ได้' };
 
     const [attMap, emp] = await Promise.all([
       getAttendanceSummary(p.period),
@@ -126,6 +126,18 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
     });
 
     await Payslip.findByIdAndUpdate(id, { $set: { bonus, otherDeduct, lateDeductRate, otRate, ...c } });
+
+    // ถ้าจ่ายแล้วและมี expenseId → sync ยอดใหม่ลงใน Expense เดิม
+    if (p.status === 'paid' && p.expenseId) {
+      await Expense.findByIdAndUpdate(p.expenseId, {
+        $set: {
+          amount: c.netPay,
+          description: `เงินเดือน ${p.employeeName} รอบ ${p.period} (แก้ไข)`,
+          note: `โบนัส ฿${bonus.toLocaleString()} | หักอื่นๆ ฿${otherDeduct.toLocaleString()}`,
+        },
+      });
+    }
+
     revalidatePath('/admin/payroll');
     return { ok: true };
   } catch (e) {
@@ -137,7 +149,37 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
 export async function markPaid(id: string): Promise<Result> {
   try {
     await connectDB();
-    await Payslip.findByIdAndUpdate(id, { $set: { status: 'paid', paidAt: new Date() } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = await Payslip.findById(id).lean() as any;
+    if (!p) return { ok: false, error: 'ไม่พบรายการ' };
+
+    const paidAt = new Date();
+
+    // สร้าง / อัปเดต Expense record
+    let expenseId = p.expenseId;
+    if (expenseId) {
+      // จ่ายซ้ำ → อัปเดต Expense เดิม
+      await Expense.findByIdAndUpdate(expenseId, {
+        $set: {
+          amount: p.netPay,
+          description: `เงินเดือน ${p.employeeName} รอบ ${p.period}`,
+          expenseDate: paidAt,
+          note: `โบนัส ฿${(p.bonus ?? 0).toLocaleString()} | หักอื่นๆ ฿${(p.otherDeduct ?? 0).toLocaleString()}`,
+        },
+      });
+    } else {
+      // จ่ายครั้งแรก → สร้าง Expense ใหม่
+      const exp = await Expense.create({
+        category: 'เงินเดือน',
+        description: `เงินเดือน ${p.employeeName} รอบ ${p.period}`,
+        amount: p.netPay,
+        expenseDate: paidAt,
+        note: `โบนัส ฿${(p.bonus ?? 0).toLocaleString()} | หักอื่นๆ ฿${(p.otherDeduct ?? 0).toLocaleString()}`,
+      });
+      expenseId = exp._id;
+    }
+
+    await Payslip.findByIdAndUpdate(id, { $set: { status: 'paid', paidAt, expenseId } });
     revalidatePath('/admin/payroll');
     return { ok: true };
   } catch (e) {
@@ -148,7 +190,9 @@ export async function markPaid(id: string): Promise<Result> {
 export async function markAllPaid(period: string): Promise<Result> {
   try {
     await connectDB();
-    await Payslip.updateMany({ period, status: 'pending' }, { $set: { status: 'paid', paidAt: new Date() } });
+    // ดึงเฉพาะ pending ที่ยังไม่จ่าย แล้ว markPaid ทีละคนเพื่อให้ Expense ถูกสร้างครบ
+    const pending = await Payslip.find({ period, status: 'pending' }).lean() as { _id: string }[];
+    await Promise.all(pending.map((p) => markPaid(String(p._id))));
     revalidatePath('/admin/payroll');
     return { ok: true };
   } catch (e) {

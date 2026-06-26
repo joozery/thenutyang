@@ -284,17 +284,16 @@ export function PayrollClient({
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-1">
+                          {/* ปุ่มแก้ไข: โชว์ทุก status */}
+                          <button onClick={() => openEdit(p)} title="แก้ไขโบนัส/หัก"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
+                            <Edit2 size={14} />
+                          </button>
                           {!isPaid && (
-                            <>
-                              <button onClick={() => openEdit(p)} title="แก้ไขโบนัส/หัก"
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
-                                <Edit2 size={14} />
-                              </button>
-                              <button onClick={() => handleMarkOne(p.id)} disabled={isPending}
-                                className="text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 shadow-sm shadow-green-200">
-                                จ่าย
-                              </button>
-                            </>
+                            <button onClick={() => handleMarkOne(p.id)} disabled={isPending}
+                              className="text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 shadow-sm shadow-green-200">
+                              จ่าย
+                            </button>
                           )}
                         </div>
                       </td>
@@ -331,6 +330,13 @@ export function PayrollClient({
               <button onClick={() => setEditTarget(null)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"><X size={15} /></button>
             </div>
             <div className="p-6 space-y-5">
+              {/* หมายเหตุเมื่อแก้หลังจ่ายแล้ว */}
+              {editTarget.status === 'paid' && (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-700">
+                  <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                  <span>รายการนี้จ่ายแล้ว — ถ้าบันทึก ยอดค่าใช้จ่ายในรายงานจะถูก <strong>อัปเดตอัตโนมัติ</strong> ไม่สร้างรายการใหม่</span>
+                </div>
+              )}
               {/* Breakdown */}
               <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-xs border border-slate-100">
                 <Row label="ฐานเงินเดือน" value={fmt(editTarget.baseSalary)} />

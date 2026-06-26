@@ -35,6 +35,7 @@ const payslipSchema = new Schema({
   netPay:       { type: Number, default: 0 },
   status:       { type: String, enum: ['pending', 'paid'], default: 'pending' },
   paidAt:       { type: Date, default: null },
+  expenseId:    { type: Schema.Types.ObjectId, ref: 'Expense', default: null },
   createdAt:    { type: Date, default: Date.now },
 });
 
