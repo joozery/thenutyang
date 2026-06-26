@@ -35,7 +35,7 @@ export async function generatePayroll(period: string): Promise<Result> {
       const prev = existMap.get(id);
       if (prev?.status === 'paid') return null;
 
-      const att        = attMap[id]   ?? { daysPresent: 0, daysAbsent: 0, daysLeave: 0, otMinutes: 0, lateMinutes: 0 };
+      const att        = attMap[id]   ?? { daysPresent: 0, daysAbsent: 0, daysLeave: 0, otMinutes: 0, lateMinutes: 0, lateBilledHours: 0, otBilledHours: 0 };
       const lv         = leaveMap[id] ?? { paidDays: 0, unpaidDays: 0 };
       const baseSalary = Number(emp.baseSalary ?? 0);
       const bonus      = prev?.bonus       ?? 0;
@@ -44,8 +44,8 @@ export async function generatePayroll(period: string): Promise<Result> {
       const c = computePay({
         baseSalary,
         daysAbsent:      att.daysAbsent,
-        lateMinutes:     att.lateMinutes,
-        otMinutes:       att.otMinutes,
+        lateBilledHours: att.lateBilledHours, // per-day grace period applied
+        otBilledHours:   att.otBilledHours,
         unpaidLeaveDays: lv.unpaidDays,
         bonus,
         otherDeduct,
@@ -97,11 +97,15 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
     if (!p) return { ok: false, error: 'ไม่พบรายการ' };
     if (p.status === 'paid') return { ok: false, error: 'รายการนี้จ่ายแล้ว แก้ไขไม่ได้' };
 
+    // re-query attendance เพื่อได้ per-day billed hours ที่ถูกต้อง
+    const attMap = await getAttendanceSummary(p.period);
+    const att = attMap[String(p.employeeId)] ?? { lateBilledHours: 0, otBilledHours: 0 };
+
     const c = computePay({
       baseSalary:      p.baseSalary ?? 0,
       daysAbsent:      p.daysAbsent ?? 0,
-      lateMinutes:     p.lateMinutes ?? 0,
-      otMinutes:       p.otMinutes ?? 0,
+      lateBilledHours: att.lateBilledHours,
+      otBilledHours:   att.otBilledHours,
       unpaidLeaveDays: p.daysLeaveUnpaid ?? 0,
       bonus,
       otherDeduct,

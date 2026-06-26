@@ -1,6 +1,5 @@
 import connectDB from './mongodb';
 import { Payslip } from '@/models/Payslip';
-import { minutesToBilledHours } from './attendance-calc';
 
 export const PAYROLL = {
   LATE_RATE:    300,   // บาท/ชม. หักสาย (fixed)
@@ -14,8 +13,8 @@ export const PAYROLL = {
 export type PayComputeInput = {
   baseSalary:      number;
   daysAbsent:      number;
-  lateMinutes:     number; // raw นาที — grace period ≤10 น. คิดใน computePay
-  otMinutes:       number;
+  lateBilledHours: number; // sum ชม.บิลสาย (grace period ถูก apply ต่อวันแล้ว)
+  otBilledHours:   number; // sum ชม.บิล OT
   unpaidLeaveDays: number;
   bonus:           number;
   otherDeduct:     number;
@@ -31,15 +30,12 @@ export type PayComputed = {
 };
 
 // สูตร: ค่าแรง - (สายชม. × 300) + (OTชม. × 200) + โบนัส - ขาด/ลา - สปส. - หักอื่น
+// lateBilledHours / otBilledHours ต้องถูก sum ต่อวัน (grace period per day) ก่อนส่งมา
 export function computePay(i: PayComputeInput): PayComputed {
   const dailyRate = i.baseSalary / PAYROLL.WORK_DAYS;
 
-  // grace period ≤10 นาที = 0, >10 นาที = ceil ทุก 60 นาที
-  const lateBilledHours = minutesToBilledHours(i.lateMinutes);
-  const lateDeduct      = lateBilledHours * PAYROLL.LATE_RATE;
-
-  const otBilledHours = minutesToBilledHours(i.otMinutes);
-  const otPay         = otBilledHours * PAYROLL.OT_RATE;
+  const lateDeduct = i.lateBilledHours * PAYROLL.LATE_RATE;
+  const otPay      = i.otBilledHours   * PAYROLL.OT_RATE;
 
   const absentDeduct = Math.round(dailyRate * i.daysAbsent);
   const leaveDeduct  = Math.round(dailyRate * i.unpaidLeaveDays);
