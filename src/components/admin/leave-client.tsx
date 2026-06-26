@@ -42,7 +42,8 @@ const EMPTY_FORM = {
   startDate:  '',
   endDate:    '',
   reason:     '',
-  deductPay:  LEAVE_QUOTA['sick'].deductPay, // default จาก quota ของประเภทที่เลือก
+  deductPay:  LEAVE_QUOTA['sick'].deductPay,
+  deductDays: 0, // จำนวนวันที่หักจริง
 };
 
 export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRow[]; employees: EmployeeRow[] }) {
@@ -235,7 +236,7 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
                         {TYPE_LABELS[l.leaveType]}
                       </span>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${l.deductPay ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
-                        {l.deductPay ? 'หักเงินเดือน' : 'ไม่หักเงิน'}
+                        {l.deductPay ? (l.deductDays > 0 ? `หักเงินเดือน (${l.deductDays} วัน)` : 'หักเงินเดือน') : 'ไม่หักเงิน'}
                       </span>
                     </div>
                   </td>
@@ -331,7 +332,8 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
                 <label className="text-xs font-semibold text-slate-600">ประเภทการลา</label>
                 <select value={form.leaveType} onChange={e => {
                   const t = e.target.value as LeaveType;
-                  setForm(f => ({ ...f, leaveType: t, deductPay: LEAVE_QUOTA[t].deductPay }));
+                  const dp = LEAVE_QUOTA[t].deductPay;
+                  setForm(f => ({ ...f, leaveType: t, deductPay: dp, deductDays: dp ? f.deductDays : 0 }));
                 }} className={inputCls}>
                   {Object.entries(TYPE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>{v}</option>
@@ -342,7 +344,7 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-600">การหักเงินเดือน</label>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setForm(f => ({ ...f, deductPay: false }))}
+                  <button type="button" onClick={() => setForm(f => ({ ...f, deductPay: false, deductDays: 0 }))}
                     className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all
                       ${!form.deductPay ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}>
                     ไม่หักเงิน
@@ -353,6 +355,19 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
                     หักเงินเดือน
                   </button>
                 </div>
+                {form.deductPay && (
+                  <div className="flex items-center gap-3 mt-2 bg-red-50 rounded-xl px-3 py-2.5 border border-red-100">
+                    <span className="text-xs text-red-600 font-medium whitespace-nowrap">หักกี่วัน</span>
+                    <input
+                      type="number" min={0}
+                      value={form.deductDays === 0 ? '' : form.deductDays}
+                      placeholder="0 = หักเท่ากับวันลา"
+                      onChange={e => setForm(f => ({ ...f, deductDays: Math.max(0, Number(e.target.value) || 0) }))}
+                      className="flex-1 bg-white border border-red-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    />
+                    <span className="text-xs text-red-400">วัน</span>
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

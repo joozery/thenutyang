@@ -4,6 +4,8 @@ import { Search, Menu, Truck, ShieldCheck, CreditCard, Phone, LogOut } from "luc
 import { cookies } from "next/headers";
 import { verifyCustomerToken, CUSTOMER_COOKIE } from "@/lib/customer-session";
 import { logoutCustomer } from "@/app/actions/customer-auth";
+import connectDB from "@/lib/mongodb";
+import ContactSettings from "@/models/ContactSettings";
 
 import { MobileMenu } from "./mobile-menu";
 import { CartBadge } from "./cart-badge";
@@ -14,36 +16,23 @@ export async function Header() {
   const token = jar.get(CUSTOMER_COOKIE)?.value;
   const customer = token ? await verifyCustomerToken(token) : null;
 
+  await connectDB();
+  const settings = await ContactSettings.findOne() || {
+    phoneMain: '099-999-9999',
+    workingDays: 'จันทร์ - อาทิตย์',
+    workingHours: '08:00 - 18:00 น.'
+  };
+
   return (
     <header className="w-full border-b bg-white sticky top-0 z-50">
       {/* Top bar */}
-      <div className="w-full bg-gradient-to-r from-green-800 via-green-700 to-green-600 text-white text-xs py-2 px-4 md:px-8 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1">
-            <span className="bg-white/20 rounded-full w-5 h-5 flex items-center justify-center">
-              <Truck className="w-3 h-3" />
-            </span>
-            จัดส่งฟรี ทั่วประเทศ
-          </span>
-          <span className="hidden md:flex items-center gap-1">
-            <span className="bg-white/20 rounded-full w-5 h-5 flex items-center justify-center">
-              <ShieldCheck className="w-3 h-3" />
-            </span>
-            รับประกันคุณภาพยางแท้ทุกเส้น
-          </span>
-          <span className="hidden lg:flex items-center gap-1">
-            <span className="bg-white/20 rounded-full w-5 h-5 flex items-center justify-center">
-              <CreditCard className="w-3 h-3" />
-            </span>
-            ผ่อน 0% สูงสุด 4 เดือน
-          </span>
-        </div>
+      <div className="w-full bg-gradient-to-r from-green-800 via-green-700 to-green-600 text-white text-xs py-2 px-4 md:px-8 flex justify-end items-center">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1 font-medium">
-            <Phone className="w-3 h-3" /> 02-123-4567
+            <Phone className="w-3 h-3" /> {settings.phoneMain}
           </span>
           <span className="hidden md:flex items-center gap-1 opacity-90">
-            จันทร์ - อาทิตย์ 08:00 - 18:00 น.
+            {settings.workingDays} {settings.workingHours}
           </span>
         </div>
       </div>

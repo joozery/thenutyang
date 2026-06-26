@@ -16,7 +16,8 @@ export async function createLeaveRequest(input: {
   endDate: string;
   days: number;
   reason?: string;
-  deductPay?: boolean; // default จาก LEAVE_QUOTA ถ้าไม่ส่งมา
+  deductPay?:  boolean; // default จาก LEAVE_QUOTA ถ้าไม่ส่งมา
+  deductDays?: number;  // จำนวนวันที่หักจริง (0 = ไม่หัก)
 }): Promise<Result> {
   try {
     await connectDB();
@@ -28,6 +29,7 @@ export async function createLeaveRequest(input: {
       startDate: new Date(input.startDate),
       endDate: new Date(input.endDate),
       deductPay,
+      deductDays: input.deductDays ?? 0,
       status: 'pending',
     });
     revalidatePath('/admin/leave');

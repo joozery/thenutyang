@@ -8,11 +8,12 @@ export type LeaveRow = {
   employeeId: string;
   employeeName: string;
   leaveType: LeaveType;
-  startDate: string;  // 'YYYY-MM-DD'
-  endDate: string;    // 'YYYY-MM-DD'
+  startDate: string;
+  endDate: string;
   days: number;
   reason: string;
-  deductPay: boolean; // true = หักเงินเดือน
+  deductPay:  boolean;
+  deductDays: number;
   status: LeaveStatus;
   rejReason: string;
   createdAt: string;
@@ -34,7 +35,8 @@ function normalize(d: any): LeaveRow {
     endDate:      dk(d.endDate),
     days:         d.days ?? 0,
     reason:       d.reason ?? '',
-    deductPay:    d.deductPay !== false, // default true (เก่าๆ ที่ไม่มี field นี้ให้ถือว่าหัก)
+    deductPay:    d.deductPay !== false,
+    deductDays:   d.deductDays ?? 0,
     status:       d.status ?? 'pending',
     rejReason:    d.rejReason ?? '',
     createdAt:    d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt ?? ''),
@@ -72,9 +74,9 @@ export async function getApprovedLeaveSummary(period: string): Promise<Record<st
     const daysInMonth = Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
     if (daysInMonth <= 0) continue;
     const cur = map[d.employeeId] ?? { paidDays: 0, unpaidDays: 0 };
-    // ใช้ deductPay ต่อ request (admin ตั้งได้ตอนสร้าง)
-    if (!d.deductPay) cur.paidDays += daysInMonth;
-    else cur.unpaidDays += daysInMonth;
+    const unpaid = d.deductDays > 0 ? Math.min(d.deductDays, daysInMonth) : (d.deductPay ? daysInMonth : 0);
+    cur.unpaidDays += unpaid;
+    cur.paidDays   += daysInMonth - unpaid;
     map[d.employeeId] = cur;
   }
   return map;
