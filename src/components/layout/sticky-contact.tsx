@@ -25,22 +25,13 @@ export function StickyContact({
 
   const contacts = [
     {
-      key: 'phone2',
-      href: `tel:${phoneSale.replace(/[-\s]/g, '')}`,
-      bg: 'bg-slate-900',
-      icon: <PhoneIcon className="text-yellow-400" />,
-      label: phoneSaleLabel || 'ฝ่ายขาย',
-      value: phoneSale,
-      delay: 'delay-[0ms]',
-    },
-    {
       key: 'phone1',
       href: `tel:${phoneMain.replace(/[-\s]/g, '')}`,
       bg: 'bg-slate-900',
       icon: <PhoneIcon className="text-yellow-400" />,
       label: phoneMainLabel || 'โทร',
       value: phoneMain,
-      delay: 'delay-[60ms]',
+      delay: 'delay-[0ms]',
     },
     {
       key: 'line',
@@ -49,7 +40,7 @@ export function StickyContact({
       icon: <LineIcon />,
       label: 'LINE',
       value: lineLabel || lineId,
-      delay: 'delay-[120ms]',
+      delay: 'delay-[60ms]',
       external: true,
     },
   ];
