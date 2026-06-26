@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { HeroSection } from "@/components/home/hero-section";
-import { FeaturesBar } from "@/components/home/features-bar";
+
 import { PopularTires } from "@/components/home/popular-tires";
 import { Testimonials } from "@/components/home/testimonials";
 import { Disc, Settings, Wrench, Droplet, Battery, ClipboardList, Check, ShieldCheck, RefreshCw, AlertCircle, Wind, CheckCircle2 } from "lucide-react";
@@ -26,9 +26,7 @@ export default async function Home() {
     <>
       <HeroSection />
       
-      <div className="hidden md:block">
-        <FeaturesBar />
-      </div>
+
       <PopularTires />
       
       {/* Promotions Banner Section */}
