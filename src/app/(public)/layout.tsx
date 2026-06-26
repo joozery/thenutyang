@@ -1,7 +1,6 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { MobileBottomBar } from "@/components/layout/mobile-bottom-bar";
-import { StickyContactServer } from "@/components/layout/sticky-contact-server";
 
 export default function PublicLayout({
   children,
@@ -14,7 +13,6 @@ export default function PublicLayout({
       <main className="flex-1 flex flex-col">{children}</main>
       <Footer />
       <MobileBottomBar />
-      <StickyContactServer />
     </div>
   );
 }
