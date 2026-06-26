@@ -23,25 +23,41 @@ export type ShiftInput = {
   note?: string;
 };
 
+// helper: build a safe $set update (preserves createdAt on existing docs)
+function buildShiftOp(
+  filter: Record<string, unknown>,
+  fields: { employeeId: unknown; employeeName: string; date: Date; shiftStart: string; shiftEnd: string; note: string },
+) {
+  return {
+    updateOne: {
+      filter,
+      update: {
+        $set: {
+          employeeId:   fields.employeeId,
+          employeeName: fields.employeeName,
+          date:         fields.date,
+          shiftStart:   fields.shiftStart,
+          shiftEnd:     fields.shiftEnd,
+          note:         fields.note,
+        },
+        $setOnInsert: { createdAt: new Date() },
+      },
+      upsert: true,
+    },
+  };
+}
+
 export async function createShifts(
   inputs: ShiftInput[],
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await connectDB();
-    const ops = inputs.map(i => ({
-      updateOne: {
-        filter: { employeeId: i.employeeId, date: dayUTC(i.date) },
-        update: {
-          employeeId:   i.employeeId,
-          employeeName: i.employeeName,
-          date:         dayUTC(i.date),
-          shiftStart:   i.shiftStart,
-          shiftEnd:     i.shiftEnd,
-          note:         i.note ?? '',
-        },
-        upsert: true,
-      },
-    }));
+    const ops = inputs.map(i =>
+      buildShiftOp(
+        { employeeId: i.employeeId, date: dayUTC(i.date) },
+        { employeeId: i.employeeId, employeeName: i.employeeName, date: dayUTC(i.date), shiftStart: i.shiftStart, shiftEnd: i.shiftEnd, note: i.note ?? '' },
+      ),
+    );
     if (ops.length) await Shift.bulkWrite(ops);
     revalidatePath('/admin/shifts');
     return { ok: true };
@@ -62,7 +78,7 @@ export async function deleteShift(id: string): Promise<{ ok: boolean; error?: st
   }
 }
 
-// Copy shifts from one date to another
+// Copy shifts from one date to another date
 export async function copyShiftsFromDate(
   fromDate: string,
   toDate: string,
@@ -72,19 +88,18 @@ export async function copyShiftsFromDate(
     const fromDay  = dayUTC(fromDate);
     const fromNext = new Date(fromDay); fromNext.setUTCDate(fromNext.getUTCDate() + 1);
     const source   = await Shift.find({ date: { $gte: fromDay, $lt: fromNext } }).lean() as {
-      employeeId: string; employeeName: string; shiftStart: string; shiftEnd: string; note: string;
+      employeeId: unknown; employeeName: string; shiftStart: string; shiftEnd: string; note: string;
     }[];
 
     if (!source.length) return { ok: true, copied: 0 };
 
     const toDay = dayUTC(toDate);
-    const ops   = source.map(s => ({
-      updateOne: {
-        filter: { employeeId: s.employeeId, date: toDay },
-        update: { employeeId: s.employeeId, employeeName: s.employeeName, date: toDay, shiftStart: s.shiftStart, shiftEnd: s.shiftEnd, note: s.note },
-        upsert: true,
-      },
-    }));
+    const ops   = source.map(s =>
+      buildShiftOp(
+        { employeeId: s.employeeId, date: toDay },
+        { employeeId: s.employeeId, employeeName: s.employeeName, date: toDay, shiftStart: s.shiftStart, shiftEnd: s.shiftEnd, note: s.note },
+      ),
+    );
     await Shift.bulkWrite(ops);
     revalidatePath('/admin/shifts');
     return { ok: true, copied: ops.length };
@@ -99,26 +114,24 @@ export async function copyWeek(
 ): Promise<{ ok: boolean; copied: number; error?: string }> {
   try {
     await connectDB();
-    const thisStart   = dayUTC(thisWeekStart);
-    const lastStart   = addDays(thisStart, -7);
-    const lastEnd     = addDays(lastStart, 7);
+    const thisStart = dayUTC(thisWeekStart);
+    const lastStart = addDays(thisStart, -7);
+    const lastEnd   = addDays(lastStart, 7); // = thisStart (exclusive)
 
     const source = await Shift.find({ date: { $gte: lastStart, $lt: lastEnd } }).lean() as {
-      employeeId: string; employeeName: string; date: Date; shiftStart: string; shiftEnd: string; note: string;
+      employeeId: unknown; employeeName: string; date: Date; shiftStart: string; shiftEnd: string; note: string;
     }[];
 
     if (!source.length) return { ok: true, copied: 0 };
 
     const ops = source.map(s => {
+      // map same weekday offset forward by 7 days
       const offset  = Math.round((s.date.getTime() - lastStart.getTime()) / 86400000);
       const newDate = addDays(thisStart, offset);
-      return {
-        updateOne: {
-          filter: { employeeId: s.employeeId, date: newDate },
-          update: { employeeId: s.employeeId, employeeName: s.employeeName, date: newDate, shiftStart: s.shiftStart, shiftEnd: s.shiftEnd, note: s.note },
-          upsert: true,
-        },
-      };
+      return buildShiftOp(
+        { employeeId: s.employeeId, date: newDate },
+        { employeeId: s.employeeId, employeeName: s.employeeName, date: newDate, shiftStart: s.shiftStart, shiftEnd: s.shiftEnd, note: s.note },
+      );
     });
     await Shift.bulkWrite(ops);
     revalidatePath('/admin/shifts');
@@ -128,39 +141,37 @@ export async function copyWeek(
   }
 }
 
-// Copy an entire month from last month to this month
+// Copy an entire month from previous month to this month
 export async function copyMonth(
-  yearMonth: string, // YYYY-MM of THIS month
+  yearMonth: string, // YYYY-MM of THIS month to copy INTO
 ): Promise<{ ok: boolean; copied: number; error?: string }> {
   try {
     await connectDB();
     const [y, m] = yearMonth.split('-').map(Number);
     const thisStart = new Date(Date.UTC(y, m - 1, 1));
-    const thisEnd   = new Date(Date.UTC(y, m, 1));
+    const thisEnd   = new Date(Date.UTC(y, m, 1));          // exclusive
     const lastStart = new Date(Date.UTC(y, m - 2, 1));
-    const lastEnd   = new Date(Date.UTC(y, m - 1, 1));
+    const lastEnd   = new Date(Date.UTC(y, m - 1, 1));      // exclusive
 
     const source = await Shift.find({ date: { $gte: lastStart, $lt: lastEnd } }).lean() as {
-      employeeId: string; employeeName: string; date: Date; shiftStart: string; shiftEnd: string; note: string;
+      employeeId: unknown; employeeName: string; date: Date; shiftStart: string; shiftEnd: string; note: string;
     }[];
 
     if (!source.length) return { ok: true, copied: 0 };
 
-    const ops = source.map(s => {
-      const dayOfMonth = s.date.getUTCDate();
-      const newDate    = new Date(Date.UTC(y, m - 1, dayOfMonth));
-      if (newDate >= thisEnd) return null; // ข้ามวันที่ไม่มีในเดือนนี้
-      return {
-        updateOne: {
-          filter: { employeeId: s.employeeId, date: newDate },
-          update: { employeeId: s.employeeId, employeeName: s.employeeName, date: newDate, shiftStart: s.shiftStart, shiftEnd: s.shiftEnd, note: s.note },
-          upsert: true,
-        },
-      };
-    }).filter(Boolean);
+    const ops = source
+      .map(s => {
+        const dayOfMonth = s.date.getUTCDate();
+        const newDate    = new Date(Date.UTC(y, m - 1, dayOfMonth));
+        if (newDate >= thisEnd) return null; // skip days that don't exist this month (e.g. Feb 29→30)
+        return buildShiftOp(
+          { employeeId: s.employeeId, date: newDate },
+          { employeeId: s.employeeId, employeeName: s.employeeName, date: newDate, shiftStart: s.shiftStart, shiftEnd: s.shiftEnd, note: s.note },
+        );
+      })
+      .filter((op): op is NonNullable<typeof op> => op !== null);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (ops.length) await Shift.bulkWrite(ops as any[]);
+    if (ops.length) await Shift.bulkWrite(ops);
     revalidatePath('/admin/shifts');
     return { ok: true, copied: ops.length };
   } catch (err) {

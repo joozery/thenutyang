@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { Attendance } from '@/models/Attendance';
 import { calcLateMinutes, calcOTMinutes, minutesToBilledHours } from '@/lib/attendance-calc';
+import type { AttendanceStatus } from '@/models/Attendance';
 
 function dayUTC(s: string): Date {
   return new Date(`${s}T00:00:00.000Z`);
@@ -18,6 +19,9 @@ function calcHoursWorked(checkIn: string, checkOut: string): number {
   if (!checkIn || !checkOut) return 0;
   return Math.max(0, timeToMinutes(checkOut) - timeToMinutes(checkIn)) / 60;
 }
+
+// statuses ที่ไม่นับเข้างาน — ไม่ควรมี late/OT
+const NON_WORK_STATUSES: AttendanceStatus[] = ['absent', 'leave', 'holiday'];
 
 // ── สร้างรายการลงเวลาจากเวรงานของวัน (idempotent) ─────────────────────────────
 export async function generateFromShifts(
@@ -60,26 +64,40 @@ export async function generateFromShifts(
 // ── แก้ไขข้อมูลลงเวลา (admin) ─────────────────────────────────────────────────
 export async function updateAttendance(
   id: string,
-  data: { checkIn?: string; checkOut?: string; status?: string; note?: string },
+  data: { checkIn?: string; checkOut?: string; status?: AttendanceStatus; note?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await connectDB();
     const rec = await Attendance.findById(id);
     if (!rec) return { ok: false, error: 'ไม่พบรายการ' };
 
-    const checkIn  = data.checkIn  !== undefined ? data.checkIn  : rec.checkIn;
-    const checkOut = data.checkOut !== undefined ? data.checkOut : rec.checkOut;
+    const checkIn  = data.checkIn  !== undefined ? data.checkIn  : (rec.checkIn  as string);
+    const checkOut = data.checkOut !== undefined ? data.checkOut : (rec.checkOut as string);
 
-    const lateMin     = (checkIn && rec.shiftStart)  ? calcLateMinutes(rec.shiftStart, checkIn) : rec.lateMinutes;
-    const otMin       = (checkOut && rec.shiftEnd)   ? calcOTMinutes(rec.shiftEnd, checkOut)   : rec.otMinutes;
-    const hoursWorked = calcHoursWorked(checkIn, checkOut);
-    const autoStatus  = data.status ??
-      ((['absent', 'leave', 'holiday'] as string[]).includes(data.status ?? '') ? data.status :
-        minutesToBilledHours(lateMin) > 0 ? 'late' : checkIn ? 'present' : 'pending');
+    // ถ้าเป็น absent/leave/holiday → ไม่นับสาย/OT
+    const isNonWork = data.status !== undefined && NON_WORK_STATUSES.includes(data.status);
+
+    const lateMin     = isNonWork ? 0 : (checkIn && rec.shiftStart)  ? calcLateMinutes(rec.shiftStart as string, checkIn) : (rec.lateMinutes as number);
+    const otMin       = isNonWork ? 0 : (checkOut && rec.shiftEnd)   ? calcOTMinutes(rec.shiftEnd as string, checkOut)   : (rec.otMinutes as number);
+    const hoursWorked = isNonWork ? 0 : calcHoursWorked(checkIn, checkOut);
+
+    // status priority: explicit > auto-calculate
+    const finalStatus: AttendanceStatus = data.status !== undefined
+      ? data.status
+      : minutesToBilledHours(lateMin) > 0 ? 'late'
+        : checkIn ? 'present'
+          : 'pending';
 
     await Attendance.findByIdAndUpdate(id, {
-      checkIn, checkOut, lateMinutes: lateMin, otMinutes: otMin,
-      hoursWorked, status: autoStatus, note: data.note ?? rec.note,
+      $set: {
+        checkIn,
+        checkOut,
+        lateMinutes:  lateMin,
+        otMinutes:    otMin,
+        hoursWorked,
+        status:       finalStatus,
+        note:         data.note !== undefined ? data.note : (rec.note as string),
+      },
     });
     revalidatePath('/admin/attendance');
     revalidatePath('/admin/payroll');
@@ -101,8 +119,8 @@ export async function saveAttendance(data: {
     const hoursWorked = calcHoursWorked(data.checkIn ?? '', data.checkOut ?? '');
     await Attendance.findOneAndUpdate(
       { employeeId: data.employeeId, date: day },
-      { ...data, date: day, hoursWorked },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { $set: { ...data, date: day, hoursWorked }, $setOnInsert: { createdAt: new Date() } },
+      { upsert: true, new: true },
     );
     revalidatePath('/admin/attendance');
     return { ok: true };
@@ -122,7 +140,10 @@ export async function saveAttendanceBulk(rows: {
     const ops = rows.map(r => ({
       updateOne: {
         filter: { employeeId: r.employeeId, date: dayUTC(r.date) },
-        update: { ...r, date: dayUTC(r.date), hoursWorked: calcHoursWorked(r.checkIn ?? '', r.checkOut ?? '') },
+        update: {
+          $set: { ...r, date: dayUTC(r.date), hoursWorked: calcHoursWorked(r.checkIn ?? '', r.checkOut ?? '') },
+          $setOnInsert: { createdAt: new Date() },
+        },
         upsert: true,
       },
     }));
