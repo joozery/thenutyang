@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Search, Loader2, ChevronDown } from 'lucide-react';
+import { Search, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { BRANDS, CATEGORIES } from '@/lib/tires';
 
 interface TireSizeData {
@@ -52,7 +52,7 @@ function CustomSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(!open)}
-        className={`w-full border flex items-center justify-between rounded-lg md:rounded-xl p-3 text-sm font-medium transition-all ${
+        className={`w-full h-11 md:h-12 border flex items-center justify-between rounded-lg md:rounded-xl px-2.5 md:px-3 text-[12px] md:text-sm font-medium transition-all ${
           disabled 
             ? 'bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed' 
             : open
@@ -60,10 +60,10 @@ function CustomSelect({
               : 'border-slate-200 bg-white text-slate-700 hover:border-green-400'
         }`}
       >
-        <span className={!value ? 'text-slate-400' : ''}>
+        <span className={`truncate text-left mr-1 ${!value ? 'text-slate-400' : ''}`}>
           {value ? `${value}${suffix}` : placeholder}
         </span>
-        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && !disabled && (
@@ -156,25 +156,47 @@ export function HeroSearch() {
   const categoryOptions = Object.entries(CATEGORIES).map(([k, v]) => ({ value: k, label: v }));
 
   return (
-    <div className="w-full bg-white rounded-xl md:rounded-2xl shadow-xl p-5 md:p-6 border border-slate-100 relative z-20">
-      <h3 className="text-lg md:text-xl font-bold text-slate-800 mb-4">ค้นหายางที่ใช่สำหรับคุณ</h3>
+    <div className="w-full bg-white rounded-xl md:rounded-2xl shadow-2xl relative z-20 flex flex-col">
+      <div className="p-5 md:p-6">
+        {/* Title (Desktop Only) */}
+        <h3 className="hidden md:block text-xl font-bold text-slate-800 mb-4">ค้นหายางสำหรับคุณ</h3>
 
-      {/* Tab Switcher */}
-      <div className="flex bg-slate-100 p-1 rounded-lg md:rounded-xl mb-5 gap-1">
+        {/* Tab Switcher - Desktop */}
+        <div className="hidden md:flex bg-slate-100 p-1 rounded-xl mb-5 gap-1">
+          {(['size', 'brand'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                tab === t
+                  ? 'bg-green-700 text-white shadow-md'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {t === 'size' ? (
+                <><span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${tab === 'size' ? 'border-white' : 'border-slate-400'}`}>{tab === 'size' && <span className="w-1.5 h-1.5 rounded-full bg-white block"/>}</span>ตามขนาด</>
+              ) : (
+                <><span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${tab === 'brand' ? 'border-white' : 'border-slate-400'}`}>{tab === 'brand' && <span className="w-1.5 h-1.5 rounded-full bg-white block"/>}</span>ตามรถยนต์</>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Switcher - Mobile */}
+        <div className="flex md:hidden border-b-2 border-slate-100 mb-6 relative">
         {(['size', 'brand'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2 rounded-md md:rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-              tab === t
-                ? 'bg-white text-green-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
+            className={`flex-1 pb-3 text-[15px] md:text-base font-bold transition-all relative ${
+              tab === t ? 'text-[#0a5c15]' : 'text-slate-400'
             }`}
           >
-            {t === 'size' ? (
-              <><span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${tab === 'size' ? 'border-green-600' : 'border-slate-400'}`}>{tab === 'size' && <span className="w-1.5 h-1.5 rounded-full bg-green-600 block"/>}</span>ขนาดยาง</>
-            ) : (
-              <><span className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${tab === 'brand' ? 'border-green-600' : 'border-slate-400'}`}>{tab === 'brand' && <span className="w-1.5 h-1.5 rounded-full bg-green-600 block"/>}</span>ยี่ห้อ/ประเภท</>
+            {t === 'size' ? 'ตามขนาด' : 'ตามรถยนต์'}
+            {tab === t && (
+              <div className="absolute -bottom-[2px] left-0 w-full h-[3px] bg-[#0a5c15]">
+                <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-[#0a5c15] rotate-45" />
+              </div>
             )}
           </button>
         ))}
@@ -182,54 +204,64 @@ export function HeroSearch() {
 
       {/* Tab: Size */}
       {tab === 'size' && (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1.5">ความกว้างของยาง (Width)</label>
-            {loadingSizes ? (
-              <div className="flex items-center gap-2 text-slate-400 text-sm h-11"><Loader2 size={14} className="animate-spin"/>กำลังโหลด...</div>
-            ) : (
-              <CustomSelect 
-                value={width} 
-                onChange={onWidthChange} 
-                options={availWidths} 
-                placeholder="-- เลือกความกว้าง --" 
-              />
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-5">
+          <div className="grid grid-cols-3 gap-2 md:gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">ซีรีส์ (Series)</label>
+              <label className="block text-[11px] md:text-xs font-bold text-slate-800 mb-1.5">
+                <span className="md:hidden">ความกว้าง *</span>
+                <span className="hidden md:inline">ความกว้าง (Width)</span>
+              </label>
+              {loadingSizes ? (
+                <div className="flex items-center gap-1 text-slate-400 text-xs h-10"><Loader2 size={12} className="animate-spin"/>โหลด...</div>
+              ) : (
+                <CustomSelect 
+                  value={width} 
+                  onChange={onWidthChange} 
+                  options={availWidths} 
+                  placeholder="ความกว้าง" 
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[11px] md:text-xs font-bold text-slate-800 mb-1.5">
+                <span className="md:hidden">ซีรีส์ยาง *</span>
+                <span className="hidden md:inline">ซีรีส์ (Series)</span>
+              </label>
               <CustomSelect 
                 value={series} 
                 onChange={onSeriesChange} 
                 options={availSeries} 
-                placeholder="-- เลือกซีรีส์ --" 
+                placeholder="ซีรีส์" 
                 disabled={!width}
               />
             </div>
+            
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1.5">ขอบล้อ (Rim)</label>
+              <label className="block text-[11px] md:text-xs font-bold text-slate-800 mb-1.5">
+                <span className="md:hidden">ขอบล้อ *</span>
+                <span className="hidden md:inline">ขอบล้อ (Rim)</span>
+              </label>
               <CustomSelect 
                 value={rim} 
                 onChange={setRim} 
                 options={availRims} 
-                placeholder="-- เลือกขอบล้อ --" 
+                placeholder="ขอบล้อ" 
                 disabled={!series}
-                suffix='"'
               />
             </div>
           </div>
 
           {width && series && rim && (
             <p className="text-xs text-slate-400 text-center">
-              ขนาดที่เลือก: <span className="font-bold text-green-600">{width}/{series}R{rim}</span>
+              ขนาดที่เลือก: <span className="font-bold text-[#0a5c15]">{width}/{series}R{rim}</span>
             </p>
           )}
 
           <Button onClick={handleSizeSearch}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-6 rounded-lg md:rounded-xl text-base font-bold mt-2 shadow-md shadow-green-200 transition-transform hover:scale-[1.01]">
-            <Search className="w-5 h-5 mr-2" /> ค้นหายาง
+            className="w-full bg-[#0a5c15] hover:bg-green-800 text-white py-6 md:py-7 rounded-xl text-lg font-bold mt-2 shadow-lg transition-transform hover:scale-[1.01] flex items-center justify-center">
+            <span className="md:hidden flex items-center">ค้นหา <ChevronRight className="w-5 h-5 ml-1" /></span>
+            <span className="hidden md:flex items-center"><Search className="w-5 h-5 mr-2" /> ค้นหายาง</span>
           </Button>
         </div>
       )}
@@ -257,13 +289,19 @@ export function HeroSearch() {
           </div>
 
           <Button onClick={handleBrandCategorySearch} disabled={!searchBrand && !searchCategory}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white py-6 rounded-lg md:rounded-xl text-base font-bold mt-2 shadow-md shadow-green-200 transition-transform hover:scale-[1.01]">
-            <Search className="w-5 h-5 mr-2" /> ค้นหายาง
+            className="w-full bg-[#0a5c15] hover:bg-green-800 disabled:opacity-50 text-white py-6 md:py-7 rounded-xl text-lg font-bold mt-2 shadow-lg transition-transform hover:scale-[1.01] flex items-center justify-center">
+            <span className="md:hidden flex items-center">ค้นหา <ChevronRight className="w-5 h-5 ml-1" /></span>
+            <span className="hidden md:flex items-center"><Search className="w-5 h-5 mr-2" /> ค้นหายาง</span>
           </Button>
 
-          <p className="text-[11px] text-slate-400 text-center">*ค้นหายางจากยี่ห้อหรือประเภทที่ต้องการ</p>
+          <p className="text-[11px] text-slate-400 text-center mt-4">*ค้นหายางจากยี่ห้อหรือประเภทที่ต้องการ</p>
         </div>
       )}
+      </div>
+      {/* Mobile Guide Image Fused into the Card */}
+      <div className="md:hidden mt-2 overflow-hidden rounded-b-xl">
+        <img src="/search.jpeg" alt="วิธีอ่านรหัสยาง" className="w-full h-auto object-cover" />
+      </div>
     </div>
   );
 }
