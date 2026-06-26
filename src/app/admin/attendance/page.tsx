@@ -1,5 +1,6 @@
 import { getAttendanceByDate } from '@/lib/attendance';
-import { getAllEmployees } from '@/lib/employees';
+import { getShiftsByDate } from '@/lib/shifts';
+import { generateFromShifts } from '@/app/actions/attendance';
 import { AttendanceClient } from '@/components/admin/attendance-client';
 
 export const dynamic = 'force-dynamic';
@@ -10,13 +11,17 @@ export default async function AttendancePage({
 }: {
   searchParams: Promise<{ date?: string }>;
 }) {
-  const sp = await searchParams;
-  // "วันนี้" ตามเวลาไทย (กัน server UTC โชว์เป็นเมื่อวาน) — en-CA ให้รูปแบบ YYYY-MM-DD
-  const todayKey = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
-  const date = sp?.date || todayKey;
+  const sp    = await searchParams;
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
+  const date  = sp?.date || today;
 
-  const [employees, records] = await Promise.all([getAllEmployees(), getAttendanceByDate(date)]);
-  const active = employees.filter(e => e.status !== 'resigned');
+  // auto-generate attendance records from shifts for this date (idempotent)
+  const shifts = await getShiftsByDate(date);
+  if (shifts.length > 0) {
+    await generateFromShifts(date);
+  }
 
-  return <AttendanceClient date={date} employees={active} records={records} />;
+  const records = await getAttendanceByDate(date);
+
+  return <AttendanceClient date={date} records={records} hasShifts={shifts.length > 0} />;
 }

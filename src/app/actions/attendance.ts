@@ -2,71 +2,127 @@
 
 import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
-import { Attendance, AttendanceStatus } from '@/models/Attendance';
+import { Attendance } from '@/models/Attendance';
+import { calcLateMinutes, calcOTMinutes, minutesToBilledHours } from '@/lib/attendance-calc';
 
-type AttendanceInput = {
-  employeeId: string;
-  date: string;        // 'YYYY-MM-DD'
-  status: AttendanceStatus;
-  checkIn?: string;
-  checkOut?: string;
-  lateMinutes?: number;
-  otMinutes?: number;
-  note?: string;
-};
-
-type Result = { ok: true } | { ok: false; error: string };
-
-// parse 'YYYY-MM-DD' เป็นเที่ยงคืน UTC เสมอ — ให้ round-trip คงที่ทุก timezone
 function dayUTC(s: string): Date {
   return new Date(`${s}T00:00:00.000Z`);
 }
 
-// บันทึก/แก้ไขการลงเวลา 1 คน/1 วัน (upsert ตาม employeeId+date)
-export async function saveAttendance(data: AttendanceInput): Promise<Result> {
+function timeToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+function calcHoursWorked(checkIn: string, checkOut: string): number {
+  if (!checkIn || !checkOut) return 0;
+  return Math.max(0, timeToMinutes(checkOut) - timeToMinutes(checkIn)) / 60;
+}
+
+// ── สร้างรายการลงเวลาจากเวรงานของวัน (idempotent) ─────────────────────────────
+export async function generateFromShifts(
+  date: string,
+): Promise<{ ok: boolean; created: number; error?: string }> {
   try {
     await connectDB();
-    const day = dayUTC(data.date);
-    await Attendance.findOneAndUpdate(
-      { employeeId: data.employeeId, date: day },
-      {
-        employeeId:  data.employeeId,
-        date:        day,
-        status:      data.status,
-        checkIn:     data.checkIn ?? '',
-        checkOut:    data.checkOut ?? '',
-        lateMinutes: data.lateMinutes ?? 0,
-        otMinutes:   data.otMinutes ?? 0,
-        note:        data.note ?? '',
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    const { Shift } = await import('@/models/Shift');
+    const day  = dayUTC(date);
+    const next = new Date(day); next.setUTCDate(next.getUTCDate() + 1);
+
+    const shifts = await Shift.find({ date: { $gte: day, $lt: next } }).lean() as {
+      _id: string; employeeId: string; employeeName: string; shiftStart: string; shiftEnd: string;
+    }[];
+
+    let created = 0;
+    for (const s of shifts) {
+      const existing = await Attendance.findOne({ employeeId: s.employeeId, date: day });
+      if (!existing) {
+        await Attendance.create({
+          employeeId:   s.employeeId,
+          employeeName: s.employeeName,
+          shiftId:      s._id,
+          date:         day,
+          shiftStart:   s.shiftStart,
+          shiftEnd:     s.shiftEnd,
+          status:       'pending',
+        });
+        created++;
+      }
+    }
     revalidatePath('/admin/attendance');
-    revalidatePath('/admin/payroll');
-    return { ok: true };
-  } catch (e) {
-    console.error('[saveAttendance]', e);
-    return { ok: false, error: String(e) };
+    return { ok: true, created };
+  } catch (err) {
+    console.error('[generateFromShifts]', err);
+    return { ok: false, created: 0, error: String(err) };
   }
 }
 
-// บันทึกทั้งวันทีเดียว (หลายคน) — ใช้ปุ่ม "บันทึกทั้งหมด"
-export async function saveAttendanceBulk(rows: AttendanceInput[]): Promise<Result> {
+// ── แก้ไขข้อมูลลงเวลา (admin) ─────────────────────────────────────────────────
+export async function updateAttendance(
+  id: string,
+  data: { checkIn?: string; checkOut?: string; status?: string; note?: string },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await connectDB();
+    const rec = await Attendance.findById(id);
+    if (!rec) return { ok: false, error: 'ไม่พบรายการ' };
+
+    const checkIn  = data.checkIn  !== undefined ? data.checkIn  : rec.checkIn;
+    const checkOut = data.checkOut !== undefined ? data.checkOut : rec.checkOut;
+
+    const lateMin     = (checkIn && rec.shiftStart)  ? calcLateMinutes(rec.shiftStart, checkIn) : rec.lateMinutes;
+    const otMin       = (checkOut && rec.shiftEnd)   ? calcOTMinutes(rec.shiftEnd, checkOut)   : rec.otMinutes;
+    const hoursWorked = calcHoursWorked(checkIn, checkOut);
+    const autoStatus  = data.status ??
+      ((['absent', 'leave', 'holiday'] as string[]).includes(data.status ?? '') ? data.status :
+        minutesToBilledHours(lateMin) > 0 ? 'late' : checkIn ? 'present' : 'pending');
+
+    await Attendance.findByIdAndUpdate(id, {
+      checkIn, checkOut, lateMinutes: lateMin, otMinutes: otMin,
+      hoursWorked, status: autoStatus, note: data.note ?? rec.note,
+    });
+    revalidatePath('/admin/attendance');
+    revalidatePath('/admin/payroll');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+// ── บันทึก/แก้ไขการลงเวลา 1 คน/วัน (compat) ───────────────────────────────────
+export async function saveAttendance(data: {
+  employeeId: string; date: string; status: string;
+  checkIn?: string; checkOut?: string;
+  lateMinutes?: number; otMinutes?: number; note?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await connectDB();
+    const day         = dayUTC(data.date);
+    const hoursWorked = calcHoursWorked(data.checkIn ?? '', data.checkOut ?? '');
+    await Attendance.findOneAndUpdate(
+      { employeeId: data.employeeId, date: day },
+      { ...data, date: day, hoursWorked },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    revalidatePath('/admin/attendance');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+}
+
+// ── bulk save (compat) ────────────────────────────────────────────────────────
+export async function saveAttendanceBulk(rows: {
+  employeeId: string; date: string; status: string;
+  checkIn?: string; checkOut?: string;
+  lateMinutes?: number; otMinutes?: number; note?: string;
+}[]): Promise<{ ok: boolean; error?: string }> {
   try {
     await connectDB();
     const ops = rows.map(r => ({
       updateOne: {
         filter: { employeeId: r.employeeId, date: dayUTC(r.date) },
-        update: {
-          employeeId:  r.employeeId,
-          date:        dayUTC(r.date),
-          status:      r.status,
-          checkIn:     r.checkIn ?? '',
-          checkOut:    r.checkOut ?? '',
-          lateMinutes: r.lateMinutes ?? 0,
-          otMinutes:   r.otMinutes ?? 0,
-          note:        r.note ?? '',
-        },
+        update: { ...r, date: dayUTC(r.date), hoursWorked: calcHoursWorked(r.checkIn ?? '', r.checkOut ?? '') },
         upsert: true,
       },
     }));
@@ -74,21 +130,18 @@ export async function saveAttendanceBulk(rows: AttendanceInput[]): Promise<Resul
     revalidatePath('/admin/attendance');
     revalidatePath('/admin/payroll');
     return { ok: true };
-  } catch (e) {
-    console.error('[saveAttendanceBulk]', e);
-    return { ok: false, error: String(e) };
+  } catch (err) {
+    return { ok: false, error: String(err) };
   }
 }
 
-export async function deleteAttendance(id: string): Promise<Result> {
+export async function deleteAttendance(id: string): Promise<{ ok: boolean; error?: string }> {
   try {
     await connectDB();
     await Attendance.findByIdAndDelete(id);
     revalidatePath('/admin/attendance');
-    revalidatePath('/admin/payroll');
     return { ok: true };
-  } catch (e) {
-    console.error('[deleteAttendance]', e);
-    return { ok: false, error: String(e) };
+  } catch (err) {
+    return { ok: false, error: String(err) };
   }
 }
