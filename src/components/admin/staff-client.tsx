@@ -53,8 +53,6 @@ const EMPTY_FORM = {
   baseSalary: 15000,
   dailyRate: 0,
   hourlyRate: 0,
-  shiftStart: '09:00',
-  shiftEnd: '18:00',
   lateDeductRate: 300,
   otRate: 200,
   startDate: '',
@@ -125,7 +123,6 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
       role: translatedRole, employeeType: e.employeeType ?? 'fulltime',
       status: e.status, baseSalary: e.baseSalary,
       dailyRate: e.dailyRate ?? 0, hourlyRate: e.hourlyRate ?? 0,
-      shiftStart: e.shiftStart ?? '09:00', shiftEnd: e.shiftEnd ?? '18:00',
       lateDeductRate: e.lateDeductRate ?? 300, otRate: e.otRate ?? 200,
       startDate: e.startDate ? e.startDate.slice(0, 10) : '',
       bankAccount: e.bankAccount, bankName: e.bankName, address: e.address, note: e.note,
@@ -346,13 +343,6 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
                         </button>
                       ))}
                     </div>
-                  </Field>
-                  <div />
-                  <Field label="เวลาเข้าเวร">
-                    <input type="time" value={form.shiftStart} onChange={e => setForm(f => ({ ...f, shiftStart: e.target.value }))} className={inputCls} />
-                  </Field>
-                  <Field label="เวลาออกเวร">
-                    <input type="time" value={form.shiftEnd} onChange={e => setForm(f => ({ ...f, shiftEnd: e.target.value }))} className={inputCls} />
                   </Field>
                   <Field label="ค่าปรับสาย (บาท/ชม.)">
                     <div className="relative">

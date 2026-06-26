@@ -1,5 +1,6 @@
 import { getAttendanceByDate } from '@/lib/attendance';
 import { getShiftsByDate } from '@/lib/shifts';
+import { getAllEmployees } from '@/lib/employees';
 import { generateFromShifts } from '@/app/actions/attendance';
 import { AttendanceClient } from '@/components/admin/attendance-client';
 
@@ -15,13 +16,23 @@ export default async function AttendancePage({
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
   const date  = sp?.date || today;
 
-  // auto-generate attendance records from shifts for this date (idempotent)
-  const shifts = await getShiftsByDate(date);
+  const [shifts, employees] = await Promise.all([
+    getShiftsByDate(date),
+    getAllEmployees(),
+  ]);
+
   if (shifts.length > 0) {
     await generateFromShifts(date);
   }
 
   const records = await getAttendanceByDate(date);
 
-  return <AttendanceClient date={date} records={records} hasShifts={shifts.length > 0} />;
+  return (
+    <AttendanceClient
+      date={date}
+      records={records}
+      hasShifts={shifts.length > 0}
+      employees={employees}
+    />
+  );
 }

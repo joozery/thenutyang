@@ -8,8 +8,10 @@ import {
   CalendarDays, AlertTriangle, Edit2, LogIn, LogOut, UserX, XCircle,
 } from 'lucide-react';
 import type { AttendanceRow } from '@/lib/attendance';
+import { minutesToBilledHours } from '@/lib/attendance-calc';
 import { updateAttendance } from '@/app/actions/attendance';
 import type { AttendanceStatus } from '@/models/Attendance';
+import type { EmployeeRow } from '@/lib/employees';
 
 function fmtDateTH(iso: string) {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -27,6 +29,20 @@ function fmtHrs(hrs: number) {
   if (!hrs) return '—';
   const h = Math.floor(hrs); const m = Math.round((hrs - h) * 60);
   return m ? `${h}ชม.${m}น.` : `${h}ชม.`;
+}
+function fmtBaht(n: number) {
+  if (!n) return '—';
+  return `฿${n.toLocaleString()}`;
+}
+
+function calcLateDeduct(lateMinutes: number, emp: EmployeeRow): number {
+  const hours = minutesToBilledHours(lateMinutes);
+  return hours * (emp.lateDeductRate ?? 300);
+}
+function calcOTPay(otMinutes: number, emp: EmployeeRow): number {
+  const hours = minutesToBilledHours(otMinutes);
+  if (emp.employeeType === 'parttime') return hours * (emp.hourlyRate ?? 0) * 1.5;
+  return hours * (emp.otRate ?? 200);
 }
 
 const STATUS_CFG: Record<AttendanceStatus, { label: string; color: string }> = {
@@ -138,8 +154,11 @@ function QuickStatusModal({ rec, onClose, onSaved }: {
   );
 }
 
-export function AttendanceClient({ date, records, hasShifts }: {
-  date: string; records: AttendanceRow[]; hasShifts: boolean;
+export function AttendanceClient({ date, records, hasShifts, employees }: {
+  date: string;
+  records: AttendanceRow[];
+  hasShifts: boolean;
+  employees: EmployeeRow[];
 }) {
   const router = useRouter();
   const [localRecs, setLocalRecs] = useState(records);
@@ -149,15 +168,14 @@ export function AttendanceClient({ date, records, hasShifts }: {
 
   useEffect(() => { setLocalRecs(records); }, [records]);
 
+  const empMap = new Map(employees.map(e => [e.id, e]));
   const navigate = (d: string) => router.push(`/admin/attendance?date=${d}`);
-
   const handleSaved = () => { setEditTarget(null); setQuickTarget(null); router.refresh(); };
 
   const handleCheckIn = (rec: AttendanceRow) => {
     const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
     startTransition(async () => { await updateAttendance(rec.id, { checkIn: now }); router.refresh(); });
   };
-
   const handleCheckOut = (rec: AttendanceRow) => {
     const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
     startTransition(async () => { await updateAttendance(rec.id, { checkOut: now }); router.refresh(); });
@@ -171,17 +189,29 @@ export function AttendanceClient({ date, records, hasShifts }: {
     leave:   localRecs.filter(r => r.status === 'leave').length,
   };
 
+  const totalLateDeduct = localRecs.reduce((s, r) => {
+    const emp = empMap.get(r.employeeId);
+    return s + (emp ? calcLateDeduct(r.lateMinutes, emp) : 0);
+  }, 0);
+  const totalOTPay = localRecs.reduce((s, r) => {
+    const emp = empMap.get(r.employeeId);
+    return s + (emp ? calcOTPay(r.otMinutes, emp) : 0);
+  }, 0);
+
   return (
     <>
-      <div className={`max-w-6xl mx-auto transition-opacity ${isPending ? 'opacity-60' : ''}`}>
+      <div className={`max-w-7xl mx-auto transition-opacity ${isPending ? 'opacity-60' : ''}`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900">ลงเวลา</h1>
             <p className="text-sm text-slate-500 mt-1">บันทึกการเข้า-ออกงานจากตารางเวร</p>
           </div>
-          <Link href="/admin/time-correction" className="text-sm font-semibold text-indigo-600 hover:underline">คำขอแก้ไขเวลา →</Link>
+          <Link href={`/admin/shifts?date=${date}`} className="text-sm font-semibold text-indigo-600 hover:underline">
+            จัดการตารางเวร →
+          </Link>
         </div>
 
+        {/* Date nav */}
         <div className="bg-white border border-slate-100 rounded-2xl p-4 mb-4">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate(prevDay(date))} className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50"><ChevronLeft size={18} /></button>
@@ -197,6 +227,7 @@ export function AttendanceClient({ date, records, hasShifts }: {
           </div>
         </div>
 
+        {/* Stats */}
         <div className="grid grid-cols-5 gap-3 mb-4">
           {[
             { label: 'มาแล้ว',   value: stats.present, c: 'text-emerald-600' },
@@ -212,6 +243,7 @@ export function AttendanceClient({ date, records, hasShifts }: {
           ))}
         </div>
 
+        {/* No shifts warning */}
         {!hasShifts && localRecs.length === 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 flex items-center gap-4 mb-4">
             <AlertTriangle size={24} className="text-amber-500 shrink-0" />
@@ -226,6 +258,7 @@ export function AttendanceClient({ date, records, hasShifts }: {
           </div>
         )}
 
+        {/* Table */}
         <div className="bg-white rounded-2xl border border-slate-100">
           {localRecs.length === 0 ? (
             <div className="text-center py-16 text-slate-400">
@@ -238,72 +271,118 @@ export function AttendanceClient({ date, records, hasShifts }: {
                 <thead>
                   <tr className="text-xs text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
                     <th className="text-left px-5 py-3">พนักงาน</th>
-                    <th className="text-center px-4 py-3">เวร</th>
-                    <th className="text-center px-4 py-3">เข้างาน</th>
-                    <th className="text-center px-4 py-3">ออกงาน</th>
-                    <th className="text-center px-4 py-3">ชม.ทำ</th>
-                    <th className="text-center px-4 py-3">สาย</th>
-                    <th className="text-center px-4 py-3">OT</th>
-                    <th className="text-center px-4 py-3">สถานะ</th>
-                    <th className="px-4 py-3" />
+                    <th className="text-center px-3 py-3">เวร</th>
+                    <th className="text-center px-3 py-3">เข้างาน</th>
+                    <th className="text-center px-3 py-3">ออกงาน</th>
+                    <th className="text-center px-3 py-3">ชม.ทำงาน</th>
+                    <th className="text-center px-3 py-3">สาย</th>
+                    <th className="text-center px-3 py-3">หักสาย</th>
+                    <th className="text-center px-3 py-3">OT</th>
+                    <th className="text-center px-3 py-3">ค่า OT</th>
+                    <th className="text-center px-3 py-3">สถานะ</th>
+                    <th className="px-3 py-3" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {localRecs.map(rec => (
-                    <tr key={rec.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-5 py-3.5 font-semibold text-slate-800">{rec.employeeName}</td>
-                      <td className="px-4 py-3.5 text-center text-xs text-slate-500 font-mono">
-                        {rec.shiftStart && rec.shiftEnd ? `${rec.shiftStart}–${rec.shiftEnd}` : '—'}
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        {rec.checkIn ? (
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${rec.status === 'late' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{rec.checkIn}</span>
-                        ) : (
-                          <button onClick={() => handleCheckIn(rec)} disabled={['absent','leave','holiday'].includes(rec.status)}
-                            className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full hover:bg-emerald-100 hover:text-emerald-700 disabled:opacity-30 transition-colors">
-                            <LogIn size={11} /> ลงเข้า
-                          </button>
-                        )}
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        {rec.checkOut ? (
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${rec.otMinutes > 10 ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>{rec.checkOut}</span>
-                        ) : rec.checkIn ? (
-                          <button onClick={() => handleCheckOut(rec)}
-                            className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full hover:bg-orange-100 hover:text-orange-700 transition-colors">
-                            <LogOut size={11} /> ลงออก
-                          </button>
-                        ) : <span className="text-xs text-slate-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3.5 text-center text-slate-700 font-semibold text-xs">{fmtHrs(rec.hoursWorked)}</td>
-                      <td className="px-4 py-3.5 text-center">
-                        {rec.lateMinutes > 0 ? <span className="text-xs font-semibold text-amber-600">{rec.lateMinutes}น.</span> : <span className="text-xs text-slate-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        {rec.otMinutes > 0 ? <span className="text-xs font-semibold text-purple-600">{rec.otMinutes}น.</span> : <span className="text-xs text-slate-300">—</span>}
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_CFG[rec.status].color}`}>{STATUS_CFG[rec.status].label}</span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-1 justify-end">
-                          <button onClick={() => setQuickTarget(rec)} title="เปลี่ยนสถานะ" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"><XCircle size={14} /></button>
-                          <button onClick={() => setEditTarget(rec)} title="แก้ไขเวลา" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><Edit2 size={14} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {localRecs.map(rec => {
+                    const emp = empMap.get(rec.employeeId);
+                    const lateDeduct = emp ? calcLateDeduct(rec.lateMinutes, emp) : 0;
+                    const otPay      = emp ? calcOTPay(rec.otMinutes, emp)       : 0;
+                    return (
+                      <tr key={rec.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-5 py-3">
+                          <p className="font-semibold text-slate-800">{rec.employeeName}</p>
+                          {emp && (
+                            <p className="text-xs text-slate-400">
+                              {emp.employeeType === 'parttime' ? `฿${emp.hourlyRate}/ชม.` : `฿${emp.baseSalary?.toLocaleString()}/เดือน`}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-center text-xs text-slate-500 font-mono">
+                          {rec.shiftStart && rec.shiftEnd ? `${rec.shiftStart}–${rec.shiftEnd}` : '—'}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {rec.checkIn ? (
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${rec.status === 'late' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{rec.checkIn}</span>
+                          ) : (
+                            <button onClick={() => handleCheckIn(rec)} disabled={['absent','leave','holiday'].includes(rec.status)}
+                              className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full hover:bg-emerald-100 hover:text-emerald-700 disabled:opacity-30 transition-colors">
+                              <LogIn size={11} /> ลงเข้า
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          {rec.checkOut ? (
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${rec.otMinutes > 10 ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>{rec.checkOut}</span>
+                          ) : rec.checkIn ? (
+                            <button onClick={() => handleCheckOut(rec)}
+                              className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full hover:bg-orange-100 hover:text-orange-700 transition-colors">
+                              <LogOut size={11} /> ลงออก
+                            </button>
+                          ) : <span className="text-xs text-slate-300">—</span>}
+                        </td>
+                        <td className="px-3 py-3 text-center text-slate-700 font-semibold text-xs">{fmtHrs(rec.hoursWorked)}</td>
+                        {/* late minutes */}
+                        <td className="px-3 py-3 text-center">
+                          {rec.lateMinutes > 0
+                            ? <span className="text-xs font-semibold text-amber-600">{rec.lateMinutes}น. ({minutesToBilledHours(rec.lateMinutes)}ชม.)</span>
+                            : <span className="text-xs text-slate-300">—</span>}
+                        </td>
+                        {/* late deduction in baht */}
+                        <td className="px-3 py-3 text-center">
+                          {lateDeduct > 0
+                            ? <span className="text-xs font-bold text-red-600">-฿{lateDeduct.toLocaleString()}</span>
+                            : <span className="text-xs text-slate-300">—</span>}
+                        </td>
+                        {/* OT minutes */}
+                        <td className="px-3 py-3 text-center">
+                          {rec.otMinutes > 10
+                            ? <span className="text-xs font-semibold text-purple-600">{rec.otMinutes}น. ({minutesToBilledHours(rec.otMinutes)}ชม.)</span>
+                            : <span className="text-xs text-slate-300">—</span>}
+                        </td>
+                        {/* OT pay in baht */}
+                        <td className="px-3 py-3 text-center">
+                          {otPay > 0
+                            ? <span className="text-xs font-bold text-green-600">+฿{otPay.toLocaleString()}</span>
+                            : <span className="text-xs text-slate-300">—</span>}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_CFG[rec.status].color}`}>{STATUS_CFG[rec.status].label}</span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-1 justify-end">
+                            <button onClick={() => setQuickTarget(rec)} title="เปลี่ยนสถานะ" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"><XCircle size={14} /></button>
+                            <button onClick={() => setEditTarget(rec)} title="แก้ไขเวลา" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><Edit2 size={14} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
         </div>
 
+        {/* Summary footer */}
         {localRecs.length > 0 && (
-          <div className="mt-4 bg-white border border-slate-100 rounded-xl p-4 text-xs text-slate-500 flex flex-wrap gap-4">
-            <span>OT รวม: <strong className="text-purple-600">{localRecs.reduce((s, r) => s + r.otMinutes, 0)} นาที</strong></span>
-            <span>สายรวม: <strong className="text-amber-600">{localRecs.reduce((s, r) => s + r.lateMinutes, 0)} นาที</strong></span>
-            <span>ชม.รวม: <strong className="text-slate-700">{fmtHrs(localRecs.reduce((s, r) => s + r.hoursWorked, 0))}</strong></span>
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-white border border-slate-100 rounded-xl p-3 text-center">
+              <p className="text-lg font-black text-slate-800">{fmtHrs(localRecs.reduce((s, r) => s + r.hoursWorked, 0))}</p>
+              <p className="text-xs text-slate-400 mt-0.5">ชม.ทำงานรวม</p>
+            </div>
+            <div className="bg-white border border-slate-100 rounded-xl p-3 text-center">
+              <p className="text-lg font-black text-amber-600">{localRecs.reduce((s, r) => s + r.lateMinutes, 0)} น.</p>
+              <p className="text-xs text-slate-400 mt-0.5">สายรวม</p>
+            </div>
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-center">
+              <p className="text-lg font-black text-red-600">-{fmtBaht(totalLateDeduct)}</p>
+              <p className="text-xs text-red-400 mt-0.5">หักสายรวม</p>
+            </div>
+            <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-center">
+              <p className="text-lg font-black text-green-600">+{fmtBaht(totalOTPay)}</p>
+              <p className="text-xs text-green-400 mt-0.5">ค่า OT รวม</p>
+            </div>
           </div>
         )}
       </div>
