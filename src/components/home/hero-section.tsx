@@ -10,13 +10,6 @@ const FEATURES = [
   { icon: CreditCard,  label: 'ผ่อน 0%',          sub: 'สูงสุด 10 เดือน' },
 ];
 
-const BRANDS = [
-  { src: '/brand/michelin-7-logo-svgrepo-com.svg', alt: 'Michelin',    invert: true  },
-  { src: '/brand/bridgestone-26989.svg',            alt: 'Bridgestone', invert: true  },
-  { src: '/brand/goodyear-tire-1.svg',              alt: 'Goodyear',    invert: false },
-  { src: '/brand/dunlop-sport.svg',                 alt: 'Dunlop',      invert: false },
-  { src: '/brand/yokohama-logo.svg',                alt: 'Yokohama',    invert: false },
-];
 
 export function HeroSection() {
   return (
@@ -82,34 +75,6 @@ export function HeroSection() {
         <HeroSearch />
       </div>
 
-      {/* ─── Brand strip ─── */}
-      <div className="bg-white border-y border-slate-100 shadow-sm">
-        <div className="container mx-auto px-4 md:px-8 py-4 md:py-5">
-          <div className="flex items-center gap-4 md:gap-8">
-            <p className="hidden sm:block text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] whitespace-nowrap shrink-0">
-              แบรนด์ชั้นนำ
-            </p>
-            <div className="hidden sm:block w-px h-5 bg-slate-200 shrink-0" />
-            <div className="flex items-center justify-between flex-1 gap-4 md:gap-8 overflow-x-auto scrollbar-hide">
-              {BRANDS.map(b => (
-                <img
-                  key={b.alt}
-                  src={b.src}
-                  alt={b.alt}
-                  className="h-6 md:h-8 object-contain shrink-0 opacity-50 hover:opacity-90 transition-opacity duration-200"
-                  style={b.invert ? { filter: 'brightness(0)' } : undefined}
-                />
-              ))}
-            </div>
-            <a
-              href="/tires"
-              className="hidden md:block text-xs font-semibold text-green-600 hover:text-green-700 whitespace-nowrap shrink-0 transition-colors"
-            >
-              ดูทั้งหมด →
-            </a>
-          </div>
-        </div>
-      </div>
     </>
   );
 }
