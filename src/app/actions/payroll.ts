@@ -37,9 +37,11 @@ export async function generatePayroll(period: string): Promise<Result> {
 
       const att        = attMap[id]   ?? { daysPresent: 0, daysAbsent: 0, daysLeave: 0, otMinutes: 0, lateMinutes: 0, lateBilledHours: 0, otBilledHours: 0 };
       const lv         = leaveMap[id] ?? { paidDays: 0, unpaidDays: 0 };
-      const baseSalary = Number(emp.baseSalary ?? 0);
-      const bonus      = prev?.bonus       ?? 0;
-      const otherDeduct = prev?.otherDeduct ?? 0;
+      const baseSalary    = Number(emp.baseSalary ?? 0);
+      const lateDeductRate = Number(emp.lateDeductRate ?? 300);
+      const otRate         = Number(emp.otRate ?? 200);
+      const bonus          = prev?.bonus       ?? 0;
+      const otherDeduct    = prev?.otherDeduct ?? 0;
 
       const c = computePay({
         baseSalary,
@@ -50,6 +52,8 @@ export async function generatePayroll(period: string): Promise<Result> {
         bonus,
         otherDeduct,
         hasSocialSecurity: emp.hasSocialSecurity !== false,
+        lateDeductRate,
+        otRate,
       });
 
       return {
@@ -62,6 +66,8 @@ export async function generatePayroll(period: string): Promise<Result> {
               role:            ROLE_LABELS[emp.role] ?? emp.role ?? '',
               period,
               baseSalary,
+              lateDeductRate,
+              otRate,
               daysWorked:      att.daysPresent,
               daysAbsent:      att.daysAbsent,
               daysLeavePaid:   lv.paidDays,
@@ -98,12 +104,13 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
     if (!p) return { ok: false, error: 'ไม่พบรายการ' };
     if (p.status === 'paid') return { ok: false, error: 'รายการนี้จ่ายแล้ว แก้ไขไม่ได้' };
 
-    // re-query attendance + employee เพื่อได้ข้อมูลที่ถูกต้อง
     const [attMap, emp] = await Promise.all([
       getAttendanceSummary(p.period),
-      Employee.findById(p.employeeId).lean() as Promise<{ hasSocialSecurity?: boolean } | null>,
+      Employee.findById(p.employeeId).lean() as Promise<{ hasSocialSecurity?: boolean; lateDeductRate?: number; otRate?: number } | null>,
     ]);
-    const att = attMap[String(p.employeeId)] ?? { lateBilledHours: 0, otBilledHours: 0 };
+    const att            = attMap[String(p.employeeId)] ?? { lateBilledHours: 0, otBilledHours: 0 };
+    const lateDeductRate = Number(emp?.lateDeductRate ?? p.lateDeductRate ?? 300);
+    const otRate         = Number(emp?.otRate ?? p.otRate ?? 200);
 
     const c = computePay({
       baseSalary:        p.baseSalary ?? 0,
@@ -114,9 +121,11 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
       bonus,
       otherDeduct,
       hasSocialSecurity: emp?.hasSocialSecurity !== false,
+      lateDeductRate,
+      otRate,
     });
 
-    await Payslip.findByIdAndUpdate(id, { $set: { bonus, otherDeduct, ...c } });
+    await Payslip.findByIdAndUpdate(id, { $set: { bonus, otherDeduct, lateDeductRate, otRate, ...c } });
     revalidatePath('/admin/payroll');
     return { ok: true };
   } catch (e) {

@@ -17,6 +17,10 @@ const payslipSchema = new Schema({
   otMinutes:    { type: Number, default: 0 },
   lateMinutes:  { type: Number, default: 0 },
 
+  // อัตรารายบุคคลที่ใช้คิดในรอบนี้
+  lateDeductRate: { type: Number, default: 300 },
+  otRate:         { type: Number, default: 200 },
+
   // เงินเพิ่ม
   otPay:        { type: Number, default: 0 },
   bonus:        { type: Number, default: 0 },

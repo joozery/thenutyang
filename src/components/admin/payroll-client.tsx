@@ -334,9 +334,9 @@ export function PayrollClient({
               {/* Breakdown */}
               <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-xs border border-slate-100">
                 <Row label="ฐานเงินเดือน" value={fmt(editTarget.baseSalary)} />
-                <Row label={`OT ${editTarget.otPay / 200} ชม. × ฿200`} value={`+${fmt(editTarget.otPay)}`} color="text-blue-600" />
+                <Row label={`OT ${editTarget.otRate > 0 ? (editTarget.otPay / editTarget.otRate) : 0} ชม. × ฿${editTarget.otRate}`} value={`+${fmt(editTarget.otPay)}`} color="text-blue-600" />
                 <Row label={`ขาดงาน ${editTarget.daysAbsent} วัน`} value={`-${fmt(editTarget.absentDeduct)}`} color="text-red-500" />
-                <Row label={`สาย ${editTarget.lateDeduct / 300} ชม. × ฿300`} value={`-${fmt(editTarget.lateDeduct)}`} color="text-red-500" />
+                <Row label={`สาย ${editTarget.lateDeductRate > 0 ? (editTarget.lateDeduct / editTarget.lateDeductRate) : 0} ชม. × ฿${editTarget.lateDeductRate}`} value={`-${fmt(editTarget.lateDeduct)}`} color="text-red-500" />
                 <Row label={`ลาไม่รับเงิน ${editTarget.daysLeaveUnpaid} วัน`} value={`-${fmt(editTarget.leaveDeduct)}`} color="text-red-500" />
                 <Row label="ประกันสังคม (5%)" value={`-${fmt(editTarget.sss)}`} color="text-red-500" />
               </div>

@@ -2,9 +2,9 @@ import connectDB from './mongodb';
 import { Payslip } from '@/models/Payslip';
 
 export const PAYROLL = {
-  LATE_RATE:    300,   // บาท/ชม. หักสาย (fixed)
-  OT_RATE:      200,   // บาท/ชม. OT (fixed)
-  WORK_DAYS:    30,    // ฐานคิดต่อวัน
+  LATE_RATE:    300,   // default อัตราหักสาย (ถ้าไม่ได้ตั้งรายบุคคล)
+  OT_RATE:      200,   // default อัตรา OT
+  WORK_DAYS:    30,
   SSS_RATE:     0.05,
   SSS_BASE_CAP: 15000,
   SSS_MAX:      750,
@@ -13,12 +13,14 @@ export const PAYROLL = {
 export type PayComputeInput = {
   baseSalary:        number;
   daysAbsent:        number;
-  lateBilledHours:   number; // sum ชม.บิลสาย (grace period ถูก apply ต่อวันแล้ว)
-  otBilledHours:     number; // sum ชม.บิล OT
+  lateBilledHours:   number;
+  otBilledHours:     number;
   unpaidLeaveDays:   number;
   bonus:             number;
   otherDeduct:       number;
-  hasSocialSecurity: boolean; // false = ไม่หักประกันสังคม
+  hasSocialSecurity: boolean;
+  lateDeductRate:    number; // อัตรารายบุคคล (บาท/ชม.)
+  otRate:            number; // อัตรารายบุคคล (บาท/ชม.)
 };
 
 export type PayComputed = {
@@ -30,13 +32,12 @@ export type PayComputed = {
   netPay:       number;
 };
 
-// สูตร: ค่าแรง - (สายชม. × 300) + (OTชม. × 200) + โบนัส - ขาด/ลา - สปส. - หักอื่น
-// lateBilledHours / otBilledHours ต้องถูก sum ต่อวัน (grace period per day) ก่อนส่งมา
+// สูตร: ค่าแรง - (สายชม. × lateDeductRate) + (OTชม. × otRate) + โบนัส - ขาด/ลา - สปส. - หักอื่น
 export function computePay(i: PayComputeInput): PayComputed {
   const dailyRate = i.baseSalary / PAYROLL.WORK_DAYS;
 
-  const lateDeduct = i.lateBilledHours * PAYROLL.LATE_RATE;
-  const otPay      = i.otBilledHours   * PAYROLL.OT_RATE;
+  const lateDeduct = i.lateBilledHours * i.lateDeductRate;
+  const otPay      = i.otBilledHours   * i.otRate;
 
   const absentDeduct = Math.round(dailyRate * i.daysAbsent);
   const leaveDeduct  = Math.round(dailyRate * i.unpaidLeaveDays);
@@ -65,6 +66,8 @@ export type PayslipRow = {
   daysLeaveUnpaid: number;
   otMinutes:       number;
   lateMinutes:     number;
+  lateDeductRate:  number;
+  otRate:          number;
   otPay:           number;
   bonus:           number;
   absentDeduct:    number;
@@ -92,6 +95,8 @@ function normalize(d: any): PayslipRow {
     daysLeaveUnpaid: d.daysLeaveUnpaid ?? 0,
     otMinutes:       d.otMinutes ?? 0,
     lateMinutes:     d.lateMinutes ?? 0,
+    lateDeductRate:  d.lateDeductRate ?? 300,
+    otRate:          d.otRate ?? 200,
     otPay:           d.otPay ?? 0,
     bonus:           d.bonus ?? 0,
     absentDeduct:    d.absentDeduct ?? 0,
