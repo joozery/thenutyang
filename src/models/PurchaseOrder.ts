@@ -40,6 +40,8 @@ const purchaseOrderSchema = new Schema({
   vat:           { type: Number, default: 0 },
   grandTotal:    { type: Number, default: 0 },
 
+  vatType:       { type: String, enum: ['included', 'excluded', 'none'], default: 'none' },
+
   status: {
     type: String,
     enum: ['draft', 'pending', 'received', 'cancelled'],

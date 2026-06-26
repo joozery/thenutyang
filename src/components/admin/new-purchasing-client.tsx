@@ -171,6 +171,8 @@ export function NewPurchasingClient({
   // header
   const [poType, setPOType] = useState<POType>(initialData?.poType ?? 'standard');
   const [dueDate, setDueDate] = useState(initialData?.dueDate ? initialData.dueDate.slice(0, 10) : '');
+  const [vatType, setVatType] = useState<'included' | 'excluded' | 'none'>(initialData?.vatType ?? 'none');
+  const [isReceived, setIsReceived] = useState(false);
 
   // supplier
   const [supplierId, setSupplierId] = useState(initialData?.supplierSnapshot ? (suppliers.find(s => s.name === initialData.supplierSnapshot.name)?.id ?? '') : '');
@@ -253,13 +255,30 @@ export function NewPurchasingClient({
       const discAmt = gross * (l.discount / 100);
       return { gross, discAmt, net: gross - discAmt };
     });
-    const subtotal     = lineCalcs.reduce((s, l) => s + l.gross, 0);
-    const totalDisc    = lineCalcs.reduce((s, l) => s + l.discAmt, 0);
-    const afterDisc    = subtotal - totalDisc;
-    const vat          = afterDisc * 0.07;
-    const grand        = afterDisc + vat;
+    const totalGross = lineCalcs.reduce((s, l) => s + l.gross, 0);
+    const totalDisc  = lineCalcs.reduce((s, l) => s + l.discAmt, 0);
+    const afterDisc  = totalGross - totalDisc;
+
+    let subtotal = 0;
+    let vat = 0;
+    let grand = 0;
+
+    if (vatType === 'none') {
+      subtotal = afterDisc;
+      vat = 0;
+      grand = afterDisc;
+    } else if (vatType === 'included') {
+      grand = afterDisc;
+      subtotal = grand / 1.07;
+      vat = grand - subtotal;
+    } else if (vatType === 'excluded') {
+      subtotal = afterDisc;
+      vat = subtotal * 0.07;
+      grand = subtotal + vat;
+    }
+
     return { lineCalcs, subtotal, totalDisc, afterDisc, vat, grand };
-  }, [lines]);
+  }, [lines, vatType]);
 
   const isValid = !!supplierId && !!dueDate && lines.every(l => l.productName.trim() && l.qty > 0 && l.unitPrice > 0);
 
@@ -297,6 +316,8 @@ export function NewPurchasingClient({
       totalDiscount: calc.totalDisc,
       vat:           calc.vat,
       grandTotal:    calc.grand,
+      vatType,
+      isReceived,
     };
   }
 
@@ -455,6 +476,29 @@ export function NewPurchasingClient({
                   ))}
                 </div>
               </div>
+              {!isEditMode && (
+                <div>
+                  <Label>การรับสินค้า</Label>
+                  <div className="flex gap-2 mt-0.5">
+                    <button
+                      onClick={() => setIsReceived(false)}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                        !isReceived ? 'bg-amber-500 text-white border-amber-500' : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      รอรับสินค้า
+                    </button>
+                    <button
+                      onClick={() => setIsReceived(true)}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                        isReceived ? 'bg-green-600 text-white border-green-600' : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      รับสินค้าเข้าสต็อก
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </Section>
@@ -617,7 +661,7 @@ export function NewPurchasingClient({
         <div className="lg:col-span-3 space-y-5">
           <Section title="เงื่อนไขการสั่งซื้อ" icon={<MapPin size={14} />}>
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <Label>เงื่อนไขชำระเงิน</Label>
                   <div className="relative">
@@ -628,14 +672,25 @@ export function NewPurchasingClient({
                   </div>
                 </div>
                 <div>
-                  <Label>วันที่ชำระ (ตัวเลือก)</Label>
-                  <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={inputCls} />
-                </div>
-                <div>
                   <Label>วิธีการชำระเงิน</Label>
                   <div className="relative">
                     <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className={inputCls + ' appearance-none pr-9'}>
                       {Object.entries(PAYMENT_METHODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+                <div>
+                  <Label>วันที่ชำระ (ตัวเลือก)</Label>
+                  <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <Label>การคิดภาษี (VAT)</Label>
+                  <div className="relative">
+                    <select value={vatType} onChange={e => setVatType(e.target.value as any)} className={inputCls + ' appearance-none pr-9'}>
+                      <option value="none">ไม่มี VAT</option>
+                      <option value="included">แวทในตัว</option>
+                      <option value="excluded">แวทนอก</option>
                     </select>
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                   </div>

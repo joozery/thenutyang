@@ -34,10 +34,11 @@ export type PORow = {
   orderDate:    string;
   dueDate:      string;
   items:        POItem[];
-  subtotal:     number;
+    subtotal:     number;
   totalDiscount:number;
   vat:          number;
   grandTotal:   number;
+  vatType:      'included' | 'excluded' | 'none';
   paymentTerm:  string;
   paymentMethod:string;
   notes:        string;
@@ -90,6 +91,7 @@ function normalizeDoc(d: any): PORow {
     totalDiscount: d.totalDiscount ?? 0,
     vat:           d.vat           ?? 0,
     grandTotal:    d.grandTotal    ?? 0,
+    vatType:       d.vatType       ?? 'none',
     paymentTerm:   d.paymentTerm   ?? '30',
     paymentMethod: d.paymentMethod ?? 'transfer',
     notes:         d.notes         ?? '',

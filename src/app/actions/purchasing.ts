@@ -29,13 +29,15 @@ export type POFormPayload = {
   totalDiscount:   number;
   vat:             number;
   grandTotal:      number;
+  vatType:         'included' | 'excluded' | 'none';
+  isReceived?:     boolean;
 };
 
 async function savePO(data: POFormPayload, status: 'pending' | 'draft') {
   await connectDB();
   const poNumber = await generatePONumber();
 
-  await PurchaseOrder.create({
+  const po = await PurchaseOrder.create({
     poNumber,
     poType: data.poType,
     supplierId: data.supplierId || undefined,
@@ -53,18 +55,22 @@ async function savePO(data: POFormPayload, status: 'pending' | 'draft') {
     totalDiscount:   data.totalDiscount,
     vat:             data.vat,
     grandTotal:      data.grandTotal,
+    vatType:         data.vatType,
     status,
   });
 
   revalidatePath('/admin/purchasing');
-  return poNumber;
+  return { poNumber, id: String(po._id) };
 }
 
 export async function createPO(
   data: POFormPayload,
 ): Promise<{ success: boolean; poNumber?: string; error?: string }> {
   try {
-    const poNumber = await savePO(data, 'pending');
+    const { poNumber, id } = await savePO(data, 'pending');
+    if (data.isReceived) {
+      await receivePO(id);
+    }
     return { success: true, poNumber };
   } catch (err) {
     console.error('[createPO]', err);
@@ -76,7 +82,7 @@ export async function saveDraftPO(
   data: POFormPayload,
 ): Promise<{ success: boolean; poNumber?: string; error?: string }> {
   try {
-    const poNumber = await savePO(data, 'draft');
+    const { poNumber } = await savePO(data, 'draft');
     return { success: true, poNumber };
   } catch (err) {
     console.error('[saveDraftPO]', err);
@@ -108,6 +114,7 @@ export async function updatePO(
       totalDiscount:   data.totalDiscount,
       vat:             data.vat,
       grandTotal:      data.grandTotal,
+      vatType:         data.vatType,
       status,
     });
     revalidatePath('/admin/purchasing');
