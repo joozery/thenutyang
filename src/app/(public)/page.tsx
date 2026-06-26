@@ -29,66 +29,53 @@ export default async function Home() {
 
       <PopularTires />
       
-      {/* Promotions Banner Section */}
-      <section className="container mx-auto px-4 md:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Banner */}
-          {main?.published !== false && (
-            <div
-              className="lg:col-span-2 rounded-2xl overflow-hidden relative bg-cover bg-center bg-no-repeat text-white p-8 md:p-12 min-h-[300px] flex flex-col justify-center"
-              style={{ backgroundImage: `url('${main?.bgImage || '/yang/green.png'}')` }}
-            >
-              <div className="relative z-10">
-                <h2 className="text-4xl md:text-5xl font-black mb-2">{main?.title ?? 'ซื้อ 3 แถม 1'}</h2>
-                <p className="text-lg md:text-xl font-medium mb-6 text-green-100">{main?.subtitle}</p>
-                {main?.buttonText && (
-                  <Link href={main.buttonLink || '/'} className="bg-white text-green-600 font-bold py-2.5 px-8 rounded-full w-fit hover:bg-green-50 transition-colors shadow-sm flex items-center gap-2">
-                    {main.buttonText} <span className="text-[10px]">&gt;</span>
-                  </Link>
-                )}
+      {/* Promotions Banner Section — single card */}
+      {main?.published !== false && (
+        <section className="container mx-auto px-4 md:px-8 py-8">
+          <div
+            className="relative w-full min-h-[260px] md:min-h-[340px] rounded-3xl overflow-hidden bg-cover bg-center flex items-center"
+            style={{ backgroundImage: `url('${main?.bgImage || '/yang/green.png'}')` }}
+          >
+            {/* Dark gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" />
+
+            {/* Accent glow */}
+            <div className="absolute -left-20 top-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-green-500/20 blur-3xl pointer-events-none" />
+
+            {/* Content */}
+            <div className="relative z-10 px-8 md:px-14 py-10 max-w-xl">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 bg-green-500/20 border border-green-400/40 text-green-300 px-3.5 py-1 rounded-full text-xs font-bold tracking-wider mb-4">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                โปรโมชั่นพิเศษ
               </div>
+
+              <h2 className="text-3xl md:text-5xl font-black text-white leading-tight mb-3 drop-shadow-lg">
+                {main?.title ?? 'ซื้อ 3 แถม 1'}
+              </h2>
+
+              {main?.subtitle && (
+                <p className="text-green-100/90 text-sm md:text-base font-medium mb-6 leading-relaxed">
+                  {main.subtitle}
+                </p>
+              )}
+
+              {main?.buttonText && (
+                <Link
+                  href={main.buttonLink || '/'}
+                  className="inline-flex items-center gap-2.5 bg-green-500 hover:bg-green-400 text-white font-bold px-7 py-3 rounded-full transition-all duration-200 shadow-lg shadow-green-500/30 hover:shadow-green-400/40 hover:-translate-y-0.5 text-sm md:text-base"
+                >
+                  {main.buttonText}
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </Link>
+              )}
             </div>
-          )}
-
-          <div className="flex flex-col gap-6">
-            {/* Promo 1 */}
-            {promo1?.published !== false && (
-              <div
-                className="rounded-2xl bg-cover bg-right text-white p-6 md:p-8 flex-1 relative overflow-hidden flex flex-col justify-center min-h-[160px]"
-                style={{ backgroundImage: `url('${promo1?.bgImage || '/cover/31.png'}')` }}
-              >
-                <div className="relative z-10">
-                  <h3 className="text-2xl md:text-3xl font-black mb-1 md:mb-2 text-green-400 drop-shadow-md">{promo1?.title ?? 'ผ่อน 0%'}</h3>
-                  <p className="font-medium text-sm md:text-base drop-shadow-md">{promo1?.subtitle}</p>
-                  {promo1?.buttonText && (
-                    <Link href={promo1.buttonLink || '/'} className="mt-3 md:mt-4 text-xs md:text-sm font-bold bg-white text-green-600 px-4 py-1.5 md:py-2 rounded-full hover:bg-slate-100 transition inline-block w-max">
-                      {promo1.buttonText}
-                    </Link>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Promo 2 */}
-            {promo2?.published !== false && (
-              <div
-                className="rounded-2xl bg-cover bg-right text-white p-6 md:p-8 flex-1 flex flex-col justify-center relative min-h-[160px]"
-                style={{ backgroundImage: `url('${promo2?.bgImage || '/ser.png'}')` }}
-              >
-                <div className="relative z-10">
-                  <h3 className="text-2xl md:text-3xl font-black mb-1 md:mb-2 text-white drop-shadow-md">{promo2?.title ?? 'บริการตั้งศูนย์'}</h3>
-                  <p className="font-medium text-sm md:text-base drop-shadow-md">{promo2?.subtitle}</p>
-                  {promo2?.buttonText && (
-                    <Link href={promo2.buttonLink || '/'} className="mt-3 md:mt-4 text-xs md:text-sm font-bold bg-green-600 text-white px-4 py-1.5 md:py-2 rounded-full hover:bg-green-700 transition inline-block w-max">
-                      {promo2.buttonText}
-                    </Link>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+
 
       <AfterSales services={services} />
 
