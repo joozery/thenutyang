@@ -1,7 +1,7 @@
 import { getAttendanceByDate } from '@/lib/attendance';
 import { getShiftsByDate } from '@/lib/shifts';
 import { getAllEmployees } from '@/lib/employees';
-import { generateFromShifts } from '@/app/actions/attendance';
+import { generateAttendanceFromShifts } from '@/lib/generate-attendance';
 import { AttendanceClient } from '@/components/admin/attendance-client';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ export default async function AttendancePage({
   ]);
 
   if (shifts.length > 0) {
-    await generateFromShifts(date);
+    await generateAttendanceFromShifts(date);
   }
 
   const records = await getAttendanceByDate(date);

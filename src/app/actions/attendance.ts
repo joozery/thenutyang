@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { Attendance } from '@/models/Attendance';
 import { calcLateMinutes, calcOTMinutes, minutesToBilledHours } from '@/lib/attendance-calc';
+import { generateAttendanceFromShifts } from '@/lib/generate-attendance';
 import type { AttendanceStatus } from '@/models/Attendance';
 
 function dayUTC(s: string): Date {
@@ -24,35 +25,12 @@ function calcHoursWorked(checkIn: string, checkOut: string): number {
 const NON_WORK_STATUSES: AttendanceStatus[] = ['absent', 'leave', 'holiday'];
 
 // ── สร้างรายการลงเวลาจากเวรงานของวัน (idempotent) ─────────────────────────────
+// Server Action wrapper — for client-component use; page.tsx calls lib directly
 export async function generateFromShifts(
   date: string,
 ): Promise<{ ok: boolean; created: number; error?: string }> {
   try {
-    await connectDB();
-    const { Shift } = await import('@/models/Shift');
-    const day  = dayUTC(date);
-    const next = new Date(day); next.setUTCDate(next.getUTCDate() + 1);
-
-    const shifts = await Shift.find({ date: { $gte: day, $lt: next } }).lean() as {
-      _id: string; employeeId: string; employeeName: string; shiftStart: string; shiftEnd: string;
-    }[];
-
-    let created = 0;
-    for (const s of shifts) {
-      const existing = await Attendance.findOne({ employeeId: s.employeeId, date: day });
-      if (!existing) {
-        await Attendance.create({
-          employeeId:   s.employeeId,
-          employeeName: s.employeeName,
-          shiftId:      s._id,
-          date:         day,
-          shiftStart:   s.shiftStart,
-          shiftEnd:     s.shiftEnd,
-          status:       'pending',
-        });
-        created++;
-      }
-    }
+    const { created } = await generateAttendanceFromShifts(date);
     revalidatePath('/admin/attendance');
     return { ok: true, created };
   } catch (err) {
