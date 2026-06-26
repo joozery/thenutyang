@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { generatePayroll, updatePayslip, markPaid, markAllPaid } from '@/app/actions/payroll';
 import type { PayslipRow } from '@/lib/payroll';
+import { minutesToBilledHours } from '@/lib/attendance-calc';
 
 const fmt = (n: number) => `฿${Math.round(n).toLocaleString('th-TH')}`;
 
@@ -334,9 +335,9 @@ export function PayrollClient({
               {/* Breakdown */}
               <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-xs border border-slate-100">
                 <Row label="ฐานเงินเดือน" value={fmt(editTarget.baseSalary)} />
-                <Row label={`OT (${(editTarget.otMinutes / 60).toFixed(1)} ชม.)`} value={`+${fmt(editTarget.otPay)}`} color="text-blue-600" />
+                <Row label={`OT ${minutesToBilledHours(editTarget.otMinutes)} ชม. × ฿200`} value={`+${fmt(editTarget.otPay)}`} color="text-blue-600" />
                 <Row label={`ขาดงาน ${editTarget.daysAbsent} วัน`} value={`-${fmt(editTarget.absentDeduct)}`} color="text-red-500" />
-                <Row label={`มาสาย ${editTarget.lateMinutes} นาที`} value={`-${fmt(editTarget.lateDeduct)}`} color="text-red-500" />
+                <Row label={`สาย ${minutesToBilledHours(editTarget.lateMinutes)} ชม. × ฿300`} value={`-${fmt(editTarget.lateDeduct)}`} color="text-red-500" />
                 <Row label={`ลาไม่รับเงิน ${editTarget.daysLeaveUnpaid} วัน`} value={`-${fmt(editTarget.leaveDeduct)}`} color="text-red-500" />
                 <Row label="ประกันสังคม (5%)" value={`-${fmt(editTarget.sss)}`} color="text-red-500" />
               </div>

@@ -2,26 +2,23 @@ import connectDB from './mongodb';
 import { Payslip } from '@/models/Payslip';
 import { minutesToBilledHours } from './attendance-calc';
 
-// ── ค่าคงที่การคำนวณ (อิงมาตรฐานไทย) ──────────────────────────────
 export const PAYROLL = {
-  WORK_DAYS:    30,    // ฐานคิดต่อวัน = เงินเดือน / 30
-  SSS_RATE:     0.05,  // ประกันสังคม 5%
-  SSS_BASE_CAP: 15000, // ฐานคิด สปส. สูงสุด
-  SSS_MAX:      750,   // หักสูงสุด 750
+  LATE_RATE:    300,   // บาท/ชม. หักสาย (fixed)
+  OT_RATE:      200,   // บาท/ชม. OT (fixed)
+  WORK_DAYS:    30,    // ฐานคิดต่อวัน
+  SSS_RATE:     0.05,
+  SSS_BASE_CAP: 15000,
+  SSS_MAX:      750,
 };
 
 export type PayComputeInput = {
-  baseSalary:    number;
-  employeeType:  'fulltime' | 'parttime';
-  hourlyRate:    number;    // พาร์ทไทม์: ใช้คิด OT ×1.5
-  lateDeductRate: number;  // บาท/ชม. หักสาย (ตั้งไว้ใน Employee)
-  otRate:        number;   // บาท/ชม. OT ประจำ (ตั้งไว้ใน Employee)
-  daysAbsent:    number;
-  lateMinutes:   number;   // raw นาที — grace period ≤10 น. คิดใน computePay
-  otMinutes:     number;
+  baseSalary:      number;
+  daysAbsent:      number;
+  lateMinutes:     number; // raw นาที — grace period ≤10 น. คิดใน computePay
+  otMinutes:       number;
   unpaidLeaveDays: number;
-  bonus:         number;
-  otherDeduct:   number;
+  bonus:           number;
+  otherDeduct:     number;
 };
 
 export type PayComputed = {
@@ -33,19 +30,16 @@ export type PayComputed = {
   netPay:       number;
 };
 
-// คำนวณเงินเดือนสุทธิ — ใช้ grace period เดียวกันกับหน้าลงเวลา
+// สูตร: ค่าแรง - (สายชม. × 300) + (OTชม. × 200) + โบนัส - ขาด/ลา - สปส. - หักอื่น
 export function computePay(i: PayComputeInput): PayComputed {
   const dailyRate = i.baseSalary / PAYROLL.WORK_DAYS;
 
-  // สาย: ≤10 นาที = 0, >10 นาที = ceil ทุก 60 นาที × lateDeductRate
+  // grace period ≤10 นาที = 0, >10 นาที = ceil ทุก 60 นาที
   const lateBilledHours = minutesToBilledHours(i.lateMinutes);
-  const lateDeduct      = Math.round(lateBilledHours * i.lateDeductRate);
+  const lateDeduct      = lateBilledHours * PAYROLL.LATE_RATE;
 
-  // OT: ≤10 นาที = 0, >10 นาที = ceil ทุก 60 นาที × otRate (ประจำ) หรือ hourlyRate×1.5 (พาร์ทไทม์)
   const otBilledHours = minutesToBilledHours(i.otMinutes);
-  const otPay = i.employeeType === 'parttime'
-    ? Math.round(otBilledHours * i.hourlyRate * 1.5)
-    : Math.round(otBilledHours * i.otRate);
+  const otPay         = otBilledHours * PAYROLL.OT_RATE;
 
   const absentDeduct = Math.round(dailyRate * i.daysAbsent);
   const leaveDeduct  = Math.round(dailyRate * i.unpaidLeaveDays);

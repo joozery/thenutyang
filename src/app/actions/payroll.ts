@@ -15,16 +15,6 @@ const ROLE_LABELS: Record<string, string> = {
   admin_role: 'ธุรการ / บัญชี', manager: 'ผู้จัดการ',
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function empRates(emp: any) {
-  return {
-    employeeType:   (emp.employeeType as 'fulltime' | 'parttime') ?? 'fulltime',
-    hourlyRate:     Number(emp.hourlyRate ?? 0),
-    lateDeductRate: Number(emp.lateDeductRate ?? 300),
-    otRate:         Number(emp.otRate ?? 200),
-  };
-}
-
 // สร้าง/คำนวณรอบเงินเดือนใหม่จากการลงเวลา + การลา
 export async function generatePayroll(period: string): Promise<Result> {
   try {
@@ -43,17 +33,16 @@ export async function generatePayroll(period: string): Promise<Result> {
     const ops = employees.map((emp: any) => {
       const id   = String(emp._id);
       const prev = existMap.get(id);
-      if (prev?.status === 'paid') return null; // ไม่แตะรายการที่จ่ายแล้ว
+      if (prev?.status === 'paid') return null;
 
       const att        = attMap[id]   ?? { daysPresent: 0, daysAbsent: 0, daysLeave: 0, otMinutes: 0, lateMinutes: 0 };
       const lv         = leaveMap[id] ?? { paidDays: 0, unpaidDays: 0 };
       const baseSalary = Number(emp.baseSalary ?? 0);
-      const bonus      = prev?.bonus      ?? 0;
+      const bonus      = prev?.bonus       ?? 0;
       const otherDeduct = prev?.otherDeduct ?? 0;
 
       const c = computePay({
         baseSalary,
-        ...empRates(emp),
         daysAbsent:      att.daysAbsent,
         lateMinutes:     att.lateMinutes,
         otMinutes:       att.otMinutes,
@@ -108,13 +97,8 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
     if (!p) return { ok: false, error: 'ไม่พบรายการ' };
     if (p.status === 'paid') return { ok: false, error: 'รายการนี้จ่ายแล้ว แก้ไขไม่ได้' };
 
-    // ดึง employee rates เพื่อคำนวณถูกต้อง
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const emp = await Employee.findById(p.employeeId).lean() as any;
-
     const c = computePay({
       baseSalary:      p.baseSalary ?? 0,
-      ...(emp ? empRates(emp) : { employeeType: 'fulltime' as const, hourlyRate: 0, lateDeductRate: 300, otRate: 200 }),
       daysAbsent:      p.daysAbsent ?? 0,
       lateMinutes:     p.lateMinutes ?? 0,
       otMinutes:       p.otMinutes ?? 0,
@@ -139,7 +123,6 @@ export async function markPaid(id: string): Promise<Result> {
     revalidatePath('/admin/payroll');
     return { ok: true };
   } catch (e) {
-    console.error('[markPaid]', e);
     return { ok: false, error: String(e) };
   }
 }
@@ -151,7 +134,6 @@ export async function markAllPaid(period: string): Promise<Result> {
     revalidatePath('/admin/payroll');
     return { ok: true };
   } catch (e) {
-    console.error('[markAllPaid]', e);
     return { ok: false, error: String(e) };
   }
 }
