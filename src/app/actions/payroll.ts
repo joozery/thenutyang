@@ -199,3 +199,25 @@ export async function markAllPaid(period: string): Promise<Result> {
     return { ok: false, error: String(e) };
   }
 }
+
+// ลบ payslip (และ Expense ที่ผูกไว้ถ้ามี)
+export async function deletePayslip(id: string): Promise<Result> {
+  try {
+    await connectDB();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = await Payslip.findById(id).lean() as any;
+    if (!p) return { ok: false, error: 'ไม่พบรายการ' };
+
+    // ถ้าจ่ายแล้วและมี Expense ผูกอยู่ → ลบ Expense ด้วย
+    if (p.expenseId) {
+      await Expense.findByIdAndDelete(p.expenseId);
+    }
+
+    await Payslip.findByIdAndDelete(id);
+    revalidatePath('/admin/payroll');
+    return { ok: true };
+  } catch (e) {
+    console.error('[deletePayslip]', e);
+    return { ok: false, error: String(e) };
+  }
+}

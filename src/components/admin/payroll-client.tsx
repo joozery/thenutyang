@@ -4,9 +4,9 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CalendarDays, CheckCircle, Clock, Calculator, Wallet, Edit2, X,
-  TrendingUp, TrendingDown, Users, DollarSign, AlertCircle, ChevronRight,
+  TrendingUp, TrendingDown, Users, DollarSign, AlertCircle, ChevronRight, Trash2,
 } from 'lucide-react';
-import { generatePayroll, updatePayslip, markPaid, markAllPaid } from '@/app/actions/payroll';
+import { generatePayroll, updatePayslip, markPaid, markAllPaid, deletePayslip } from '@/app/actions/payroll';
 import type { PayslipRow } from '@/lib/payroll';
 
 const fmt = (n: number) => `฿${Math.round(n).toLocaleString('th-TH')}`;
@@ -27,6 +27,7 @@ export function PayrollClient({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editTarget, setEditTarget] = useState<PayslipRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PayslipRow | null>(null);
   const [bonus, setBonus] = useState(0);
   const [otherDeduct, setOtherDeduct] = useState(0);
   const [toast, setToast] = useState('');
@@ -72,6 +73,15 @@ export function PayrollClient({
     setEditTarget(p);
     setBonus(p.bonus);
     setOtherDeduct(p.otherDeduct);
+  }
+
+  function handleDelete(id: string) {
+    startTransition(async () => {
+      const res = await deletePayslip(id);
+      setDeleteTarget(null);
+      if (res.ok) { flash('ลบรายการแล้ว'); router.refresh(); }
+      else flash(res.error);
+    });
   }
 
   function handleSaveEdit() {
@@ -295,6 +305,13 @@ export function PayrollClient({
                               จ่าย
                             </button>
                           )}
+                          <button
+                            onClick={() => setDeleteTarget(p)}
+                            title="ลบรายการ"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -372,6 +389,44 @@ export function PayrollClient({
               <button onClick={handleSaveEdit} disabled={isPending}
                 className="px-6 py-2.5 text-xs font-bold bg-gradient-to-br from-green-500 to-green-700 text-white rounded-lg hover:opacity-90 disabled:opacity-40 transition-all shadow-sm shadow-green-200">
                 {isPending ? 'กำลังบันทึก...' : 'บันทึกการเปลี่ยนแปลง'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-red-50/60">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                  <Trash2 size={15} className="text-red-500" />
+                </div>
+                <h2 className="font-bold text-slate-900">ยืนยันการลบ</h2>
+              </div>
+              <button onClick={() => setDeleteTarget(null)} className="p-2 rounded-lg hover:bg-red-100 text-slate-400 transition-colors"><X size={15} /></button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-slate-700 mb-1">
+                คุณต้องการลบข้อมูลเงินเดือนของ <span className="font-bold">{deleteTarget.employeeName}</span> ใช่ไหม?
+              </p>
+              <p className="text-xs text-slate-400 mb-1">รอบ {periodLabel(period)} · สุทธิ {fmt(deleteTarget.netPay)}</p>
+              {deleteTarget.status === 'paid' && (
+                <div className="flex items-start gap-2 mt-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-xs text-red-700">
+                  <AlertCircle size={13} className="mt-0.5 shrink-0" />
+                  <span>รายการนี้จ่ายแล้ว — <strong>ค่าใช้จ่ายในรายงานการเงินจะถูกลบออกด้วย</strong></span>
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-white transition-colors">ยกเลิก</button>
+              <button
+                onClick={() => handleDelete(deleteTarget.id)}
+                disabled={isPending}
+                className="px-5 py-2.5 text-xs font-bold bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-40 transition-all shadow-sm shadow-red-200"
+              >
+                {isPending ? 'กำลังลบ...' : 'ยืนยันลบ'}
               </button>
             </div>
           </div>
