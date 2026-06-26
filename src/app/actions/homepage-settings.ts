@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb';
 import { HomepageSettings } from '@/models/HomepageSettings';
 
 export async function saveHomepageSettings(data: {
+  videoType: 'youtube' | 'file';
   videoUrl: string;
   videoTitle: string;
   videoDesc: string;

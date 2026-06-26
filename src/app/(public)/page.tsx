@@ -1,37 +1,38 @@
 import Link from "next/link";
 import { HeroSection } from "@/components/home/hero-section";
-
-import { PopularTires } from "@/components/home/popular-tires";
 import { Testimonials } from "@/components/home/testimonials";
-import { Disc, Settings, Wrench, Droplet, Battery, ClipboardList, Check, ShieldCheck, RefreshCw, AlertCircle, Wind, CheckCircle2 } from "lucide-react";
+import { Disc, Settings, Wrench, Droplet, Battery, ClipboardList, ShieldCheck, RefreshCw, AlertCircle, Wind, CheckCircle2 } from "lucide-react";
 import { getAllBanners } from "@/lib/banners";
-import { AfterSales } from "@/components/home/after-sales";
 import { VideoSection } from "@/components/home/video-section";
+import { OurServices } from "@/components/home/our-services";
+import { OnsiteServices } from "@/components/home/onsite-services";
+import { BrandTicker } from "@/components/home/brand-ticker";
 import { getHomepageSettings } from "@/lib/homepage-settings";
 import connectDB from "@/lib/mongodb";
-import { Service } from "@/models/Service";
+import ContactSettings from "@/models/ContactSettings";
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const [banners, homepageSettings] = await Promise.all([
+  await connectDB();
+  const [banners, homepageSettings, contactDoc] = await Promise.all([
     getAllBanners(),
     getHomepageSettings(),
+    ContactSettings.findOne({}).lean(),
   ]);
+  const googleMapUrl = (contactDoc as any)?.googleMapUrl ?? '';
   const main   = banners.find(b => b.slot === 'main');
   const promo1 = banners.find(b => b.slot === 'promo1');
   const promo2 = banners.find(b => b.slot === 'promo2');
 
-  await connectDB();
-  const servicesData = await Service.find().sort({ order: 1, createdAt: -1 }).lean();
-  // We need to stringify and parse to convert MongoDB ObjectIds to strings for passing to Client Components (if any) or just rendering cleanly
-  const services = JSON.parse(JSON.stringify(servicesData));
 
   return (
     <>
       <HeroSection />
+      <BrandTicker />
       <VideoSection settings={homepageSettings} />
-      <PopularTires />
+      <OurServices />
+      <OnsiteServices />
       
       {/* Promotions Banner Section — single card */}
       {main?.published !== false && (
@@ -81,7 +82,6 @@ export default async function Home() {
       )}
 
 
-      <AfterSales services={services} />
 
       {/* Brands Section */}
       <section className="bg-white py-12 border-y border-slate-100">
@@ -108,34 +108,28 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Why Choose Us */}
-      <section className="bg-[url('/why.png')] bg-cover bg-center py-12 md:py-16 text-white relative overflow-hidden min-h-[350px] flex items-center">
-        <div className="container mx-auto px-4 md:px-8 relative z-10">
-          <div className="flex justify-end">
-            <div className="max-w-xl w-full">
-              <h2 className="text-2xl md:text-3xl font-bold mb-1">ทำไมต้องเลือก</h2>
-              <h2 className="text-3xl md:text-4xl font-black text-green-500 mb-6">เดอะนัททายางยนต์</h2>
-              
-              <ul className="space-y-4">
-                {[
-                  "ยางแท้ 100% จากตัวแทนจำหน่ายอย่างเป็นทางการ",
-                  "ราคาดีที่สุด เช็คราคาทุกวัน",
-                  "ทีมช่างมืออาชีพ ประสบการณ์มากกว่า 10 ปี",
-                  "เครื่องมือทันสมัย ได้มาตรฐาน",
-                  "บริการรวดเร็ว ใส่ใจทุกรายละเอียด"
-                ].map((item, idx) => (
-                  <li key={idx} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-green-600 flex items-center justify-center text-white shrink-0 shadow-sm">
-                      <Check className="w-3.5 h-3.5" strokeWidth={3} />
-                    </div>
-                    <span className="text-slate-200 text-sm md:text-base font-light">{item}</span>
-                  </li>
-                ))}
-              </ul>
+      {/* Map Section */}
+      {googleMapUrl && (
+        <section className="bg-white py-10 md:py-14 border-y border-slate-100">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="mb-6">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-800">ที่ตั้งร้าน</h2>
+              <p className="text-sm text-slate-500 mt-1">เดอะนัทยางยนต์ — มาหาเราได้เลย</p>
+            </div>
+            <div className="rounded-2xl overflow-hidden shadow-md ring-1 ring-slate-200 w-full h-[340px] md:h-[420px]">
+              <iframe
+                src={googleMapUrl}
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <Testimonials />
     </>

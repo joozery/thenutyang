@@ -66,13 +66,7 @@ export function StickyContact({
               target={c.external ? '_blank' : undefined}
               rel={c.external ? 'noopener noreferrer' : undefined}
               onClick={() => setOpen(false)}
-              className={`
-                flex items-center gap-3 ${c.bg} text-white rounded-2xl px-4 h-12 shadow-xl
-                transition-all duration-300
-                ${open
-                  ? `opacity-100 translate-y-0 scale-100 ${c.delay}`
-                  : 'opacity-0 translate-y-6 scale-90 pointer-events-none'}
-              `}
+              className={`flex items-center gap-3 ${c.bg} text-white rounded-2xl px-4 h-12 shadow-xl transition-all duration-300 ${open ? `opacity-100 translate-y-0 scale-100 ${c.delay}` : 'opacity-0 translate-y-6 scale-90 pointer-events-none'}`}
             >
               <div className="w-6 h-6 flex items-center justify-center shrink-0">{c.icon}</div>
               <div className="flex flex-col leading-tight">
@@ -86,13 +80,7 @@ export function StickyContact({
         {/* FAB Toggle Button */}
         <button
           onClick={() => setOpen((o) => !o)}
-          className={`
-            w-14 h-14 rounded-full shadow-2xl flex items-center justify-center
-            transition-all duration-300 active:scale-90
-            ${open
-              ? 'bg-slate-700 rotate-0 scale-100'
-              : 'bg-[#06C755] scale-100'}
-          `}
+          className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 active:scale-90 ${open ? 'bg-slate-700 rotate-0 scale-100' : 'bg-[#06C755] scale-100'}`}
           aria-label="ติดต่อเรา"
         >
           {open ? (
