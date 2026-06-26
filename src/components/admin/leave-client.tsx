@@ -38,10 +38,11 @@ const fmtDate = (iso: string) =>
 
 const EMPTY_FORM = {
   employeeId: '',
-  leaveType: 'sick' as LeaveType,
-  startDate: '',
-  endDate: '',
-  reason: '',
+  leaveType:  'sick' as LeaveType,
+  startDate:  '',
+  endDate:    '',
+  reason:     '',
+  deductPay:  LEAVE_QUOTA['sick'].deductPay, // default จาก quota ของประเภทที่เลือก
 };
 
 export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRow[]; employees: EmployeeRow[] }) {
@@ -229,12 +230,14 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${TYPE_COLOR[l.leaveType]}`}>
-                      {TYPE_LABELS[l.leaveType]}
-                    </span>
-                    {!TYPE_PAID[l.leaveType] && (
-                      <span className="ml-1.5 text-[10px] text-red-400 font-semibold bg-red-50 px-1.5 py-0.5 rounded-full">ไม่รับเงิน</span>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full w-fit ${TYPE_COLOR[l.leaveType]}`}>
+                        {TYPE_LABELS[l.leaveType]}
+                      </span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${l.deductPay ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
+                        {l.deductPay ? 'หักเงินเดือน' : 'ไม่หักเงิน'}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-slate-500 whitespace-nowrap">
                     <span className="flex items-center gap-1.5 text-xs">
@@ -326,11 +329,30 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-600">ประเภทการลา</label>
-                <select value={form.leaveType} onChange={e => setForm(f => ({ ...f, leaveType: e.target.value as LeaveType }))} className={inputCls}>
+                <select value={form.leaveType} onChange={e => {
+                  const t = e.target.value as LeaveType;
+                  setForm(f => ({ ...f, leaveType: t, deductPay: LEAVE_QUOTA[t].deductPay }));
+                }} className={inputCls}>
                   {Object.entries(TYPE_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>{v}{!TYPE_PAID[k as LeaveType] ? ' (ไม่รับเงิน)' : ''}</option>
+                    <option key={k} value={k}>{v}</option>
                   ))}
                 </select>
+              </div>
+              {/* การหักเงิน — admin override ได้ */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-600">การหักเงินเดือน</label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setForm(f => ({ ...f, deductPay: false }))}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all
+                      ${!form.deductPay ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}>
+                    ไม่หักเงิน
+                  </button>
+                  <button type="button" onClick={() => setForm(f => ({ ...f, deductPay: true }))}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all
+                      ${form.deductPay ? 'border-red-400 bg-red-50 text-red-600' : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}>
+                    หักเงินเดือน
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

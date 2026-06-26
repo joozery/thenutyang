@@ -43,12 +43,13 @@ export async function generatePayroll(period: string): Promise<Result> {
 
       const c = computePay({
         baseSalary,
-        daysAbsent:      att.daysAbsent,
-        lateBilledHours: att.lateBilledHours, // per-day grace period applied
-        otBilledHours:   att.otBilledHours,
-        unpaidLeaveDays: lv.unpaidDays,
+        daysAbsent:        att.daysAbsent,
+        lateBilledHours:   att.lateBilledHours,
+        otBilledHours:     att.otBilledHours,
+        unpaidLeaveDays:   lv.unpaidDays,
         bonus,
         otherDeduct,
+        hasSocialSecurity: emp.hasSocialSecurity !== false,
       });
 
       return {
@@ -97,18 +98,22 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
     if (!p) return { ok: false, error: 'ไม่พบรายการ' };
     if (p.status === 'paid') return { ok: false, error: 'รายการนี้จ่ายแล้ว แก้ไขไม่ได้' };
 
-    // re-query attendance เพื่อได้ per-day billed hours ที่ถูกต้อง
-    const attMap = await getAttendanceSummary(p.period);
+    // re-query attendance + employee เพื่อได้ข้อมูลที่ถูกต้อง
+    const [attMap, emp] = await Promise.all([
+      getAttendanceSummary(p.period),
+      Employee.findById(p.employeeId).lean() as Promise<{ hasSocialSecurity?: boolean } | null>,
+    ]);
     const att = attMap[String(p.employeeId)] ?? { lateBilledHours: 0, otBilledHours: 0 };
 
     const c = computePay({
-      baseSalary:      p.baseSalary ?? 0,
-      daysAbsent:      p.daysAbsent ?? 0,
-      lateBilledHours: att.lateBilledHours,
-      otBilledHours:   att.otBilledHours,
-      unpaidLeaveDays: p.daysLeaveUnpaid ?? 0,
+      baseSalary:        p.baseSalary ?? 0,
+      daysAbsent:        p.daysAbsent ?? 0,
+      lateBilledHours:   att.lateBilledHours,
+      otBilledHours:     att.otBilledHours,
+      unpaidLeaveDays:   p.daysLeaveUnpaid ?? 0,
       bonus,
       otherDeduct,
+      hasSocialSecurity: emp?.hasSocialSecurity !== false,
     });
 
     await Payslip.findByIdAndUpdate(id, { $set: { bonus, otherDeduct, ...c } });

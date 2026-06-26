@@ -53,8 +53,9 @@ const EMPTY_FORM = {
   baseSalary: 15000,
   dailyRate: 0,
   hourlyRate: 0,
-  lateDeductRate: 300,
-  otRate: 200,
+  lateDeductRate:    300,
+  otRate:            200,
+  hasSocialSecurity: true,
   startDate: '',
   bankAccount: '',
   bankName: '',
@@ -124,6 +125,7 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
       status: e.status, baseSalary: e.baseSalary,
       dailyRate: e.dailyRate ?? 0, hourlyRate: e.hourlyRate ?? 0,
       lateDeductRate: e.lateDeductRate ?? 300, otRate: e.otRate ?? 200,
+      hasSocialSecurity: e.hasSocialSecurity !== false,
       startDate: e.startDate ? e.startDate.slice(0, 10) : '',
       bankAccount: e.bankAccount, bankName: e.bankName, address: e.address, note: e.note,
     });
@@ -356,6 +358,22 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
                       <input type="number" value={form.otRate || ''} onChange={e => setForm(f => ({ ...f, otRate: +e.target.value }))} className={`${inputCls} pl-8`} placeholder={form.employeeType === 'parttime' ? 'คิดจาก hourly×1.5' : '200'} disabled={form.employeeType === 'parttime'} />
                     </div>
                     {form.employeeType === 'parttime' && <p className="text-[10px] text-slate-400 mt-1">พาร์ทไทม์: ชั่วโมงละ × 1.5 อัตโนมัติ</p>}
+                  </Field>
+                  <Field label="ประกันสังคม">
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, hasSocialSecurity: !f.hasSocialSecurity }))}
+                      className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl border-2 transition-all font-semibold text-sm
+                        ${form.hasSocialSecurity
+                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                          : 'border-slate-200 bg-slate-50 text-slate-400'}`}
+                    >
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all
+                        ${form.hasSocialSecurity ? 'border-emerald-500 bg-emerald-500' : 'border-slate-300'}`}>
+                        {form.hasSocialSecurity && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                      {form.hasSocialSecurity ? 'มีประกันสังคม (หัก 5%)' : 'ไม่มีประกันสังคม'}
+                    </button>
                   </Field>
                 </div>
               </div>

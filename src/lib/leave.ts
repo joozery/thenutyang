@@ -13,6 +13,7 @@ export type LeaveRequestRow = {
   endDate: string;
   days: number;
   reason: string;
+  deductPay: boolean;
   status: 'pending' | 'approved' | 'rejected';
   rejReason: string;
   approvedBy: string;
@@ -40,6 +41,7 @@ function normalizeRow(d: any): LeaveRequestRow {
     endDate:      d.endDate instanceof Date ? d.endDate.toISOString().slice(0, 10) : String(d.endDate ?? '').slice(0, 10),
     days:         d.days ?? 1,
     reason:       d.reason ?? '',
+    deductPay:    d.deductPay !== false, // default true
     status:       d.status ?? 'pending',
     rejReason:    d.rejReason ?? '',
     approvedBy:   d.approvedBy ?? '',

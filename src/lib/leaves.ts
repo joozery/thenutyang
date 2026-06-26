@@ -6,18 +6,17 @@ export type LeaveStatus = 'pending' | 'approved' | 'rejected';
 export type LeaveRow = {
   id: string;
   employeeId: string;
+  employeeName: string;
   leaveType: LeaveType;
   startDate: string;  // 'YYYY-MM-DD'
   endDate: string;    // 'YYYY-MM-DD'
   days: number;
   reason: string;
+  deductPay: boolean; // true = หักเงินเดือน
   status: LeaveStatus;
   rejReason: string;
   createdAt: string;
 };
-
-// ประเภทลาที่ "ได้รับเงิน" (ไม่หักเงินเดือน)
-export const PAID_LEAVE_TYPES: LeaveType[] = ['sick', 'vacation'];
 
 function dk(d: unknown): string {
   if (d instanceof Date) return d.toISOString().slice(0, 10);
@@ -27,16 +26,18 @@ function dk(d: unknown): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalize(d: any): LeaveRow {
   return {
-    id:         String(d._id),
-    employeeId: String(d.employeeId),
-    leaveType:  d.leaveType ?? 'other',
-    startDate:  dk(d.startDate),
-    endDate:    dk(d.endDate),
-    days:       d.days ?? 0,
-    reason:     d.reason ?? '',
-    status:     d.status ?? 'pending',
-    rejReason:  d.rejReason ?? '',
-    createdAt:  d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt ?? ''),
+    id:           String(d._id),
+    employeeId:   String(d.employeeId),
+    employeeName: d.employeeName ?? '',
+    leaveType:    d.leaveType ?? 'other',
+    startDate:    dk(d.startDate),
+    endDate:      dk(d.endDate),
+    days:         d.days ?? 0,
+    reason:       d.reason ?? '',
+    deductPay:    d.deductPay !== false, // default true (เก่าๆ ที่ไม่มี field นี้ให้ถือว่าหัก)
+    status:       d.status ?? 'pending',
+    rejReason:    d.rejReason ?? '',
+    createdAt:    d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt ?? ''),
   };
 }
 
@@ -71,7 +72,8 @@ export async function getApprovedLeaveSummary(period: string): Promise<Record<st
     const daysInMonth = Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
     if (daysInMonth <= 0) continue;
     const cur = map[d.employeeId] ?? { paidDays: 0, unpaidDays: 0 };
-    if (PAID_LEAVE_TYPES.includes(d.leaveType)) cur.paidDays += daysInMonth;
+    // ใช้ deductPay ต่อ request (admin ตั้งได้ตอนสร้าง)
+    if (!d.deductPay) cur.paidDays += daysInMonth;
     else cur.unpaidDays += daysInMonth;
     map[d.employeeId] = cur;
   }

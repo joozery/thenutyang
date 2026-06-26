@@ -11,13 +11,14 @@ export const PAYROLL = {
 };
 
 export type PayComputeInput = {
-  baseSalary:      number;
-  daysAbsent:      number;
-  lateBilledHours: number; // sum ชม.บิลสาย (grace period ถูก apply ต่อวันแล้ว)
-  otBilledHours:   number; // sum ชม.บิล OT
-  unpaidLeaveDays: number;
-  bonus:           number;
-  otherDeduct:     number;
+  baseSalary:        number;
+  daysAbsent:        number;
+  lateBilledHours:   number; // sum ชม.บิลสาย (grace period ถูก apply ต่อวันแล้ว)
+  otBilledHours:     number; // sum ชม.บิล OT
+  unpaidLeaveDays:   number;
+  bonus:             number;
+  otherDeduct:       number;
+  hasSocialSecurity: boolean; // false = ไม่หักประกันสังคม
 };
 
 export type PayComputed = {
@@ -39,10 +40,9 @@ export function computePay(i: PayComputeInput): PayComputed {
 
   const absentDeduct = Math.round(dailyRate * i.daysAbsent);
   const leaveDeduct  = Math.round(dailyRate * i.unpaidLeaveDays);
-  const sss          = Math.min(
-    Math.round(Math.min(i.baseSalary, PAYROLL.SSS_BASE_CAP) * PAYROLL.SSS_RATE),
-    PAYROLL.SSS_MAX,
-  );
+  const sss = i.hasSocialSecurity
+    ? Math.min(Math.round(Math.min(i.baseSalary, PAYROLL.SSS_BASE_CAP) * PAYROLL.SSS_RATE), PAYROLL.SSS_MAX)
+    : 0;
 
   const netPay = Math.round(
     i.baseSalary + otPay + i.bonus

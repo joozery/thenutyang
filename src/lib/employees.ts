@@ -16,8 +16,9 @@ export type EmployeeRow = {
   hourlyRate: number;
   shiftStart: string;
   shiftEnd: string;
-  lateDeductRate: number;
-  otRate: number;
+  lateDeductRate:    number;
+  otRate:            number;
+  hasSocialSecurity: boolean;
   startDate: string;
   bankAccount: string;
   bankName: string;
@@ -35,8 +36,9 @@ function normalize(doc: Record<string, unknown>): EmployeeRow {
     hourlyRate:   Number(rest.hourlyRate ?? 0),
     shiftStart:   (rest.shiftStart as string) || '09:00',
     shiftEnd:     (rest.shiftEnd as string) || '18:00',
-    lateDeductRate: Number(rest.lateDeductRate ?? 300),
-    otRate:         Number(rest.otRate ?? 200),
+    lateDeductRate:    Number(rest.lateDeductRate ?? 300),
+    otRate:            Number(rest.otRate ?? 200),
+    hasSocialSecurity: rest.hasSocialSecurity !== false, // default true
     ...rest,
   } as unknown as EmployeeRow;
 }
