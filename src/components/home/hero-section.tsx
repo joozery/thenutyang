@@ -15,7 +15,7 @@ export function HeroSection() {
   return (
     <>
       {/* ─── Hero ─── */}
-      <section className="relative w-full overflow-hidden min-h-[460px] md:min-h-[540px] flex items-center pb-36 md:pb-0 bg-[url('/newcover.jpeg')] bg-cover bg-[position:75%_center] md:bg-center bg-no-repeat">
+      <section className="relative w-full min-h-[460px] md:min-h-[540px] flex items-center pb-36 md:pb-0 bg-[url('/newcover.jpeg')] bg-cover bg-[position:75%_center] md:bg-center bg-no-repeat">
 
         {/* Overlay มือถือเท่านั้น */}
         <div className="absolute inset-0 bg-black/50 lg:hidden pointer-events-none" />
