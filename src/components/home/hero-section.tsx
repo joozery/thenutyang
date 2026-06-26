@@ -2,6 +2,7 @@
 
 import { CreditCard, Truck, ShieldCheck, Wrench } from 'lucide-react';
 import { HeroSearch } from './hero-search';
+import { useEffect } from 'react';
 
 const FEATURES = [
   { icon: Truck,       label: 'จัดส่งฟรี',       sub: 'ทั่วประเทศ' },
@@ -72,10 +73,28 @@ export function HeroSection() {
       </section>
 
       {/* ─── Mobile: Search card ─── */}
-      <div className="lg:hidden container mx-auto px-4 relative z-20 -mt-24 mb-6">
+      <div id="tire-search" className="lg:hidden container mx-auto px-4 relative z-20 -mt-24 mb-6">
         <HeroSearch />
       </div>
 
+      {/* Auto-scroll ไปยังปุ่มค้นหาเมื่อเปิดบนมือถือ */}
+      <MobileScrollToSearch />
+
     </>
   );
+}
+
+function MobileScrollToSearch() {
+  useEffect(() => {
+    // เฉพาะมือถือ (< 1024px)
+    if (window.innerWidth >= 1024) return;
+    const el = document.getElementById('tire-search');
+    if (!el) return;
+    // รอให้LayoutEffect เสร็จก่อน scroll
+    const timer = setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+  return null;
 }
