@@ -6,13 +6,18 @@ import { Testimonials } from "@/components/home/testimonials";
 import { Disc, Settings, Wrench, Droplet, Battery, ClipboardList, Check, ShieldCheck, RefreshCw, AlertCircle, Wind, CheckCircle2 } from "lucide-react";
 import { getAllBanners } from "@/lib/banners";
 import { AfterSales } from "@/components/home/after-sales";
+import { VideoSection } from "@/components/home/video-section";
+import { getHomepageSettings } from "@/lib/homepage-settings";
 import connectDB from "@/lib/mongodb";
 import { Service } from "@/models/Service";
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const banners = await getAllBanners();
+  const [banners, homepageSettings] = await Promise.all([
+    getAllBanners(),
+    getHomepageSettings(),
+  ]);
   const main   = banners.find(b => b.slot === 'main');
   const promo1 = banners.find(b => b.slot === 'promo1');
   const promo2 = banners.find(b => b.slot === 'promo2');
@@ -25,8 +30,7 @@ export default async function Home() {
   return (
     <>
       <HeroSection />
-      
-
+      <VideoSection settings={homepageSettings} />
       <PopularTires />
       
       {/* Promotions Banner Section — single card */}
