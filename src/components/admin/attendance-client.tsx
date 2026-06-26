@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ChevronLeft, ChevronRight, Clock, X,
-  CalendarDays, AlertTriangle, Edit2, LogIn, LogOut, UserX, XCircle,
+  CalendarDays, AlertTriangle, Edit2, LogIn, LogOut, UserX, XCircle, Trash2,
 } from 'lucide-react';
 import type { AttendanceRow } from '@/lib/attendance';
 import { minutesToBilledHours } from '@/lib/attendance-calc';
-import { updateAttendance } from '@/app/actions/attendance';
+import { updateAttendance, deleteAttendance } from '@/app/actions/attendance';
 import type { AttendanceStatus } from '@/models/Attendance';
 import type { EmployeeRow } from '@/lib/employees';
 
@@ -171,6 +171,12 @@ export function AttendanceClient({ date, records, hasShifts, employees }: {
   const empMap = new Map(employees.map(e => [e.id, e]));
   const navigate = (d: string) => router.push(`/admin/attendance?date=${d}`);
   const handleSaved = () => { setEditTarget(null); setQuickTarget(null); router.refresh(); };
+
+  const handleDelete = (rec: AttendanceRow) => {
+    if (!confirm(`ลบรายการของ ${rec.employeeName} ออก?`)) return;
+    setLocalRecs(p => p.filter(r => r.id !== rec.id));
+    startTransition(async () => { await deleteAttendance(rec.id); router.refresh(); });
+  };
 
   const handleCheckIn = (rec: AttendanceRow) => {
     const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
@@ -353,6 +359,7 @@ export function AttendanceClient({ date, records, hasShifts, employees }: {
                           <div className="flex items-center gap-1 justify-end">
                             <button onClick={() => setQuickTarget(rec)} title="เปลี่ยนสถานะ" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"><XCircle size={14} /></button>
                             <button onClick={() => setEditTarget(rec)} title="แก้ไขเวลา" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><Edit2 size={14} /></button>
+                            <button onClick={() => handleDelete(rec)} title="ลบรายการ" className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>
