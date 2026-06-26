@@ -16,8 +16,6 @@ export function HeroSection() {
     <>
       {/* ─── Hero ─── */}
       <section className="relative w-full overflow-hidden min-h-[460px] md:min-h-[540px] flex items-center pb-36 md:pb-0 bg-[url('/newcover.jpeg')] bg-cover bg-[position:75%_center] md:bg-center bg-no-repeat">
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/92 via-black/60 to-black/10 pointer-events-none" />
 
         <div className="container mx-auto px-4 md:px-8 relative z-10 w-full py-14 md:py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
