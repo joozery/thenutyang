@@ -49,36 +49,46 @@ export default async function AdminBookingsPage({
 
   const docs = await FinancialDocument.find(
     { bookingId: { $in: raw.map(b => b._id) } },
-    { bookingId: 1 },
+    { bookingId: 1, status: 1 },
   ).lean();
-  const quoteDocByBookingId = new Map(docs.map(d => [String(d.bookingId), String(d._id)]));
+  const quoteDocByBookingId = new Map(docs.map(d => [String(d.bookingId), { id: String(d._id), status: d.status as string }]));
 
-  const bookings = raw.map(b => ({
-    _id: b._id.toString(),
-    ref: b.ref,
-    tireName: b.tireName,
-    tirePrice: b.tirePrice,
-    quantity: b.quantity,
-    name: b.name,
-    customerType: b.customerType ?? 'individual',
-    companyName: b.companyName ?? '',
-    phone: b.phone,
-    lineId: b.lineId,
-    lineUserId: b.lineUserId,
-    carBrand: b.carBrand ?? '',
-    carModel: b.carModel,
-    carYear: b.carYear,
-    licensePlate: b.licensePlate ?? '',
-    mileageBefore: b.mileageBefore ?? null,
-    mileageAfter: b.mileageAfter ?? null,
-    address: b.address ?? '',
-    taxId: b.taxId ?? '',
-    appointmentDate: b.appointmentDate,
-    note: b.note,
-    status: b.status,
-    createdAt: (b.createdAt as Date).toISOString(),
-    quoteDocId: quoteDocByBookingId.get(b._id.toString()) ?? null,
-  }));
+  const bookings = raw.map(b => {
+    const quoteDoc = quoteDocByBookingId.get(b._id.toString()) ?? null;
+    return {
+      _id: b._id.toString(),
+      ref: b.ref,
+      tireName: b.tireName,
+      tirePrice: b.tirePrice,
+      quantity: b.quantity,
+      name: b.name,
+      customerType: b.customerType ?? 'individual',
+      companyName: b.companyName ?? '',
+      phone: b.phone,
+      lineId: b.lineId,
+      lineUserId: b.lineUserId,
+      carBrand: b.carBrand ?? '',
+      carModel: b.carModel,
+      carYear: b.carYear,
+      licensePlate: b.licensePlate ?? '',
+      mileageBefore: b.mileageBefore ?? null,
+      mileageAfter: b.mileageAfter ?? null,
+      address: b.address ?? '',
+      taxId: b.taxId ?? '',
+      appointmentDate: b.appointmentDate,
+      note: b.note,
+      status: b.status,
+      createdAt: (b.createdAt as Date).toISOString(),
+      quoteDocId: quoteDoc?.id ?? null,
+      quoteStatus: quoteDoc?.status ?? null,
+      depositAmount: b.depositAmount ?? 1000,
+      depositStatus: b.depositStatus ?? 'pending',
+      depositSlipUrl: b.depositSlipUrl ?? '',
+      balanceStatus: b.balanceStatus ?? 'unpaid',
+      balanceSlipUrl: b.balanceSlipUrl ?? '',
+      balancePaymentMethod: b.balancePaymentMethod ?? '',
+    };
+  });
 
   const matchStage: any = {};
   if (dateFrom || dateTo) {

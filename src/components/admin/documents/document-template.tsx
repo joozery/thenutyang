@@ -44,6 +44,7 @@ export type DocumentTemplateProps = {
   vatBase: number;
   vatAmount: number;
   grandTotal: number;
+  depositAmount?: number;
   withholding?: number;
   paidAmount?: number;
   payment?: { date?: string; method?: string };
@@ -78,6 +79,7 @@ export function DocumentTemplate({
   vatBase,
   vatAmount,
   grandTotal,
+  depositAmount = 0,
   withholding = 0,
   paidAmount,
   payment,
@@ -86,6 +88,7 @@ export function DocumentTemplate({
   technicianName,
 }: DocumentTemplateProps) {
   const paid = paidAmount ?? grandTotal;
+  const remainingBalance = depositAmount > 0 ? Math.max(0, grandTotal - depositAmount) : 0;
   const minRows = 4;
 
   return (
@@ -219,6 +222,15 @@ export function DocumentTemplate({
                 <td className="py-2 px-2 font-bold text-slate-900 rounded-l-lg">จำนวนเงินทั้งสิ้น</td>
                 <td className="py-2 px-2 text-right font-black text-green-700 text-sm tabular-nums rounded-r-lg">{fmt(grandTotal)}</td>
               </tr>
+              {depositAmount > 0 && (
+                <>
+                  <tr><td className="py-1 pt-2 text-slate-800">มัดจำที่ได้รับแล้ว</td><td className="py-1 pt-2 text-right tabular-nums text-amber-700 font-semibold">-{fmt(depositAmount)} บาท</td></tr>
+                  <tr className="bg-amber-50">
+                    <td className="py-2 px-2 font-bold text-slate-900 rounded-l-lg">ยอดที่ต้องชำระเพิ่ม</td>
+                    <td className="py-2 px-2 text-right font-black text-amber-700 text-sm tabular-nums rounded-r-lg">{fmt(remainingBalance)}</td>
+                  </tr>
+                </>
+              )}
               <tr><td className="py-1 pt-2 text-slate-800">จำนวนเงินที่ถูกหัก ณ ที่จ่าย</td><td className="py-1 pt-2 text-right tabular-nums">{fmt(withholding)} บาท</td></tr>
               <tr><td className="py-1 text-slate-800">จำนวนเงินที่ชำระ</td><td className="py-1 text-right tabular-nums font-semibold">{fmt(paid)} บาท</td></tr>
             </tbody>

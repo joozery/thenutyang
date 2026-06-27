@@ -47,7 +47,12 @@ export async function getProductById(id: string): Promise<ProductRow | null> {
 
 export async function getAllProductsAdmin(productType?: string): Promise<ProductRow[]> {
   await connectDB();
-  const query = productType ? { productType } : {};
+  // ยางเก่าที่ถูกสร้างก่อนมี productType field จะไม่มีค่านี้ใน DB
+  // ให้นับว่าเป็น 'tires' (ค่า default) เพื่อให้แสดงในแท็บยางตามปกติ
+  const query = !productType ? {}
+    : productType === 'tires'
+      ? { $or: [{ productType: 'tires' }, { productType: { $exists: false } }, { productType: null }] }
+      : { productType };
   const docs = await Product.find(query).sort({ brand: 1, size: 1, model: 1 }).lean();
   return docs.map(normalize);
 }

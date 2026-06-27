@@ -105,6 +105,77 @@ export async function updateMileageAfter(ref: string, mileageAfter: number): Pro
   }
 }
 
+export async function adminUpdatePaymentStatus(ref: string, data: {
+  depositStatus?: string;
+  depositSlipUrl?: string;
+  balanceStatus?: string;
+  balanceSlipUrl?: string;
+  balancePaymentMethod?: string;
+}): Promise<ActionResult> {
+  try {
+    const update: Record<string, unknown> = {};
+    if (data.depositStatus !== undefined) {
+      update.depositStatus = data.depositStatus;
+      if (data.depositStatus === 'verified') update.depositPaidAt = new Date();
+    }
+    if (data.depositSlipUrl) update.depositSlipUrl = data.depositSlipUrl;
+    if (data.balanceStatus !== undefined) {
+      update.balanceStatus = data.balanceStatus;
+      if (data.balanceStatus === 'paid') update.balancePaidAt = new Date();
+    }
+    if (data.balanceSlipUrl) update.balanceSlipUrl = data.balanceSlipUrl;
+    if (data.balancePaymentMethod !== undefined) update.balancePaymentMethod = data.balancePaymentMethod;
+    await connectDB();
+    await Booking.updateOne({ ref }, update);
+    revalidatePath('/admin/bookings');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+export async function approveQuote(ref: string): Promise<ActionResult> {
+  try {
+    const booking = await getBooking(ref);
+    const doc = await FinancialDocument.findOneAndUpdate(
+      { bookingId: booking._id },
+      { status: 'approved' },
+      { new: true }
+    );
+    if (!doc) return { ok: false, error: 'ไม่พบใบเสนอราคา' };
+    await Booking.updateOne({ ref }, { status: 'confirmed' });
+    if (booking.lineUserId) {
+      await pushMessage(booking.lineUserId, [buildConfirmMessage(booking.toObject())]);
+    }
+    revalidatePath('/admin/bookings');
+    revalidatePath('/admin/documents');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+export async function rejectQuote(ref: string): Promise<ActionResult> {
+  try {
+    const booking = await getBooking(ref);
+    const doc = await FinancialDocument.findOneAndUpdate(
+      { bookingId: booking._id },
+      { status: 'rejected' },
+      { new: true }
+    );
+    if (!doc) return { ok: false, error: 'ไม่พบใบเสนอราคา' };
+    await Booking.updateOne({ ref }, { status: 'cancelled' });
+    if (booking.lineUserId) {
+      await pushMessage(booking.lineUserId, [buildCancelMessage(booking.toObject())]);
+    }
+    revalidatePath('/admin/bookings');
+    revalidatePath('/admin/documents');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
 export async function cancelBooking(ref: string): Promise<ActionResult> {
   try {
     const booking = await getBooking(ref);

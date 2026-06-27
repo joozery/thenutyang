@@ -360,7 +360,12 @@ export function NewDocumentClient({
   }
 
   // financial
-  const [vatEnabled,     setVatEnabled]     = useState(prefill ? prefill.vatRate > 0 : true);
+  type VatMode = 'none' | 'included' | 'extra';
+  const initVatMode = (): VatMode => {
+    if (prefill && prefill.vatRate === 0) return 'none';
+    return 'included';
+  };
+  const [vatMode,        setVatMode]        = useState<VatMode>(initVatMode());
   const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>(prefill?.paymentMethod ?? 'cash');
 
   // meta
@@ -395,8 +400,6 @@ export function NewDocumentClient({
 
   // ── calculations ──────────────────────────────────────────────────────────
 
-  // ราคาต่อหน่วยที่กรอกถือเป็นราคารวม VAT แล้ว (ตามราคาขายจริงหน้าร้าน) — ถ้าเปิด VAT
-  // จะ "ถอด" VAT 7% ออกมาจากยอดนี้เพื่อโชว์ในใบกำกับภาษี โดยยอดรวมที่ลูกค้าจ่ายไม่เปลี่ยน
   const calc = useMemo(() => {
     const lineCalcs = lines.map(l => {
       const gross   = l.qty * l.unitPrice;
@@ -409,15 +412,18 @@ export function NewDocumentClient({
     const globalDiscAmt = Math.min(globalDiscount, afterLineDisc);
     const discountTotal = lineDiscTotal + globalDiscAmt;
     const afterDisc     = afterLineDisc - globalDiscAmt;
-    const grandTotal    = afterDisc;
-    const vatAmount     = vatEnabled ? afterDisc - afterDisc / 1.07 : 0;
-    const preVatAmount  = afterDisc - vatAmount;
+    // none: ไม่มี VAT | included: ถอด 7/107 จากราคาที่กรอก | extra: บวก 7% เพิ่มจากราคาที่กรอก
+    const vatAmount = vatMode === 'none' ? 0
+      : vatMode === 'included' ? afterDisc - afterDisc / 1.07
+      : afterDisc * 0.07;
+    const grandTotal   = vatMode === 'extra' ? afterDisc + vatAmount : afterDisc;
+    const preVatAmount = vatMode === 'included' ? afterDisc / 1.07 : afterDisc;
     return { lineCalcs, subtotal, discountTotal, afterDisc, vatAmount, preVatAmount, grandTotal };
-  }, [lines, vatEnabled, globalDiscount]);
+  }, [lines, vatMode, globalDiscount]);
 
   // ── validation ─────────────────────────────────────────────────────────────
 
-  const effectiveCustomerName = customerName.trim() || (!vatEnabled && licensePlate.trim() ? licensePlate.trim() : '');
+  const effectiveCustomerName = customerName.trim() || (vatMode === 'none' && licensePlate.trim() ? licensePlate.trim() : '');
   const isValid = !!effectiveCustomerName && lines.every(l => l.description.trim() && l.qty > 0 && l.unitPrice >= 0);
 
   // ── submit ─────────────────────────────────────────────────────────────────
@@ -443,7 +449,7 @@ export function NewDocumentClient({
         })),
         subtotal:      calc.subtotal,
         discountTotal: calc.discountTotal,
-        vatRate:       vatEnabled ? 7 : 0,
+        vatRate:       vatMode === 'none' ? 0 : 7,
         vatAmount:     calc.vatAmount,
         grandTotal:    calc.grandTotal,
         paymentMethod,
@@ -536,7 +542,7 @@ export function NewDocumentClient({
               <div className={`mt-0.5 ${docType === t.value ? 'text-green-600' : 'text-slate-400'}`}>{t.icon}</div>
               <div>
                 <p className={`font-bold text-sm ${docType === t.value ? 'text-green-700' : 'text-slate-700'}`}>
-                  {t.value === 'invoice' ? (vatEnabled ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : t.label}
+                  {t.value === 'invoice' ? (vatMode !== 'none' ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : t.label}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">{t.desc}</p>
               </div>
@@ -1011,10 +1017,10 @@ export function NewDocumentClient({
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-center text-xs font-medium text-slate-500">
-                      {vatEnabled ? '7%' : '-'}
+                      {vatMode !== 'none' ? '7%' : '-'}
                     </td>
                     <td className="px-4 py-2.5 text-right font-bold text-slate-800 text-xs tabular-nums">
-                      {(vatEnabled ? net / 1.07 : net).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {(vatMode === 'included' ? net / 1.07 : net).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-2 py-2.5">
                       <button
@@ -1042,8 +1048,8 @@ export function NewDocumentClient({
           </div>
           <div className="p-5 space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">{vatEnabled ? 'มูลค่าสินค้า (ไม่รวม VAT)' : 'ราคารวมก่อนหักส่วนลด'}</span>
-              <span className="font-semibold tabular-nums">฿{(vatEnabled ? calc.preVatAmount : calc.subtotal).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+              <span className="text-slate-500">{vatMode !== 'none' ? 'มูลค่าสินค้า (ไม่รวม VAT)' : 'ราคารวมก่อนหักส่วนลด'}</span>
+              <span className="font-semibold tabular-nums">฿{(vatMode === 'included' ? calc.preVatAmount : calc.subtotal).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
             </div>
             {/* ส่วนลดรวมทั้งบิล */}
             <div className="flex items-center justify-between text-sm">
@@ -1073,28 +1079,39 @@ export function NewDocumentClient({
               </div>
             )}
 
-            {/* VAT toggle — ถอด VAT ออกจากราคาข้างบน ไม่บวกเพิ่ม ยอดที่ลูกค้าจ่ายเท่าเดิม */}
-            <div className="flex items-center justify-between text-sm border-t border-slate-100 pt-3">
-              <span className="text-slate-500">ออกใบกำกับภาษี (ถอด VAT 7%)</span>
-              <button
-                onClick={() => setVatEnabled(!vatEnabled)}
-                className={`relative w-10 h-5 rounded-full transition-colors ${vatEnabled ? 'bg-green-500' : 'bg-slate-200'}`}
-              >
-                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${vatEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
-            {vatEnabled && (
-              <div className="space-y-1.5 bg-slate-50 rounded-lg px-3 py-2.5">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">ราคารวมก่อนหักส่วนลด</span>
-                  <span className="font-medium tabular-nums text-slate-600">฿{calc.subtotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-400">ภาษีมูลค่าเพิ่ม VAT 7% (ถอดจากยอดขาย)</span>
-                  <span className="font-medium tabular-nums text-slate-600">฿{calc.vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+            {/* VAT mode selector */}
+            <div className="border-t border-slate-100 pt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-500">VAT</span>
+                <div className="flex rounded-lg border border-slate-200 overflow-hidden text-[11px] font-semibold">
+                  {([
+                    { value: 'none',     label: 'ไม่มี VAT' },
+                    { value: 'included', label: 'รวมในราคา' },
+                    { value: 'extra',    label: 'บวก 7%' },
+                  ] as const).map(opt => (
+                    <button key={opt.value}
+                      onClick={() => setVatMode(opt.value)}
+                      className={`px-3 py-1.5 transition-colors ${vatMode === opt.value ? 'bg-green-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
+              {vatMode !== 'none' && (
+                <div className="space-y-1.5 bg-slate-50 rounded-lg px-3 py-2.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-slate-400">{vatMode === 'included' ? 'ถอด VAT 7/107 จากยอดขาย' : 'บวก VAT 7% จากยอดขาย'}</span>
+                    <span className="font-medium tabular-nums text-slate-600">฿{calc.vatAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  {vatMode === 'extra' && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-400">ยอดรวม (รวม VAT แล้ว)</span>
+                      <span className="font-semibold tabular-nums text-green-700">฿{calc.grandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="border-t border-slate-100 pt-3">
               <div className="flex justify-between items-center">

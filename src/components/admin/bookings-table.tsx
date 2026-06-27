@@ -3,8 +3,9 @@
 import { useTransition, useState, Fragment } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { sendLineQuote, confirmBooking, markReady, cancelBooking, createQuoteForBooking, updateMileageAfter } from '@/app/actions/admin';
-import { CheckCircle, Package, XCircle, ChevronDown, ChevronUp, Calendar, Phone, Car, Tag, ChevronLeft, ChevronRight, Building2, MapPin, Hash, FileEdit, FileText, Gauge, Save } from 'lucide-react';
+import { sendLineQuote, confirmBooking, markReady, cancelBooking, createQuoteForBooking, updateMileageAfter, adminUpdatePaymentStatus, approveQuote, rejectQuote } from '@/app/actions/admin';
+import { uploadImage } from '@/app/actions/upload';
+import { CheckCircle, Package, XCircle, ChevronDown, ChevronUp, Calendar, Phone, Car, Tag, ChevronLeft, ChevronRight, Building2, MapPin, Hash, FileEdit, FileText, Gauge, Save, Upload, Banknote, ThumbsUp, ThumbsDown, Image } from 'lucide-react';
 
 const LineIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -38,6 +39,13 @@ type Booking = {
   status: string;
   createdAt: string;
   quoteDocId?: string | null;
+  quoteStatus?: string | null;
+  depositAmount?: number;
+  depositStatus?: string;
+  depositSlipUrl?: string;
+  balanceStatus?: string;
+  balanceSlipUrl?: string;
+  balancePaymentMethod?: string;
 };
 
 type PaginationData = {
@@ -90,7 +98,167 @@ function MileageAfterField({ bookingRef, initialValue }: { bookingRef: string; i
   );
 }
 
-export function BookingsTable({ 
+const DEPOSIT_STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+  pending:      { label: 'รอสลิป',       cls: 'text-amber-600 bg-amber-50' },
+  submitted:    { label: 'รอตรวจสอบ',   cls: 'text-blue-600 bg-blue-50' },
+  verified:     { label: 'ยืนยันแล้ว',  cls: 'text-emerald-600 bg-emerald-50' },
+  not_required: { label: 'ไม่ต้องมัดจำ', cls: 'text-slate-500 bg-slate-100' },
+};
+
+function AdminPaymentPanel({ booking }: { booking: Booking }) {
+  const [isPending, startTransition] = useTransition();
+  const [depositStatus, setDepositStatus] = useState(booking.depositStatus ?? 'pending');
+  const [balanceStatus, setBalanceStatus] = useState(booking.balanceStatus ?? 'unpaid');
+  const [balancePaymentMethod, setBalancePaymentMethod] = useState(booking.balancePaymentMethod ?? '');
+  const [depositSlipUrl, setDepositSlipUrl] = useState(booking.depositSlipUrl ?? '');
+  const [balanceSlipUrl, setBalanceSlipUrl] = useState(booking.balanceSlipUrl ?? '');
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  function showMsg(ok: boolean, text: string) {
+    setMsg({ ok, text });
+    setTimeout(() => setMsg(null), 3000);
+  }
+
+  async function handleDepositSlip(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    startTransition(async () => {
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const { url } = await uploadImage(fd, 'slips');
+        setDepositSlipUrl(url);
+        const res = await adminUpdatePaymentStatus(booking.ref, { depositSlipUrl: url, depositStatus: 'submitted' });
+        setDepositStatus('submitted');
+        if (res.ok) showMsg(true, 'อัพโหลดสลิปมัดจำแล้ว');
+        else showMsg(false, res.error ?? 'ผิดพลาด');
+      } catch (err) {
+        showMsg(false, String(err));
+      }
+    });
+  }
+
+  async function handleBalanceSlip(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    startTransition(async () => {
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const { url } = await uploadImage(fd, 'slips');
+        setBalanceSlipUrl(url);
+        const res = await adminUpdatePaymentStatus(booking.ref, { balanceSlipUrl: url });
+        if (res.ok) showMsg(true, 'อัพโหลดสลิปส่วนที่เหลือแล้ว');
+        else showMsg(false, res.error ?? 'ผิดพลาด');
+      } catch (err) {
+        showMsg(false, String(err));
+      }
+    });
+  }
+
+  async function saveDepositStatus(status: string) {
+    startTransition(async () => {
+      const res = await adminUpdatePaymentStatus(booking.ref, { depositStatus: status });
+      if (res.ok) { setDepositStatus(status); showMsg(true, 'บันทึกสถานะมัดจำแล้ว'); }
+      else showMsg(false, res.error ?? 'ผิดพลาด');
+    });
+  }
+
+  async function saveBalanceStatus(status: string, method?: string) {
+    startTransition(async () => {
+      const res = await adminUpdatePaymentStatus(booking.ref, {
+        balanceStatus: status,
+        ...(method !== undefined ? { balancePaymentMethod: method } : {}),
+      });
+      if (res.ok) {
+        setBalanceStatus(status);
+        if (method !== undefined) setBalancePaymentMethod(method);
+        showMsg(true, 'บันทึกสถานะชำระแล้ว');
+      } else showMsg(false, res.error ?? 'ผิดพลาด');
+    });
+  }
+
+  const depositInfo = DEPOSIT_STATUS_LABEL[depositStatus] ?? DEPOSIT_STATUS_LABEL.pending;
+
+  return (
+    <div className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] lg:col-span-2">
+      <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+        <Banknote className="w-3.5 h-3.5" /> การชำระเงิน
+        {msg && <span className={`ml-auto text-[11px] font-semibold ${msg.ok ? 'text-emerald-600' : 'text-red-500'}`}>{msg.text}</span>}
+      </p>
+      <div className="grid grid-cols-2 gap-4">
+        {/* Deposit */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-600">มัดจำ {booking.depositAmount ? `(฿${booking.depositAmount.toLocaleString()})` : ''}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${depositInfo.cls}`}>{depositInfo.label}</span>
+            {(['pending','submitted','verified','not_required'] as const).map(s => (
+              <button key={s} disabled={isPending || depositStatus === s}
+                onClick={() => saveDepositStatus(s)}
+                className="text-[10px] px-2 py-0.5 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-default">
+                {DEPOSIT_STATUS_LABEL[s].label}
+              </button>
+            ))}
+          </div>
+          {depositSlipUrl ? (
+            <a href={depositSlipUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[11px] text-blue-600 hover:underline">
+              <Image className="w-3.5 h-3.5" /> ดูสลิปมัดจำ
+            </a>
+          ) : null}
+          <label className={`flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-green-600 cursor-pointer ${isPending ? 'opacity-40' : ''}`}>
+            <Upload className="w-3.5 h-3.5" /> อัพโหลดสลิปมัดจำ
+            <input type="file" accept="image/*" className="hidden" onChange={handleDepositSlip} disabled={isPending} />
+          </label>
+        </div>
+
+        {/* Balance */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-600">ส่วนที่เหลือ</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${balanceStatus === 'paid' ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50'}`}>
+              {balanceStatus === 'paid' ? 'ชำระแล้ว' : 'ยังไม่ชำระ'}
+            </span>
+            {balanceStatus === 'unpaid' && (
+              <>
+                <select value={balancePaymentMethod}
+                  onChange={e => setBalancePaymentMethod(e.target.value)}
+                  className="text-[11px] border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none">
+                  <option value="">— วิธีชำระ —</option>
+                  <option value="cash">เงินสด</option>
+                  <option value="transfer">โอน</option>
+                  <option value="credit_card">บัตรเครดิต</option>
+                </select>
+                <button disabled={isPending}
+                  onClick={() => saveBalanceStatus('paid', balancePaymentMethod)}
+                  className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 font-semibold">
+                  <CheckCircle className="w-3 h-3" /> บันทึกชำระ
+                </button>
+              </>
+            )}
+            {balanceStatus === 'paid' && (
+              <button disabled={isPending}
+                onClick={() => saveBalanceStatus('unpaid')}
+                className="text-[10px] px-2 py-0.5 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40">
+                ยกเลิก
+              </button>
+            )}
+          </div>
+          {balanceSlipUrl ? (
+            <a href={balanceSlipUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[11px] text-blue-600 hover:underline">
+              <Image className="w-3.5 h-3.5" /> ดูสลิปส่วนที่เหลือ
+            </a>
+          ) : null}
+          <label className={`flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-green-600 cursor-pointer ${isPending ? 'opacity-40' : ''}`}>
+            <Upload className="w-3.5 h-3.5" /> อัพโหลดสลิปส่วนที่เหลือ
+            <input type="file" accept="image/*" className="hidden" onChange={handleBalanceSlip} disabled={isPending} />
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BookingsTable({
   bookings, 
   pagination 
 }: { 
@@ -254,14 +422,38 @@ export function BookingsTable({
 
                         {/* ใบเสนอราคา */}
                         {b.quoteDocId ? (
-                          <Link
-                            href={`/admin/documents/${b.quoteDocId}/print`}
-                            target="_blank"
-                            title="ดูใบเสนอราคา"
-                            className="p-2 rounded-md bg-purple-50 text-purple-600 border border-purple-100/60 hover:bg-purple-600 hover:text-white hover:border-transparent transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 hover:-translate-y-0.5 active:translate-y-0"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </Link>
+                          <>
+                            <Link
+                              href={`/admin/documents/${b.quoteDocId}/print`}
+                              target="_blank"
+                              title={`ดูใบเสนอราคา (${b.quoteStatus ?? ''})`}
+                              className="p-2 rounded-md bg-purple-50 text-purple-600 border border-purple-100/60 hover:bg-purple-600 hover:text-white hover:border-transparent transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/20 hover:-translate-y-0.5 active:translate-y-0"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </Link>
+                            {b.quoteStatus === 'pending_approval' && (
+                              <>
+                                <button
+                                  onClick={() => run(() => approveQuote(b.ref))}
+                                  disabled={isPending}
+                                  title="อนุมัติใบเสนอราคา"
+                                  className="p-2 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100/60 hover:bg-emerald-600 hover:text-white disabled:opacity-50 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                                >
+                                  <ThumbsUp className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (confirm(`ปฏิเสธใบเสนอราคาและยกเลิกการจอง ${b.ref}?`)) run(() => rejectQuote(b.ref));
+                                  }}
+                                  disabled={isPending}
+                                  title="ปฏิเสธใบเสนอราคา"
+                                  className="p-2 rounded-md bg-red-50 text-red-500 border border-red-100/60 hover:bg-red-500 hover:text-white disabled:opacity-50 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                                >
+                                  <ThumbsDown className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </>
                         ) : (
                           <button
                             onClick={() => run(() => createQuoteForBooking(b.ref))}
@@ -408,6 +600,9 @@ export function BookingsTable({
                                 </div>
                               </div>
                             </div>
+
+                            {/* Payment Panel */}
+                            <AdminPaymentPanel booking={b} />
                           </div>
                         </div>
                       </td>
