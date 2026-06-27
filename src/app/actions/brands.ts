@@ -17,7 +17,11 @@ function normalize(doc: Record<string, unknown>): BrandRow {
 
 export async function getBrands(productType?: string): Promise<BrandRow[]> {
   await connectDB();
-  const query = productType ? { productType } : {};
+  // แบรนด์เก่าที่ไม่มี productType field ให้นับเป็น 'tires' (default)
+  const query = !productType ? {}
+    : productType === 'tires'
+      ? { $or: [{ productType: 'tires' }, { productType: { $exists: false } }, { productType: null }] }
+      : { productType };
   const docs = await Brand.find(query).sort({ name: 1 }).lean();
   return docs.map(d => normalize(d as Record<string, unknown>));
 }
