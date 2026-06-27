@@ -207,7 +207,7 @@ export function ServiceItemsClient({ items: initialItems }: { items: ServiceItem
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12">
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
@@ -263,7 +263,7 @@ export function ServiceItemsClient({ items: initialItems }: { items: ServiceItem
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {items.map((item, idx) => {
             const color = CARD_COLORS[idx % CARD_COLORS.length];
             return (

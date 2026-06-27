@@ -16,12 +16,14 @@ export async function getProducts(filters?: {
   width?: string;
   series?: string;
   rim?: string;
+  productType?: string;
 }): Promise<ProductRow[]> {
   await connectDB();
   const query: Record<string, unknown> = { published: true };
-  if (filters?.brand)    query.brand   = new RegExp(`^${filters.brand}$`, 'i');
-  if (filters?.rimSize)  query.rimSize = filters.rimSize;
-  if (filters?.category) query.category = filters.category;
+  if (filters?.brand)       query.brand   = new RegExp(`^${filters.brand}$`, 'i');
+  if (filters?.rimSize)     query.rimSize = filters.rimSize;
+  if (filters?.category)    query.category = filters.category;
+  if (filters?.productType) query.productType = filters.productType;
   
   if (filters?.width && filters?.series && filters?.rim) {
     // Matches: 205/55R16, 265/60-18, 195R14C (if series is 80)
