@@ -5,10 +5,13 @@ import connectDB from '@/lib/mongodb';
 import { Product } from '@/models/Product';
 import { rimFromSize } from '@/lib/products';
 
+import type { ProductType } from '@/models/Product';
+
 type ProductInput = {
+  productType?: ProductType;
   brand: string;
   model: string;
-  size: string;
+  size?: string;
   type: string;
   note: string;
   priceCash: number;
@@ -29,9 +32,11 @@ type Result = { ok: true } | { ok: false; error: string };
 export async function createProduct(data: ProductInput): Promise<Result> {
   try {
     await connectDB();
-    await Product.create({ ...data, rimSize: rimFromSize(data.size) });
+    const isTire = !data.productType || data.productType === 'tires';
+    const rimSize = isTire ? rimFromSize(data.size ?? '') : 0;
+    await Product.create({ ...data, size: data.size ?? '', rimSize });
     revalidatePath('/admin/products');
-    revalidatePath('/tires');
+    if (isTire) revalidatePath('/tires');
     return { ok: true };
   } catch (e) {
     console.error('[createProduct]', e);
@@ -42,10 +47,11 @@ export async function createProduct(data: ProductInput): Promise<Result> {
 export async function updateProduct(id: string, data: ProductInput): Promise<Result> {
   try {
     await connectDB();
-    await Product.findByIdAndUpdate(id, { ...data, rimSize: rimFromSize(data.size) });
+    const isTire = !data.productType || data.productType === 'tires';
+    const rimSize = isTire ? rimFromSize(data.size ?? '') : 0;
+    await Product.findByIdAndUpdate(id, { ...data, size: data.size ?? '', rimSize });
     revalidatePath('/admin/products');
-    revalidatePath('/tires');
-    revalidatePath(`/tires/${id}`);
+    if (isTire) { revalidatePath('/tires'); revalidatePath(`/tires/${id}`); }
     return { ok: true };
   } catch (e) {
     console.error('[updateProduct]', e);

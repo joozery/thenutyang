@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { Clock, ArrowLeft } from 'lucide-react';
 
 const PAGE_LABELS: Record<string, string> = {
-  wheels: 'แม็ก & ล้อ',
-  accessories: 'อุปกรณ์เสริม',
-  battery: 'แบตเตอรี่',
+  wheels: 'ล้อแม็ก',
+  accessories: 'ของแต่ง',
+  brakes: 'เบรค',
+  shock: 'โช๊ค',
   oil: 'น้ำมันเครื่อง',
+  battery: 'แบตเตอรี่',
   promotions: 'โปรโมชั่น',
   services: 'บริการของเรา',
   articles: 'บทความ',

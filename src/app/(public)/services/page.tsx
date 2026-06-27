@@ -1,6 +1,7 @@
 import { Check, ShieldCheck, RefreshCw, AlertCircle, Settings, Wind } from 'lucide-react';
 import Link from 'next/link';
 import { AfterSales } from '@/components/home/after-sales';
+import { OurServices } from '@/components/home/our-services';
 import connectDB from '@/lib/mongodb';
 import { Service } from '@/models/Service';
 
@@ -14,9 +15,12 @@ export default async function ServicesPage() {
   const services = JSON.parse(JSON.stringify(servicesData));
 
   return (
-    <div className="bg-slate-50 min-h-screen py-10 md:py-16 overflow-hidden">
+    <div className="bg-slate-50 min-h-screen overflow-hidden">
+      <OurServices />
+
+      <div className="py-10 md:py-16">
       <div className="container mx-auto px-4 md:px-8">
-        
+
         <AfterSales services={services} />
 
         {/* CTA Section */}
@@ -32,6 +36,7 @@ export default async function ServicesPage() {
             </a>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

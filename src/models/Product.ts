@@ -1,6 +1,9 @@
 import { Schema, model, models } from 'mongoose';
 
+export type ProductType = 'tires' | 'wheels' | 'accessories' | 'brakes' | 'shock' | 'oil';
+
 export interface IProduct {
+  productType: ProductType;
   brand: string;
   model: string;
   size: string;
@@ -23,10 +26,11 @@ export interface IProduct {
 }
 
 const ProductSchema = new Schema<IProduct>({
+  productType:      { type: String, enum: ['tires','wheels','accessories','brakes','shock','oil'], default: 'tires' },
   brand:            { type: String, required: true },
   model:            { type: String, required: true },
-  size:             { type: String, required: true },
-  rimSize:          { type: Number, required: true },
+  size:             { type: String, default: '' },
+  rimSize:          { type: Number, default: 0 },
   type:             { type: String, default: '' },
   note:             { type: String, default: '' },
   priceCash:        { type: Number, required: true },

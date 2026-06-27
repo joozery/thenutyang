@@ -45,9 +45,10 @@ export async function getProductById(id: string): Promise<ProductRow | null> {
   }
 }
 
-export async function getAllProductsAdmin(): Promise<ProductRow[]> {
+export async function getAllProductsAdmin(productType?: string): Promise<ProductRow[]> {
   await connectDB();
-  const docs = await Product.find({}).sort({ brand: 1, size: 1, model: 1 }).lean();
+  const query = productType ? { productType } : {};
+  const docs = await Product.find(query).sort({ brand: 1, size: 1, model: 1 }).lean();
   return docs.map(normalize);
 }
 

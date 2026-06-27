@@ -37,18 +37,7 @@ const SERVICES = [
     icon: "repair",
     id: "repair"
   },
-  {
-    title: "เปลี่ยนโช้ค",
-    subtitle: "ใช้โช้คคุณภาพสูง นุ่มนวลทุกการขับขี่",
-    icon: "shock",
-    id: "shock"
-  },
-  {
-    title: "รับเทิร์นยาง",
-    subtitle: "รับเทิร์นยางเก่า แลกเป็นส่วนลดพิเศษ",
-    icon: "trade-in",
-    id: "trade-in"
-  }
+
 ];
 
 export function OurServices() {
@@ -84,7 +73,7 @@ export function OurServices() {
         </div>
 
         {/* Services Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 max-w-5xl mx-auto">
           {SERVICES.map((service, idx) => (
             <div 
               key={idx}

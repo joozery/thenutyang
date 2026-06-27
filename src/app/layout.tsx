@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { CookieConsent } from "@/components/layout/cookie-consent";
@@ -6,6 +6,11 @@ const notoSansThai = Noto_Sans_Thai({
   subsets: ["thai", "latin"],
   variable: "--font-sans",
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "นัททายางยนต์ - ครบ จบ เรื่องยาง และบริการรถยนต์",

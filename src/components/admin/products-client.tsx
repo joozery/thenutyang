@@ -3,27 +3,34 @@
 import { useState, useMemo, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Search, Plus, Download, Edit2, Trash2, X, Package,
+  Search, Plus, Edit2, Trash2, X, Package,
   ChevronUp, ChevronDown, ChevronsUpDown, Tag, Layers,
   ChevronLeft, ChevronRight as ChevronRightIcon,
-  Upload, ImageIcon,
+  Upload, ImageIcon, CircleDot, Disc3, Wrench, Disc, Zap, Droplets,
 } from 'lucide-react';
 import { createProduct, updateProduct, deleteProduct } from '@/app/actions/products';
 import { uploadImage } from '@/app/actions/upload';
-import { getBrands } from '@/app/actions/brands';
 import type { ProductRow } from '@/lib/products';
 import type { BrandRow } from '@/app/actions/brands';
+import type { ProductType } from '@/models/Product';
 
-type SortKey = keyof ProductRow;
 type SortDir = 'asc' | 'desc';
 
-const CATEGORIES: Record<string, string> = {
+const TIRE_CATEGORIES: Record<string, string> = {
   touring: 'ทั่วไป', eco: 'ประหยัดพลังงาน', sport: 'สปอร์ต', suv: 'SUV/PPV', allseason: 'ออลซีซั่น',
 };
 
-const PAGE_SIZE = 10;
+const PRODUCT_TABS: { type: ProductType; label: string; icon: React.ElementType; unit: string }[] = [
+  { type: 'tires',       label: 'ยาง',           icon: CircleDot, unit: 'เส้น' },
+  { type: 'wheels',      label: 'ล้อแม็ก',        icon: Disc3,     unit: 'วง' },
+  { type: 'accessories', label: 'ของแต่ง',        icon: Wrench,    unit: 'ชิ้น' },
+  { type: 'brakes',      label: 'เบรค',           icon: Disc,      unit: 'ชิ้น' },
+  { type: 'shock',       label: 'โช๊ค',           icon: Zap,       unit: 'ต้น' },
+  { type: 'oil',         label: 'น้ำมันเครื่อง',  icon: Droplets,  unit: 'ขวด' },
+];
 
-// สูตรจาก Excel: รูดบัตรคิดค่าธรรมเนียม 3% (ไม่บวก VAT), ผ่อน 0% 4 เดือนคิดดอกเบี้ย 0.8%/เดือน + ค่าธรรมเนียม 1.5% ครั้งเดียว บวก VAT 7% (x107%) บนค่าธรรมเนียมผ่อน
+const PAGE_SIZE = 15;
+
 function calcDerivedPrices(cash: number) {
   const priceCredit = cash + cash * 0.03;
   const priceInstallment = cash + cash * 4 * 0.008 * 1.07 + cash * 0.015 * 1.07;
@@ -34,23 +41,11 @@ const EMPTY_FORM = {
   brand: '', model: '', size: '', type: '', note: '',
   priceCash: 0, priceCredit: 0, priceInstallment: 0, costPrice: 0,
   oldPrice: undefined as number | undefined,
-  badge: '',
-  image: '/yang.png',
+  badge: '', image: '/yang.png',
   category: 'touring' as const,
   stock: 0, year: '26',
 };
 
-const BRAND_COLORS: Record<string, string> = {
-  BRIDGESTONE: 'bg-blue-50 text-blue-700 border-blue-200',
-  MICHELIN:    'bg-yellow-50 text-yellow-700 border-yellow-200',
-  YOKOHAMA:    'bg-orange-50 text-orange-700 border-orange-200',
-  DUNLOP:      'bg-purple-50 text-purple-700 border-purple-200',
-  GOODYEAR:    'bg-green-50 text-green-700 border-green-200',
-  TOYO:        'bg-red-50 text-red-700 border-red-200',
-  PIRELLI:     'bg-slate-50 text-slate-700 border-slate-300',
-  MAXXIS:      'bg-teal-50 text-teal-700 border-teal-200',
-};
-const getBrandColor = (b: string) => BRAND_COLORS[b] ?? 'bg-slate-50 text-slate-700 border-slate-200';
 const fmt = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 2 });
 
 function SortIcon({ col, sortKey, sortDir }: { col: string; sortKey: string; sortDir: SortDir }) {
@@ -60,18 +55,25 @@ function SortIcon({ col, sortKey, sortDir }: { col: string; sortKey: string; sor
     : <ChevronDown size={11} className="text-slate-700 ml-1 inline" />;
 }
 
-export function ProductsClient({ initialProducts, initialBrands }: { initialProducts: ProductRow[]; initialBrands: BrandRow[] }) {
+export function ProductsClient({
+  initialProducts,
+  initialBrands,
+  activeType,
+}: {
+  initialProducts: ProductRow[];
+  initialBrands: BrandRow[];
+  activeType: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isUploading, setIsUploading] = useState(false);
-  const [brands, setBrands] = useState<BrandRow[]>(initialBrands);
   const [brandOpen, setBrandOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [search, setSearch]           = useState('');
   const [sizeTab, setSizeTab]         = useState('all');
   const [brandFilter, setBrandFilter] = useState('');
-  const [search, setSearch]           = useState('');
-  const [sortKey, setSortKey]         = useState<string>('brand');
+  const [sortKey, setSortKey]         = useState('brand');
   const [sortDir, setSortDir]         = useState<SortDir>('asc');
   const [modal, setModal]             = useState<'add' | 'edit' | null>(null);
   const [editTarget, setEditTarget]   = useState<ProductRow | null>(null);
@@ -80,11 +82,14 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
   const [page, setPage]               = useState(1);
   const [error, setError]             = useState('');
 
+  const isTire = activeType === 'tires';
+  const tabInfo = PRODUCT_TABS.find(t => t.type === activeType) ?? PRODUCT_TABS[0];
+
+  /* ─── filters ─── */
   const allSizes = useMemo(
-    () => [...new Set(initialProducts.map(p => p.size))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+    () => [...new Set(initialProducts.map(p => p.size).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [initialProducts]
   );
-
   const availableBrands = useMemo(() => {
     const base = sizeTab === 'all' ? initialProducts : initialProducts.filter(p => p.size === sizeTab);
     return [...new Set(base.map(p => p.brand))].sort();
@@ -92,24 +97,21 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    const qNorm = q.replace(/[\/rR\s-]/g, ''); // e.g. 2155517
     return initialProducts
       .filter(p => {
         const matchSize  = sizeTab === 'all' || p.size === sizeTab;
         const matchBrand = !brandFilter || p.brand === brandFilter;
-        const sizeNorm = String(p.size || '').toLowerCase().replace(/[\/rR\s-]/g, '');
-        const matchSearch = !q || 
-          String(p.brand || '').toLowerCase().includes(q) || 
-          String(p.model || '').toLowerCase().includes(q) || 
-          String(p.size || '').toLowerCase().includes(q) ||
-          (qNorm.length > 0 && sizeNorm.includes(qNorm));
+        const matchSearch = !q ||
+          p.brand.toLowerCase().includes(q) ||
+          p.model.toLowerCase().includes(q) ||
+          (p.size || '').toLowerCase().includes(q);
         return matchSize && matchBrand && matchSearch;
       })
       .sort((a, b) => {
         const av = a[sortKey as keyof ProductRow] as string | number;
         const bv = b[sortKey as keyof ProductRow] as string | number;
         const cmp = typeof av === 'number' && typeof bv === 'number'
-          ? av - bv : String(av).localeCompare(String(bv), 'th');
+          ? av - bv : String(av ?? '').localeCompare(String(bv ?? ''), 'th');
         return sortDir === 'asc' ? cmp : -cmp;
       });
   }, [initialProducts, sizeTab, brandFilter, search, sortKey, sortDir]);
@@ -127,8 +129,10 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
   function openEdit(p: ProductRow) {
     setEditTarget(p);
     setForm({
-      brand: p.brand, model: p.model, size: p.size, type: p.type, note: p.note,
-      priceCash: p.priceCash, priceCredit: p.priceCredit, priceInstallment: p.priceInstallment, costPrice: p.costPrice ?? 0,
+      brand: p.brand, model: p.model, size: p.size ?? '',
+      type: p.type, note: p.note,
+      priceCash: p.priceCash, priceCredit: p.priceCredit,
+      priceInstallment: p.priceInstallment, costPrice: p.costPrice ?? 0,
       oldPrice: p.oldPrice, badge: p.badge ?? '',
       image: p.image || '/yang.png',
       category: p.category as typeof EMPTY_FORM.category,
@@ -143,7 +147,6 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
-    setError('');
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -158,9 +161,11 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
   }
 
   function handleSave() {
-    if (!form.brand || !form.model || !form.size) return;
+    if (!form.brand || !form.model) return;
+    if (isTire && !form.size) return;
     const data = {
       ...form,
+      productType: activeType as ProductType,
       oldPrice: form.oldPrice || undefined,
       badge: form.badge || undefined,
     };
@@ -184,8 +189,6 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
   }
 
   const totalStock = initialProducts.reduce((s, p) => s + p.stock, 0);
-  const lowStock   = initialProducts.filter(p => p.stock > 0 && p.stock <= 6).length;
-  const allBrands  = [...new Set(initialProducts.map(p => p.brand))];
 
   return (
     <div className="max-w-full mx-auto space-y-5">
@@ -193,126 +196,103 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">สินค้า / สต๊อก</h1>
-          <p className="text-xs text-slate-400 mt-0.5">ราคารวมค่าติดตั้ง จำนวน 1 เส้น</p>
+          <p className="text-xs text-slate-400 mt-0.5">จัดการสินค้าทุกหมวดหมู่</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors">
-            <Download size={13} /> Export
-          </button>
-          <button onClick={openAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 transition-colors shadow-sm">
-            <Plus size={13} /> เพิ่มสินค้า
-          </button>
+        <button onClick={openAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 transition-colors shadow-sm">
+          <Plus size={13} /> เพิ่ม{tabInfo.label}
+        </button>
+      </div>
+
+      {/* Product Type Tabs */}
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="flex items-center overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+          {PRODUCT_TABS.map(tab => {
+            const Icon = tab.icon;
+            const isActive = tab.type === activeType;
+            return (
+              <button
+                key={tab.type}
+                onClick={() => {
+                  setSizeTab('all'); setBrandFilter(''); setSearch(''); setPage(1);
+                  router.push(`/admin/products?type=${tab.type}`);
+                }}
+                className={`shrink-0 flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
+                  isActive
+                    ? 'border-green-500 text-green-600 bg-green-50/50'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <Icon size={15} />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { icon: <Package size={16} className="text-slate-600" />, label: 'SKU ทั้งหมด',  value: initialProducts.length, sub: 'รายการ', bg: 'bg-slate-100' },
-          { icon: <Layers  size={16} className="text-slate-600" />, label: 'ยี่ห้อ',        value: allBrands.length,       sub: 'ยี่ห้อ',  bg: 'bg-slate-100' },
-          { icon: <Tag     size={16} className="text-slate-600" />, label: 'สต๊อกรวม',     value: totalStock,             sub: 'เส้น',   bg: 'bg-slate-100' },
-          { icon: <Tag     size={16} className="text-amber-600" />, label: 'ใกล้หมด (≤6)', value: lowStock,               sub: 'รายการ', bg: 'bg-amber-50'  },
-        ].map(s => (
-          <div key={s.label} className="bg-white border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
-            <div className={`${s.bg} p-2 rounded-lg`}>{s.icon}</div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-medium">{s.label}</p>
-              <p className="text-lg font-bold text-slate-900 leading-none mt-0.5">
-                {s.value} <span className="text-xs font-normal text-slate-400">{s.sub}</span>
-              </p>
-            </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
+          <div className="bg-slate-100 p-2 rounded-lg"><Package size={16} className="text-slate-600" /></div>
+          <div>
+            <p className="text-[10px] text-slate-400 font-medium">รายการทั้งหมด</p>
+            <p className="text-lg font-bold text-slate-900 leading-none mt-0.5">{initialProducts.length} <span className="text-xs font-normal text-slate-400">รายการ</span></p>
           </div>
-        ))}
-      </div>
-
-      {/* Stock Summary */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-100 bg-emerald-50/50 flex items-center gap-2">
-          <Package size={16} className="text-emerald-600" />
-          <h2 className="text-sm font-bold text-slate-800">ยางที่มีพร้อมขาย (มีสต๊อก)</h2>
         </div>
-        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[300px] overflow-y-auto bg-slate-50/30">
-          {(() => {
-            const map = new Map<string, { size: string, total: number, items: ProductRow[] }>();
-            for (const p of initialProducts) {
-              if (p.stock > 0) {
-                if (!map.has(p.size)) map.set(p.size, { size: p.size, total: 0, items: [] });
-                const group = map.get(p.size)!;
-                group.total += p.stock;
-                group.items.push(p);
-              }
-            }
-            const groups = Array.from(map.values()).sort((a, b) => a.size.localeCompare(b.size, undefined, { numeric: true }));
-            
-            if (groups.length === 0) {
-              return <div className="col-span-full text-center text-sm text-slate-500 py-4">ไม่มีสินค้าในสต๊อก</div>;
-            }
-
-            return groups.map(g => (
-              <div key={g.size} className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
-                <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-100">
-                  <span className="font-mono text-[13px] font-bold text-slate-900">{g.size}</span>
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">{g.total} เส้น</span>
-                </div>
-                <div className="space-y-1.5">
-                  {g.items.map(i => (
-                    <div key={i.id} className="flex justify-between items-start text-[11px]">
-                      <span className="text-slate-600 truncate pr-2" title={`${i.brand} ${i.model}`}>
-                        <span className="font-bold text-slate-700">{i.brand}</span> {i.model}
-                      </span>
-                      <span className="font-bold text-slate-900 shrink-0">{i.stock}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ));
-          })()}
+        <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
+          <div className="bg-slate-100 p-2 rounded-lg"><Layers size={16} className="text-slate-600" /></div>
+          <div>
+            <p className="text-[10px] text-slate-400 font-medium">สต๊อกรวม</p>
+            <p className="text-lg font-bold text-slate-900 leading-none mt-0.5">{totalStock} <span className="text-xs font-normal text-slate-400">{tabInfo.unit}</span></p>
+          </div>
+        </div>
+        <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
+          <div className="bg-amber-50 p-2 rounded-lg"><Tag size={16} className="text-amber-600" /></div>
+          <div>
+            <p className="text-[10px] text-slate-400 font-medium">ใกล้หมด (≤5)</p>
+            <p className="text-lg font-bold text-slate-900 leading-none mt-0.5">{initialProducts.filter(p => p.stock > 0 && p.stock <= 5).length} <span className="text-xs font-normal text-slate-400">รายการ</span></p>
+          </div>
         </div>
       </div>
 
-      {/* Table card */}
+      {/* Table Card */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        {/* Size tabs */}
-        <div className="flex items-center gap-0 overflow-x-auto border-b border-slate-100" style={{ scrollbarWidth: 'none' }}>
-          <button
-            onClick={() => { setSizeTab('all'); setBrandFilter(''); setPage(1); }}
-            className={`shrink-0 px-5 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap
-              ${sizeTab === 'all' ? 'border-slate-900 text-slate-900 bg-slate-50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-          >
-            ทั้งหมด <span className="ml-1.5 text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{initialProducts.length}</span>
-          </button>
-          {allSizes.map(size => (
-            <button key={size}
-              onClick={() => { setSizeTab(size); setBrandFilter(''); setPage(1); }}
-              className={`shrink-0 px-5 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap
-                ${sizeTab === size ? 'border-green-500 text-green-600 bg-green-50/50' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
-            >
-              {size} <span className="ml-1.5 text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{initialProducts.filter(p => p.size === size).length}</span>
+        {/* Size tabs — tire only */}
+        {isTire && allSizes.length > 0 && (
+          <div className="flex items-center gap-0 overflow-x-auto border-b border-slate-100" style={{ scrollbarWidth: 'none' }}>
+            <button onClick={() => { setSizeTab('all'); setBrandFilter(''); setPage(1); }}
+              className={`shrink-0 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${sizeTab === 'all' ? 'border-slate-900 text-slate-900 bg-slate-50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              ทั้งหมด <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{initialProducts.length}</span>
             </button>
-          ))}
-        </div>
-
-        {/* Brand filter + search */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center px-4 py-3 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2 flex-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">ยี่ห้อ:</span>
-            <select
-              value={brandFilter}
-              onChange={e => { setBrandFilter(e.target.value); setPage(1); }}
-              className="text-xs bg-white border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-500 transition-colors w-48 font-semibold cursor-pointer appearance-none"
-            >
-              <option value="">ทั้งหมด ({availableBrands.length} ยี่ห้อ)</option>
-              {availableBrands.map(b => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-            <ChevronDown size={12} className="text-slate-400 -ml-7 pointer-events-none" />
+            {allSizes.map(size => (
+              <button key={size} onClick={() => { setSizeTab(size); setBrandFilter(''); setPage(1); }}
+                className={`shrink-0 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${sizeTab === size ? 'border-green-500 text-green-600 bg-green-50/50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+                {size} <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{initialProducts.filter(p => p.size === size).length}</span>
+              </button>
+            ))}
           </div>
-          <div className="relative shrink-0">
+        )}
+
+        {/* Search + Brand filter */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+          {isTire && (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">ยี่ห้อ:</span>
+              <div className="relative">
+                <select value={brandFilter} onChange={e => { setBrandFilter(e.target.value); setPage(1); }}
+                  className="text-xs bg-white border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 pr-7 focus:outline-none focus:ring-2 focus:ring-slate-900/10 appearance-none w-44">
+                  <option value="">ทั้งหมด ({availableBrands.length})</option>
+                  {availableBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          )}
+          <div className="relative ml-auto">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input type="text" placeholder="ค้นหารุ่นยาง..." value={search}
+            <input type="text" placeholder={`ค้นหา${tabInfo.label}...`} value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
-              className="pl-8 pr-8 py-1.5 w-48 text-xs bg-white border border-slate-200 rounded-lg placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-500 transition-colors" />
+              className="pl-8 pr-8 py-1.5 w-52 text-xs bg-white border border-slate-200 rounded-lg placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
             {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><X size={12} /></button>}
           </div>
         </div>
@@ -323,87 +303,96 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider w-10">#</th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider w-28 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('size')}>
-                  ขนาดยาง <SortIcon col="size" sortKey={sortKey} sortDir={sortDir} />
-                </th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('brand')}>
+                {isTire && (
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => toggleSort('size')}>
+                    ขนาด <SortIcon col="size" sortKey={sortKey} sortDir={sortDir} />
+                  </th>
+                )}
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => toggleSort('brand')}>
                   ยี่ห้อ <SortIcon col="brand" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('model')}>
-                  รุ่น <SortIcon col="model" sortKey={sortKey} sortDir={sortDir} />
+                <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => toggleSort('model')}>
+                  ชื่อ/รุ่น <SortIcon col="model" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32">ประเภท</th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-amber-600 uppercase tracking-wider w-24 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('costPrice')}>
+                {!isTire && (
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">ขนาด/สเปค</th>
+                )}
+                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">ประเภท</th>
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-amber-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => toggleSort('costPrice')}>
                   ทุน <SortIcon col="costPrice" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-700 uppercase tracking-wider w-32 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceCash')}>
-                  เงินสด/เงินโอน <SortIcon col="priceCash" sortKey={sortKey} sortDir={sortDir} />
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => toggleSort('priceCash')}>
+                  เงินสด <SortIcon col="priceCash" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider w-28 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceCredit')}>
-                  รูดบัตรเต็มจำนวน <SortIcon col="priceCredit" sortKey={sortKey} sortDir={sortDir} />
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => toggleSort('priceCredit')}>
+                  รูดบัตร <SortIcon col="priceCredit" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider w-32 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('priceInstallment')}>
-                  ผ่อน 4 เดือน <SortIcon col="priceInstallment" sortKey={sortKey} sortDir={sortDir} />
+                <th className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => toggleSort('priceInstallment')}>
+                  ผ่อน <SortIcon col="priceInstallment" sortKey={sortKey} sortDir={sortDir} />
                 </th>
-                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-16">สัปดาห์/ปี</th>
-                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider w-16 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => toggleSort('stock')}>
+                <th className="px-4 py-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => toggleSort('stock')}>
                   สต๊อก <SortIcon col="stock" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th className="px-4 py-3 w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {paginated.map((p, idx) => (
-                <tr key={p.id} className="hover:bg-slate-50/70 transition-colors group">
-                  <td className="px-4 py-3.5 text-[11px] text-slate-300 tabular-nums">{(page - 1) * PAGE_SIZE + idx + 1}</td>
-                  <td className="px-4 py-3.5">
-                    <span className="font-mono text-[13px] font-semibold text-slate-900 bg-slate-100/80 border border-slate-200/50 px-2 py-1 rounded-md">{p.size}</span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    {(() => {
-                      const logo = initialBrands.find(b => b.name === p.brand)?.logo;
-                      return logo ? (
-                        <div className="h-6 w-16 relative flex items-center justify-start shrink-0" title={p.brand}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={logo} alt={p.brand} className="max-h-full max-w-full object-contain mix-blend-multiply" />
-                        </div>
+              {paginated.map((p, idx) => {
+                const logo = initialBrands.find(b => b.name === p.brand)?.logo;
+                return (
+                  <tr key={p.id} className="hover:bg-slate-50/70 transition-colors group">
+                    <td className="px-4 py-3 text-[11px] text-slate-300">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                    {isTire && (
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-[13px] font-semibold text-slate-900 bg-slate-100/80 border border-slate-200/50 px-2 py-1 rounded-md">{p.size}</span>
+                      </td>
+                    )}
+                    <td className="px-4 py-3">
+                      {logo ? (
+                        <img src={logo} alt={p.brand} className="h-5 w-14 object-contain mix-blend-multiply" />
                       ) : (
-                        <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md border ${getBrandColor(p.brand)}`}>{p.brand}</span>
-                      );
-                    })()}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="font-semibold text-slate-800 text-[13px]">{p.model}</span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    {p.type ? <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{p.type}</span> : <span className="text-slate-200">—</span>}
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <span className="text-xs font-semibold text-amber-600 tabular-nums">{p.costPrice ? fmt(p.costPrice) : '—'}</span>
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <span className="text-sm font-black text-slate-900 tabular-nums">{fmt(p.priceCash)}</span>
-                  </td>
-                  <td className="px-4 py-3.5 text-right text-slate-400 tabular-nums text-xs">{fmt(p.priceCredit)}</td>
-                  <td className="px-4 py-3.5 text-right text-slate-500 tabular-nums text-xs font-semibold bg-slate-50/60">{fmt(p.priceInstallment)}</td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60">'{p.year}</span>
-                  </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-md tabular-nums ${p.stock === 0 ? 'bg-red-50 text-red-600 border border-red-100' : p.stock <= 6 ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'text-emerald-700 bg-emerald-50 border border-emerald-100'}`}>
-                      {p.stock}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEdit(p)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"><Edit2 size={12} /></button>
-                      <button onClick={() => setDeleteTarget(p)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"><Trash2 size={12} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <span className="text-[11px] font-bold text-slate-700">{p.brand}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        {p.image && p.image !== '/yang.png' && (
+                          <img src={p.image} alt={p.model} className="w-7 h-7 object-contain rounded" />
+                        )}
+                        <span className="font-semibold text-slate-800 text-[13px]">{p.model}</span>
+                        {p.badge && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">{p.badge}</span>}
+                      </div>
+                    </td>
+                    {!isTire && (
+                      <td className="px-4 py-3 text-[12px] text-slate-500">{p.size || '—'}</td>
+                    )}
+                    <td className="px-4 py-3 text-center">
+                      {p.type ? <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">{p.type}</span> : <span className="text-slate-200">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-xs font-semibold text-amber-600">{p.costPrice ? fmt(p.costPrice) : '—'}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm font-black text-slate-900">{fmt(p.priceCash)}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-400 text-xs">{fmt(p.priceCredit)}</td>
+                    <td className="px-4 py-3 text-right text-slate-500 text-xs font-semibold">{fmt(p.priceInstallment)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${p.stock === 0 ? 'bg-red-50 text-red-600 border border-red-100' : p.stock <= 5 ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'text-emerald-700 bg-emerald-50 border border-emerald-100'}`}>
+                        {p.stock}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openEdit(p)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"><Edit2 size={12} /></button>
+                        <button onClick={() => setDeleteTarget(p)} className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={12} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
-                <tr><td colSpan={12} className="py-20 text-center text-sm text-slate-400">ไม่พบสินค้าในขนาดนี้</td></tr>
+                <tr><td colSpan={12} className="py-20 text-center text-sm text-slate-400">ยังไม่มีสินค้าในหมวดนี้</td></tr>
               )}
             </tbody>
           </table>
@@ -411,18 +400,12 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
 
         {/* Pagination */}
         <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span className="text-[11px] text-slate-400 order-2 sm:order-1">
+          <span className="text-[11px] text-slate-400">
             แสดง <span className="font-semibold text-slate-600">{filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}</span> จาก <span className="font-semibold text-slate-600">{filtered.length}</span> รายการ
           </span>
-          <div className="flex items-center gap-1 order-1 sm:order-2">
-            {(brandFilter || search || sizeTab !== 'all') && (
-              <button onClick={() => { setSizeTab('all'); setBrandFilter(''); setSearch(''); setPage(1); }}
-                className="mr-2 text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium border border-slate-200 px-2 py-1 rounded-lg bg-white hover:bg-slate-50 transition-colors">
-                <X size={11} /> ล้างตัวกรอง
-              </button>
-            )}
+          <div className="flex items-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed">
               <ChevronLeft size={14} />
             </button>
             {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -434,12 +417,12 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
               .map((n, i) => n === '...'
                 ? <span key={`e${i}`} className="w-8 h-8 flex items-center justify-center text-[11px] text-slate-400">…</span>
                 : <button key={n} onClick={() => setPage(n as number)}
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${page === n ? 'bg-slate-900 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${page === n ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
                     {n}
                   </button>
               )}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed">
               <ChevronRightIcon size={14} />
             </button>
           </div>
@@ -452,48 +435,51 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeModal} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <h2 className="font-bold text-slate-900 text-sm">{modal === 'add' ? 'เพิ่มสินค้าใหม่' : 'แก้ไขสินค้า'}</h2>
-              <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"><X size={15} /></button>
+              <h2 className="font-bold text-slate-900 text-sm">
+                {modal === 'add' ? `เพิ่ม${tabInfo.label}ใหม่` : `แก้ไข${tabInfo.label}`}
+              </h2>
+              <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={15} /></button>
             </div>
-            <div className="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+            <div className="p-6 space-y-4 overflow-y-auto max-h-[72vh]">
               {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
               <div className="grid grid-cols-2 gap-4">
+                {/* Brand */}
                 <Field label="ยี่ห้อ *">
                   <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setBrandOpen(o => !o)}
-                      className={`${inputCls} flex items-center gap-2 text-left`}
-                    >
+                    <button type="button" onClick={() => setBrandOpen(o => !o)}
+                      className={`${inputCls} flex items-center gap-2 text-left`}>
                       {form.brand ? (
                         <>
-                          {brands.find(b => b.name === form.brand)?.logo ? (
-                            <img src={brands.find(b => b.name === form.brand)!.logo} alt={form.brand} className="h-4 w-8 object-contain shrink-0" />
-                          ) : null}
+                          {initialBrands.find(b => b.name === form.brand)?.logo && (
+                            <img src={initialBrands.find(b => b.name === form.brand)!.logo} alt={form.brand} className="h-4 w-8 object-contain shrink-0" />
+                          )}
                           <span className="font-bold text-slate-800">{form.brand}</span>
                         </>
-                      ) : (
-                        <span className="text-slate-400">เลือกแบรนด์</span>
-                      )}
+                      ) : <span className="text-slate-400">เลือกแบรนด์</span>}
                       <ChevronDown size={12} className="ml-auto text-slate-400 shrink-0" />
                     </button>
                     {brandOpen && (
-                      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-52 overflow-y-auto">
-                        {brands.length === 0 ? (
-                          <div className="px-3 py-4 text-xs text-slate-400 text-center">
-                            ยังไม่มีแบรนด์ —{' '}
-                            <a href="/admin/brands" className="text-green-600 underline">เพิ่มแบรนด์ก่อน</a>
-                          </div>
-                        ) : brands.map(b => (
+                      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                        {/* พิมพ์ชื่อ brand เองก็ได้ */}
+                        <div className="p-2 border-b border-slate-100">
+                          <input
+                            autoFocus
+                            placeholder="พิมพ์ชื่อแบรนด์..."
+                            className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                const val = (e.target as HTMLInputElement).value.trim().toUpperCase();
+                                if (val) { setForm(f => ({ ...f, brand: val })); setBrandOpen(false); }
+                              }
+                            }}
+                          />
+                        </div>
+                        {initialBrands.map(b => (
                           <button key={b.id} type="button"
                             onClick={() => { setForm(f => ({ ...f, brand: b.name })); setBrandOpen(false); }}
-                            className={`w-full flex items-center gap-3 px-3 py-2 text-xs hover:bg-slate-50 transition-colors ${form.brand === b.name ? 'bg-green-50 text-green-700 font-bold' : 'text-slate-700'}`}
-                          >
-                            {b.logo ? (
-                              <img src={b.logo} alt={b.name} className="h-5 w-10 object-contain shrink-0" />
-                            ) : (
-                              <span className="w-10 text-center text-slate-300 font-bold text-[10px]">{b.name.slice(0, 2)}</span>
-                            )}
+                            className={`w-full flex items-center gap-3 px-3 py-2 text-xs hover:bg-slate-50 transition-colors ${form.brand === b.name ? 'bg-green-50 text-green-700 font-bold' : 'text-slate-700'}`}>
+                            {b.logo && <img src={b.logo} alt={b.name} className="h-5 w-10 object-contain shrink-0" />}
                             {b.name}
                           </button>
                         ))}
@@ -501,110 +487,122 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
                     )}
                   </div>
                 </Field>
-                <Field label="รุ่น / ลาย *">
-                  <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value.toUpperCase() }))} className={inputCls} placeholder="XM2+" />
+
+                {/* Model */}
+                <Field label={isTire ? 'รุ่น / ลาย *' : 'ชื่อ/รุ่นสินค้า *'}>
+                  <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value.toUpperCase() }))}
+                    className={inputCls} placeholder={isTire ? 'XM2+' : 'ชื่อสินค้า'} />
                 </Field>
-                <Field label="ขนาดยาง *">
-                  <input value={form.size} onChange={e => setForm(f => ({ ...f, size: e.target.value }))} className={inputCls} placeholder="195/65R15" />
+
+                {/* Size */}
+                <Field label={isTire ? 'ขนาดยาง *' : 'ขนาด / สเปค'}>
+                  <input value={form.size} onChange={e => setForm(f => ({ ...f, size: e.target.value }))}
+                    className={inputCls}
+                    placeholder={isTire ? '195/65R15' : activeType === 'wheels' ? '18 นิ้ว' : activeType === 'oil' ? '5W-30 1L' : ''} />
                 </Field>
-                <Field label="หมวดหมู่">
-                  <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value as typeof form.category }))} className={inputCls}>
-                    {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                </Field>
-                <Field label="ประเภท">
-                  <input value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className={inputCls} placeholder="EV, Non EV ..." />
-                </Field>
+
+                {/* Category (tire only) */}
+                {isTire ? (
+                  <Field label="หมวดหมู่ยาง">
+                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value as typeof form.category }))} className={inputCls}>
+                      {Object.entries(TIRE_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </Field>
+                ) : (
+                  <Field label="ประเภท">
+                    <input value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className={inputCls}
+                      placeholder={activeType === 'wheels' ? 'Sport, Classic...' : activeType === 'oil' ? 'Synthetic, Semi...' : ''} />
+                  </Field>
+                )}
+
+                {isTire && (
+                  <Field label="ประเภทยาง">
+                    <input value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className={inputCls} placeholder="EV, Non EV..." />
+                  </Field>
+                )}
+
                 <Field label="ปีผลิต (2 หลัก)">
                   <input value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} className={inputCls} placeholder="26" maxLength={2} />
                 </Field>
               </div>
-              <div className="grid grid-cols-4 gap-4">
+
+              {/* Pricing */}
+              <div className="grid grid-cols-4 gap-3">
                 <Field label="กำไร">
-                  <input
-                    type="number"
+                  <input type="number"
                     value={(form.priceCash - form.costPrice) || ''}
                     onChange={e => {
                       const profit = +e.target.value;
                       const cash = form.costPrice + profit;
                       setForm(f => ({ ...f, priceCash: cash, ...calcDerivedPrices(cash) }));
                     }}
-                    className={inputCls}
-                  />
+                    className={inputCls} />
                   {form.costPrice > 0 && (
-                    <p className={`text-[10px] mt-1 font-semibold ${form.priceCash - form.costPrice >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    <p className={`text-[10px] mt-0.5 font-semibold ${form.priceCash - form.costPrice >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                       {(((form.priceCash - form.costPrice) / form.costPrice) * 100).toFixed(1)}%
                     </p>
                   )}
                 </Field>
                 <Field label="ราคาเงินสด *">
-                  <input type="number" value={form.priceCash || ''} onChange={e => { const cash = +e.target.value; setForm(f => ({ ...f, priceCash: cash, ...calcDerivedPrices(cash) })); }} className={inputCls} />
+                  <input type="number" value={form.priceCash || ''}
+                    onChange={e => { const cash = +e.target.value; setForm(f => ({ ...f, priceCash: cash, ...calcDerivedPrices(cash) })); }}
+                    className={inputCls} />
                 </Field>
                 <Field label="รูดบัตร">
                   <input type="number" value={form.priceCredit || ''} onChange={e => setForm(f => ({ ...f, priceCredit: +e.target.value }))} className={inputCls} />
-                  <p className="text-[10px] text-slate-400 mt-1">คำนวณอัตโนมัติจากราคาเงินสด แก้ไขเองได้</p>
                 </Field>
                 <Field label="ผ่อน 0%">
                   <input type="number" value={form.priceInstallment || ''} onChange={e => setForm(f => ({ ...f, priceInstallment: +e.target.value }))} className={inputCls} />
-                  <p className="text-[10px] text-slate-400 mt-1">คำนวณอัตโนมัติจากราคาเงินสด แก้ไขเองได้</p>
                 </Field>
               </div>
+
               <div className="grid grid-cols-3 gap-4">
-                <Field label="ราคาต้นทุน (ซื้อเข้า)"><input type="number" value={form.costPrice || ''} onChange={e => setForm(f => ({ ...f, costPrice: +e.target.value }))} className={inputCls} /></Field>
-                <Field label="ราคาเดิม (ถ้ามี)"><input type="number" value={form.oldPrice || ''} onChange={e => setForm(f => ({ ...f, oldPrice: +e.target.value || undefined }))} className={inputCls} /></Field>
-                <Field label="จำนวนสต๊อก"><input type="number" value={form.stock || ''} onChange={e => setForm(f => ({ ...f, stock: +e.target.value }))} className={inputCls} /></Field>
+                <Field label="ราคาต้นทุน">
+                  <input type="number" value={form.costPrice || ''} onChange={e => setForm(f => ({ ...f, costPrice: +e.target.value }))} className={inputCls} />
+                </Field>
+                <Field label="ราคาเดิม (ถ้ามี)">
+                  <input type="number" value={form.oldPrice || ''} onChange={e => setForm(f => ({ ...f, oldPrice: +e.target.value || undefined }))} className={inputCls} />
+                </Field>
+                <Field label={`จำนวนสต๊อก (${tabInfo.unit})`}>
+                  <input type="number" value={form.stock || ''} onChange={e => setForm(f => ({ ...f, stock: +e.target.value }))} className={inputCls} />
+                </Field>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Badge (เช่น ขายดี)">
-                  <input value={form.badge} onChange={e => setForm(f => ({ ...f, badge: e.target.value }))} className={inputCls} placeholder="ขายดี, ลด 15%, SUV" />
+                  <input value={form.badge} onChange={e => setForm(f => ({ ...f, badge: e.target.value }))} className={inputCls} placeholder="ขายดี, ลด 15%..." />
                 </Field>
-                <Field label="หมายเหตุ / โปรโมชั่น">
-                  <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} className={inputCls} placeholder="4 เส้น ลด 200.-" />
+                <Field label="หมายเหตุ">
+                  <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} className={inputCls} placeholder="โปรโมชั่น, รายละเอียดเพิ่มเติม..." />
                 </Field>
               </div>
+
+              {/* Image */}
               <Field label="รูปสินค้า">
                 <div className="flex items-center gap-3">
-                  {/* Preview */}
                   <div className="w-16 h-16 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center shrink-0 overflow-hidden">
                     {form.image && form.image !== '/yang.png' ? (
                       <img src={form.image} alt="preview" className="w-full h-full object-contain" />
-                    ) : (
-                      <ImageIcon size={20} className="text-slate-300" />
-                    )}
+                    ) : <ImageIcon size={20} className="text-slate-300" />}
                   </div>
-                  {/* Upload + URL */}
                   <div className="flex-1 space-y-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-50 transition-colors"
-                    >
+                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageUpload} />
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-50">
                       <Upload size={12} />
                       {isUploading ? 'กำลังอัปโหลด...' : 'อัปโหลดรูป'}
                     </button>
-                    <input
-                      value={form.image}
-                      onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
-                      className={inputCls}
-                      placeholder="หรือวาง URL รูปภาพ"
-                    />
+                    <input value={form.image} onChange={e => setForm(f => ({ ...f, image: e.target.value }))} className={inputCls} placeholder="หรือวาง URL รูปภาพ" />
                   </div>
                 </div>
               </Field>
             </div>
+
             <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
-              <button onClick={closeModal} className="px-4 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">ยกเลิก</button>
-              <button onClick={handleSave} disabled={!form.brand || !form.model || !form.size || isPending}
-                className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                {isPending ? 'กำลังบันทึก...' : modal === 'add' ? 'เพิ่มสินค้า' : 'บันทึก'}
+              <button onClick={closeModal} className="px-4 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">ยกเลิก</button>
+              <button onClick={handleSave} disabled={!form.brand || !form.model || (isTire && !form.size) || isPending}
+                className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                {isPending ? 'กำลังบันทึก...' : modal === 'add' ? `เพิ่ม${tabInfo.label}` : 'บันทึก'}
               </button>
             </div>
           </div>
@@ -616,17 +614,16 @@ export function ProductsClient({ initialProducts, initialBrands }: { initialProd
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
-            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={20} className="text-slate-600" />
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={20} className="text-red-500" />
             </div>
             <h3 className="font-bold text-slate-900 mb-1">ลบสินค้า</h3>
             <p className="text-xs text-slate-500 mb-5">
-              ยืนยันการลบ <span className="font-semibold text-slate-700">{deleteTarget.brand} {deleteTarget.model}</span>?<br />
-              การกระทำนี้ไม่สามารถย้อนกลับได้
+              ยืนยันการลบ <span className="font-semibold text-slate-700">{deleteTarget.brand} {deleteTarget.model}</span>?
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">ยกเลิก</button>
-              <button onClick={handleDelete} disabled={isPending} className="flex-1 px-4 py-2.5 text-xs font-semibold bg-slate-900 text-white rounded-xl hover:bg-slate-700 disabled:opacity-40 transition-colors">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50">ยกเลิก</button>
+              <button onClick={handleDelete} disabled={isPending} className="flex-1 px-4 py-2.5 text-xs font-semibold bg-red-500 text-white rounded-xl hover:bg-red-600 disabled:opacity-40">
                 {isPending ? 'กำลังลบ...' : 'ลบเลย'}
               </button>
             </div>
