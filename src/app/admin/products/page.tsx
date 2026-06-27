@@ -13,7 +13,7 @@ export default async function ProductsPage({
   const productType = type || 'tires';
   const [products, brands] = await Promise.all([
     getAllProductsAdmin(productType),
-    getBrands(),
+    getBrands(productType),
   ]);
   return <ProductsClient initialProducts={products} initialBrands={brands} activeType={productType} />;
 }
