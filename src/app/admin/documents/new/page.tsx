@@ -23,9 +23,9 @@ const TYPE_LABEL: Record<DocType, string> = {
 export default async function NewDocumentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; type?: string }>;
+  searchParams: Promise<{ from?: string; type?: string; deposit?: string }>;
 }) {
-  const { from, type } = await searchParams;
+  const { from, type, deposit } = await searchParams;
 
   const [bookingCustomers, directoryCustomers, products, serviceItems, sourceDoc, employees, carBrands, carModels] = await Promise.all([
     getCustomers(),
@@ -41,25 +41,49 @@ export default async function NewDocumentPage({
 
   let prefill: DocPrefill | undefined;
   if (sourceDoc) {
-    const targetType: DocType =
-      type === 'invoice' || type === 'credit_note' || type === 'billing_note' || type === 'booking_note' ? type : 'invoice';
-    prefill = {
-      docType: targetType,
-      customerName:    sourceDoc.customerName,
-      customerPhone:   sourceDoc.customerPhone,
-      customerCar:     sourceDoc.customerCar,
-      customerAddress: sourceDoc.customerAddress,
-      customerTaxId:   sourceDoc.customerTaxId,
-      bookingRef:      sourceDoc.bookingRef,
-      items: sourceDoc.items.map((i) => ({ description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
-      vatRate:       sourceDoc.vatRate,
-      paymentMethod: sourceDoc.paymentMethod,
-      note:          sourceDoc.note,
-      sourceDocId:        sourceDoc.id,
-      sourceDocNumber:    sourceDoc.docNumber,
-      sourceDocTypeLabel: TYPE_LABEL[sourceDoc.type],
-      depositAmount:      sourceDoc.type === 'booking_note' ? sourceDoc.depositAmount : 0,
-    };
+    const isDepositReceipt = deposit === '1' && sourceDoc.type === 'booking_note' && sourceDoc.depositAmount > 0;
+
+    if (isDepositReceipt) {
+      // ออกใบเสร็จเฉพาะยอดมัดจำ — line item เดียว ราคา = depositAmount อ้างอิงใบจองในหมายเหตุ
+      const firstItemName = sourceDoc.items[0]?.description ?? 'สินค้า/บริการ';
+      prefill = {
+        docType: 'invoice',
+        customerName:    sourceDoc.customerName,
+        customerPhone:   sourceDoc.customerPhone,
+        customerCar:     sourceDoc.customerCar,
+        customerAddress: sourceDoc.customerAddress,
+        customerTaxId:   sourceDoc.customerTaxId,
+        bookingRef:      sourceDoc.bookingRef,
+        items: [{ description: `มัดจำ – ${firstItemName}`, qty: 1, unitPrice: sourceDoc.depositAmount, discount: 0 }],
+        vatRate:       0,
+        paymentMethod: sourceDoc.paymentMethod,
+        note:          `มัดจำจากใบจอง ${sourceDoc.docNumber}`,
+        sourceDocId:        sourceDoc.id,
+        sourceDocNumber:    sourceDoc.docNumber,
+        sourceDocTypeLabel: TYPE_LABEL[sourceDoc.type],
+        depositAmount:      0,
+      };
+    } else {
+      const targetType: DocType =
+        type === 'invoice' || type === 'credit_note' || type === 'billing_note' || type === 'booking_note' ? type : 'invoice';
+      prefill = {
+        docType: targetType,
+        customerName:    sourceDoc.customerName,
+        customerPhone:   sourceDoc.customerPhone,
+        customerCar:     sourceDoc.customerCar,
+        customerAddress: sourceDoc.customerAddress,
+        customerTaxId:   sourceDoc.customerTaxId,
+        bookingRef:      sourceDoc.bookingRef,
+        items: sourceDoc.items.map((i) => ({ description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
+        vatRate:       sourceDoc.vatRate,
+        paymentMethod: sourceDoc.paymentMethod,
+        note:          sourceDoc.note,
+        sourceDocId:        sourceDoc.id,
+        sourceDocNumber:    sourceDoc.docNumber,
+        sourceDocTypeLabel: TYPE_LABEL[sourceDoc.type],
+        depositAmount:      sourceDoc.type === 'booking_note' ? sourceDoc.depositAmount : 0,
+      };
+    }
   }
 
   return <NewDocumentClient customers={customers} products={products} serviceItems={serviceItems} employees={employees} prefill={prefill} carBrands={carBrands} carModels={carModels} />;

@@ -552,11 +552,19 @@ function ViewModal({
                     <CheckCircle size={16} /> บันทึกรับมัดจำ
                   </button>
                 )}
+                {doc.status === 'deposit_paid' && doc.depositAmount > 0 && (
+                  <Link
+                    href={`/admin/documents/new?from=${doc.id}&type=invoice&deposit=1`}
+                    className="flex items-center gap-2 px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-xl text-sm font-bold hover:bg-emerald-100 transition-colors"
+                  >
+                    <Receipt size={16} className="text-emerald-600" /> ออกใบเสร็จมัดจำ ฿{doc.depositAmount.toLocaleString()}
+                  </Link>
+                )}
                 <Link
                   href={`/admin/documents/new?from=${doc.id}&type=invoice`}
                   className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors"
                 >
-                  <Receipt size={16} className="text-blue-500" /> แปลงเป็นใบเสร็จ
+                  <Receipt size={16} className="text-blue-500" /> ออกใบเสร็จเต็มจำนวน
                 </Link>
               </div>
             )}

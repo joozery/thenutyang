@@ -3,9 +3,9 @@
 import { useTransition, useState, Fragment } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { sendLineQuote, confirmBooking, markReady, cancelBooking, createQuoteForBooking, updateMileageAfter, adminUpdatePaymentStatus, approveQuote, rejectQuote } from '@/app/actions/admin';
+import { sendLineQuote, confirmBooking, markReady, cancelBooking, createQuoteForBooking, updateMileageAfter, adminUpdatePaymentStatus, approveQuote, rejectQuote, deleteBooking } from '@/app/actions/admin';
 import { uploadImage } from '@/app/actions/upload';
-import { CheckCircle, Package, XCircle, ChevronDown, ChevronUp, Calendar, Phone, Car, Tag, ChevronLeft, ChevronRight, Building2, MapPin, Hash, FileEdit, FileText, Gauge, Save, Upload, Banknote, ThumbsUp, ThumbsDown, Image } from 'lucide-react';
+import { CheckCircle, Package, XCircle, ChevronDown, ChevronUp, Calendar, Phone, Car, Tag, ChevronLeft, ChevronRight, Building2, MapPin, Hash, FileEdit, FileText, Gauge, Save, Upload, Banknote, ThumbsUp, ThumbsDown, Image, Trash2 } from 'lucide-react';
 
 const LineIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -289,6 +289,18 @@ export function BookingsTable({
     });
   }
 
+  function runAndRefresh(action: () => Promise<{ ok: boolean; error?: string }>) {
+    startTransition(async () => {
+      const res = await action();
+      if (res.ok) {
+        showToast('ลบการจองแล้ว', true);
+        router.refresh();
+      } else {
+        showToast(res.error ?? 'เกิดข้อผิดพลาด', false);
+      }
+    });
+  }
+
   const handlePageChange = (newPage: number) => {
     if (!pagination) return;
     const params = new URLSearchParams(searchParams.toString());
@@ -504,6 +516,20 @@ export function BookingsTable({
                             <XCircle className="w-4 h-4" />
                           </button>
                         )}
+
+                        {/* ลบ */}
+                        <button
+                          onClick={() => {
+                            if (confirm(`ลบการจอง ${b.ref} ออกจากระบบถาวร?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`)) {
+                              runAndRefresh(() => deleteBooking(b.ref));
+                            }
+                          }}
+                          disabled={isPending}
+                          title="ลบการจองออกจากระบบ"
+                          className="p-2 rounded-md bg-slate-50 text-slate-300 border border-slate-100 hover:bg-red-600 hover:text-white hover:border-transparent disabled:opacity-50 transition-all duration-200 hover:shadow-lg hover:shadow-red-600/20 hover:-translate-y-0.5 active:translate-y-0 group-hover:bg-slate-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                     <td className="px-3 py-3 text-center">

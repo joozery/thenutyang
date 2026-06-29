@@ -200,3 +200,26 @@ export async function cancelBooking(ref: string): Promise<ActionResult> {
     return { ok: false, error: String(e) };
   }
 }
+
+export async function deleteBooking(ref: string): Promise<ActionResult> {
+  try {
+    const booking = await getBooking(ref);
+
+    // ถ้างานเสร็จ (ตัดสต๊อกไปแล้ว) ต้องคืนสต๊อกก่อนลบ
+    if (booking.status === 'completed' && isValidObjectId(booking.tireId)) {
+      const result = await receiveStock(booking.tireId, booking.quantity, booking.ref, `คืนสต๊อกจากการลบการจอง ${booking.ref}`);
+      if (result.error) console.error(`[deleteBooking] receiveStock failed for ${ref}: ${result.error}`);
+    }
+
+    await FinancialDocument.deleteMany({ bookingId: booking._id });
+    await Booking.deleteOne({ ref });
+
+    revalidatePath('/admin/bookings');
+    revalidatePath('/admin/documents');
+    revalidatePath('/admin/warehouse');
+    revalidatePath('/admin/products');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
