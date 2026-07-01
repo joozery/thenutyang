@@ -1,6 +1,7 @@
 'use client';
 
-import { useActionState, useRef, useState } from 'react';
+import { useActionState, useRef, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Upload } from 'lucide-react';
 import { uploadImage } from '@/app/actions/upload';
 import {
@@ -76,6 +77,11 @@ function ImageUploadField({
 
 export function DocumentSettingsForm({ settings }: { settings: IDocumentSettings }) {
   const [state, formAction, isPending] = useActionState(updateDocumentInfo, null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (state?.ok) router.refresh();
+  }, [state?.ok]);
 
   return (
     <div className="space-y-6">
