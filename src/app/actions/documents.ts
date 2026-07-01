@@ -35,6 +35,7 @@ export type DocFormPayload = {
   paymentMethod: PaymentMethod;
   technicianName: string;
   depositAmount:  number;
+  costPrice:      number;
   note:          string;
   showPaymentInfo: boolean;
   dueDate:       string;
@@ -119,6 +120,7 @@ export async function updateDocument(
       paymentMethod:   data.paymentMethod,
       technicianName:  data.technicianName,
       depositAmount:   data.depositAmount,
+      costPrice:       data.costPrice,
       note:            data.note,
       showPaymentInfo: data.showPaymentInfo,
       dueDate:         data.dueDate ? new Date(data.dueDate) : null,

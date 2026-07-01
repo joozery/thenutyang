@@ -305,6 +305,25 @@ function ViewModal({
             </div>
           )}
 
+          {/* Cost & Profit */}
+          {doc.costPrice > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-white border border-slate-200/50 rounded-xl p-5 shadow-sm">
+                <p className="text-[11px] font-bold text-slate-400 tracking-wide mb-2">ต้นทุนรวม</p>
+                <p className="text-2xl font-black text-slate-800 tabular-nums">฿{fmtMoney(doc.costPrice)}</p>
+              </div>
+              <div className={`rounded-xl p-5 shadow-sm border ${doc.grandTotal - doc.costPrice >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                <p className="text-[11px] font-bold text-slate-400 tracking-wide mb-2">กำไรสุทธิ</p>
+                <p className={`text-2xl font-black tabular-nums ${doc.grandTotal - doc.costPrice >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                  ฿{fmtMoney(doc.grandTotal - doc.costPrice)}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {doc.grandTotal > 0 ? `${(((doc.grandTotal - doc.costPrice) / doc.grandTotal) * 100).toFixed(1)}% ของยอดขาย` : ''}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Line items */}
           <div className="bg-white border border-slate-200/50 rounded-xl overflow-hidden shadow-sm">
             <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">

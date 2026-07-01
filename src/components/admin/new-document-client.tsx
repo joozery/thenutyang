@@ -378,6 +378,7 @@ export function NewDocumentClient({
   const [note,            setNote]            = useState(prefill?.note ?? '');
   const [technicianName,  setTechnicianName]  = useState(prefill?.technicianName ?? '');
   const [showPaymentInfo, setShowPaymentInfo] = useState(prefill?.showPaymentInfo ?? false);
+  const [costPrice,       setCostPrice]       = useState(0);
 
   // error
   const [error, setError] = useState('');
@@ -459,6 +460,7 @@ export function NewDocumentClient({
         paymentMethod,
         technicianName: technicianName.trim(),
         depositAmount,
+        costPrice,
         note:          note.trim(),
         showPaymentInfo,
         dueDate,
@@ -641,6 +643,19 @@ export function NewDocumentClient({
                   ))}
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <Label>ต้นทุนรวม (บาท)</Label>
+              <div className="relative">
+                <Banknote size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="number" min={0} step="0.01"
+                  value={costPrice || ''}
+                  onChange={e => setCostPrice(Number(e.target.value))}
+                  placeholder="0.00"
+                  className={inputCls + ' pl-8'}
+                />
               </div>
             </div>
             <div>

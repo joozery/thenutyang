@@ -36,6 +36,7 @@ export type DocRow = {
   paymentMethod: PaymentMethod;
   technicianName: string;
   depositAmount:  number;
+  costPrice:      number;
   status:        string;
   note:          string;
   showPaymentInfo: boolean;
@@ -87,6 +88,7 @@ function normalize(d: any): DocRow {
     paymentMethod: d.paymentMethod ?? 'pending',
     technicianName: d.technicianName ?? '',
     depositAmount:  d.depositAmount  ?? 0,
+    costPrice:      d.costPrice      ?? 0,
     status:        d.status        ?? '',
     note:          d.note          ?? '',
     showPaymentInfo: d.showPaymentInfo ?? false,

@@ -38,6 +38,7 @@ const financialDocSchema = new Schema({
 
   technicianName: { type: String, default: '' },
   depositAmount:  { type: Number, default: 0 },
+  costPrice:      { type: Number, default: 0 },
 
   status:        { type: String, required: true, default: 'unpaid' },
   note:          { type: String, default: '' },
