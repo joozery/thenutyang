@@ -94,8 +94,8 @@ export function DocumentTemplate({
   return (
     <div id="print-document" style={{ width: '210mm', minHeight: '297mm', background: 'white', padding: '8mm 12mm 14mm' }} className="text-slate-800 text-[13px]">
       {/* Header */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="h-14 flex items-center">
+      <div className="flex justify-between items-start mb-3">
+        <div className="h-10 flex items-center">
           {seller.logoUrl ? (
             <img src={seller.logoUrl} alt={seller.companyName} className="h-full w-auto object-contain" />
           ) : (
