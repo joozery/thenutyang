@@ -46,11 +46,12 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 // ── types ─────────────────────────────────────────────────────────────────────
 
 interface LineItem {
-  key:         number;
-  description: string;
-  qty:         number;
-  unitPrice:   number;
-  discount:    number;
+  key:           number;
+  description:   string;
+  qty:           number;
+  unitPrice:     number;
+  discount:      number;
+  lineCostPrice: number;
 }
 
 export type DocPrefill = {
@@ -320,8 +321,8 @@ export function NewDocumentClient({
   // line items
   const [lines, setLines] = useState<LineItem[]>(
     prefill?.items.length
-      ? prefill.items.map((it, idx) => ({ key: idx + 1, ...it }))
-      : [{ key: 1, description: '', qty: 1, unitPrice: 0, discount: 0 }]
+      ? prefill.items.map((it, idx) => ({ key: idx + 1, ...it, lineCostPrice: 0 }))
+      : [{ key: 1, description: '', qty: 1, unitPrice: 0, discount: 0, lineCostPrice: 0 }]
   );
   const [productPickerLineKey, setProductPickerLineKey] = useState<number | null>(null);
 
@@ -335,8 +336,8 @@ export function NewDocumentClient({
 
   function selectPickerEntry(key: number, entry: PickerEntry) {
     setLines((prev) => prev.map((l) => l.key !== key ? l : entry.kind === 'product'
-      ? { ...l, description: `${entry.data.brand} ${entry.data.model} ${entry.data.size}`, unitPrice: entry.data.priceCash }
-      : { ...l, description: entry.data.name, unitPrice: entry.data.price }
+      ? { ...l, description: `${entry.data.brand} ${entry.data.model} ${entry.data.size}`, unitPrice: entry.data.priceCash, lineCostPrice: entry.data.costPrice ?? 0 }
+      : { ...l, description: entry.data.name, unitPrice: entry.data.price, lineCostPrice: 0 }
     ));
     setProductPickerLineKey(null);
   }
@@ -378,7 +379,6 @@ export function NewDocumentClient({
   const [note,            setNote]            = useState(prefill?.note ?? '');
   const [technicianName,  setTechnicianName]  = useState(prefill?.technicianName ?? '');
   const [showPaymentInfo, setShowPaymentInfo] = useState(prefill?.showPaymentInfo ?? false);
-  const [costPrice,       setCostPrice]       = useState(0);
 
   // error
   const [error, setError] = useState('');
@@ -386,12 +386,12 @@ export function NewDocumentClient({
   // ── line item helpers ──────────────────────────────────────────────────────
 
   const addLine = () =>
-    setLines(p => [...p, { key: Date.now(), description: '', qty: 1, unitPrice: 0, discount: 0 }]);
+    setLines(p => [...p, { key: Date.now(), description: '', qty: 1, unitPrice: 0, discount: 0, lineCostPrice: 0 }]);
 
   // เพิ่มแถวใหม่พร้อมเปิดตัวเลือก สินค้า/บริการ ทันที ไม่ต้องกดค้นหาซ้ำอีกที
   const addLineAndOpenPicker = () => {
     const key = Date.now();
-    setLines(p => [...p, { key, description: '', qty: 1, unitPrice: 0, discount: 0 }]);
+    setLines(p => [...p, { key, description: '', qty: 1, unitPrice: 0, discount: 0, lineCostPrice: 0 }]);
     setProductPickerLineKey(key);
   };
 
@@ -460,7 +460,7 @@ export function NewDocumentClient({
         paymentMethod,
         technicianName: technicianName.trim(),
         depositAmount,
-        costPrice,
+        costPrice: lines.reduce((sum, l) => sum + l.lineCostPrice * l.qty, 0),
         note:          note.trim(),
         showPaymentInfo,
         dueDate,
@@ -643,19 +643,6 @@ export function NewDocumentClient({
                   ))}
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-            </div>
-            <div>
-              <Label>ต้นทุนรวม (บาท)</Label>
-              <div className="relative">
-                <Banknote size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <input
-                  type="number" min={0} step="0.01"
-                  value={costPrice || ''}
-                  onChange={e => setCostPrice(Number(e.target.value))}
-                  placeholder="0.00"
-                  className={inputCls + ' pl-8'}
-                />
               </div>
             </div>
             <div>
