@@ -1,14 +1,16 @@
 import { getDocuments, getDocStats } from '@/lib/documents';
 import { getBookingsByOrderRef, type OrderBooking } from '@/lib/payment-settings';
+import { getAllProductsAdmin } from '@/lib/products';
 import { DocumentsClient } from '@/components/admin/documents-client';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'บิล / เอกสาร | Admin' };
 
 export default async function DocumentsPage() {
-  const [docs, stats] = await Promise.all([
+  const [docs, stats, products] = await Promise.all([
     getDocuments(),
     getDocStats(),
+    getAllProductsAdmin(),
   ]);
 
   // เอกสารที่มาจากการจอง (bookingRef) — ดึงสถานะมัดจำ/ยอดคงเหลือจริงจาก Booking มาโชว์คู่กัน
@@ -20,5 +22,5 @@ export default async function DocumentsPage() {
     return map;
   }, {} as Record<string, OrderBooking>);
 
-  return <DocumentsClient initialDocs={docs} stats={stats} bookingStatusMap={bookingStatusMap} />;
+  return <DocumentsClient initialDocs={docs} stats={stats} bookingStatusMap={bookingStatusMap} products={products} />;
 }

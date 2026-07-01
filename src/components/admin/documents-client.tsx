@@ -13,6 +13,7 @@ import {
 import type { DocRow, DocStats, PaymentMethod } from '@/lib/documents';
 import { isDocEditable } from '@/lib/doc-editable';
 import type { OrderBooking } from '@/lib/payment-settings';
+import type { ProductRow } from '@/lib/products';
 import { updateDocStatus, importFromBookings, deleteDocument, recordPartialPayment } from '@/app/actions/documents';
 
 // ── constants ─────────────────────────────────────────────────────────────────
@@ -177,6 +178,7 @@ function ViewModal({
   recordPaymentPending,
   onPrint,
   bookingStatusMap,
+  costMap,
 }: {
   doc: DocRow;
   onClose: () => void;
@@ -187,11 +189,19 @@ function ViewModal({
   recordPaymentPending: boolean;
   onPrint: (id: string) => void;
   bookingStatusMap: Record<string, OrderBooking>;
+  costMap: Map<string, number>;
 }) {
   const payments = doc.type === 'billing_note' ? allDocs.filter(d => d.type === 'payment_note' && d.relatedDocId === doc.id) : [];
   const paidSoFar = payments.reduce((sum, p) => sum + p.grandTotal, 0);
   const remaining = Math.max(0, doc.grandTotal - paidSoFar);
   const bookingStatus = doc.bookingRef ? bookingStatusMap[doc.bookingRef] : undefined;
+
+  const totalCost = doc.items.reduce((sum, item) => {
+    const key = item.description.trim().toLowerCase();
+    const cost = costMap.get(key) ?? 0;
+    return sum + cost * item.qty;
+  }, 0);
+  const profit = doc.grandTotal - totalCost;
 
   const PayIcon = doc.paymentMethod === 'cash' ? Banknote
     : doc.paymentMethod === 'transfer' ? ArrowRightLeft
@@ -306,19 +316,19 @@ function ViewModal({
           )}
 
           {/* Cost & Profit */}
-          {doc.costPrice > 0 && (
+          {totalCost > 0 && (
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white border border-slate-200/50 rounded-xl p-5 shadow-sm">
                 <p className="text-[11px] font-bold text-slate-400 tracking-wide mb-2">ต้นทุนรวม</p>
-                <p className="text-2xl font-black text-slate-800 tabular-nums">฿{fmtMoney(doc.costPrice)}</p>
+                <p className="text-2xl font-black text-slate-800 tabular-nums">฿{fmtMoney(totalCost)}</p>
               </div>
-              <div className={`rounded-xl p-5 shadow-sm border ${doc.grandTotal - doc.costPrice >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+              <div className={`rounded-xl p-5 shadow-sm border ${profit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
                 <p className="text-[11px] font-bold text-slate-400 tracking-wide mb-2">กำไรสุทธิ</p>
-                <p className={`text-2xl font-black tabular-nums ${doc.grandTotal - doc.costPrice >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-                  ฿{fmtMoney(doc.grandTotal - doc.costPrice)}
+                <p className={`text-2xl font-black tabular-nums ${profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                  ฿{fmtMoney(profit)}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  {doc.grandTotal > 0 ? `${(((doc.grandTotal - doc.costPrice) / doc.grandTotal) * 100).toFixed(1)}% ของยอดขาย` : ''}
+                  {doc.grandTotal > 0 ? `${((profit / doc.grandTotal) * 100).toFixed(1)}% ของยอดขาย` : ''}
                 </p>
               </div>
             </div>
@@ -617,13 +627,25 @@ export function DocumentsClient({
   initialDocs,
   stats,
   bookingStatusMap,
+  products,
 }: {
   initialDocs: DocRow[];
   stats:       DocStats;
   bookingStatusMap: Record<string, OrderBooking>;
+  products: ProductRow[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  // description → costPrice lookup (key = "${brand} ${model} ${size}".toLowerCase())
+  const costMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of products) {
+      const key = `${p.brand} ${p.model} ${p.size}`.trim().toLowerCase();
+      if (key && p.costPrice > 0) m.set(key, p.costPrice);
+    }
+    return m;
+  }, [products]);
 
   const [docs, setDocs] = useState(initialDocs);
   useEffect(() => { setDocs(initialDocs); }, [initialDocs]);
@@ -1147,6 +1169,7 @@ export function DocumentsClient({
           recordPaymentPending={isPending}
           onPrint={handleDirectPrint}
           bookingStatusMap={bookingStatusMap}
+          costMap={costMap}
         />
       )}
 
