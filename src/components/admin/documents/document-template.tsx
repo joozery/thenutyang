@@ -241,9 +241,9 @@ export function DocumentTemplate({
 
       {/* Notes */}
       {notes.length > 0 && (
-        <div className="mb-4 text-[12px] text-slate-800">
-          <p className="font-semibold text-slate-900 mb-1 flex items-center gap-1"><StickyNote size={13} /> หมายเหตุ</p>
-          {notes.map((n, i) => <p key={i} className="whitespace-pre-wrap">* {n}</p>)}
+        <div className="mb-2 text-[10px] text-slate-800">
+          <p className="font-semibold text-slate-900 mb-0.5 flex items-center gap-1"><StickyNote size={11} /> หมายเหตุ</p>
+          {notes.map((n, i) => <p key={i} className="whitespace-pre-wrap leading-snug">* {n}</p>)}
         </div>
       )}
 
