@@ -11,6 +11,8 @@ export interface IContactSettings extends Document {
   email: string;
   workingHours: string;
   workingDays: string;
+  workingHours2: string;
+  workingDays2: string;
   googleMapUrl: string;
   heroTitle: string;
   heroSubtitle: string;
@@ -30,6 +32,8 @@ const ContactSettingsSchema: Schema = new Schema({
   email: { type: String, required: true, default: 'contact@thenuttire.com' },
   workingHours: { type: String, required: true, default: '08:00 - 18:00 น.' },
   workingDays: { type: String, required: true, default: 'จันทร์ - อาทิตย์' },
+  workingHours2: { type: String, default: '' },
+  workingDays2: { type: String, default: '' },
   googleMapUrl: { type: String, required: true, default: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15502.830635414603!2d100.510000!3d13.730000!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTPCsDQzJzQ4LjAiTiAxMDDCsDMwJzM2LjAiRQ!5e0!3m2!1sth!2sth!4v1620000000000!5m2!1sth!2sth' },
   heroTitle: { type: String, default: 'ติดต่อเรา' },
   heroSubtitle: { type: String, default: 'THE NUT TIRE' },

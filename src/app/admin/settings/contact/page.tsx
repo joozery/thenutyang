@@ -31,6 +31,8 @@ export default function ContactSettingsPage() {
     email: '',
     workingHours: '',
     workingDays: '',
+    workingHours2: '',
+    workingDays2: '',
     googleMapUrl: '',
     heroTitle: '',
     heroSubtitle: '',
@@ -63,6 +65,8 @@ export default function ContactSettingsPage() {
           email: data.email || '',
           workingHours: data.workingHours || '',
           workingDays: data.workingDays || '',
+          workingHours2: data.workingHours2 || '',
+          workingDays2: data.workingDays2 || '',
           googleMapUrl: data.googleMapUrl || '',
           heroTitle: data.heroTitle || 'ติดต่อเรา',
           heroSubtitle: data.heroSubtitle || 'THE NUT TIRE',
@@ -371,28 +375,60 @@ export default function ContactSettingsPage() {
             </div>
             <h2 className="text-lg font-bold text-slate-900">เวลาทำการ</h2>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">วันทำการ</label>
-              <input
-                type="text"
-                name="workingDays"
-                value={formData.workingDays}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
-                placeholder="เช่น จันทร์ - อาทิตย์"
-              />
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ช่วงที่ 1</p>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">วันทำการ</label>
+                  <input
+                    type="text"
+                    name="workingDays"
+                    value={formData.workingDays}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
+                    placeholder="เช่น จันทร์ - ศุกร์"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">เวลาทำการ</label>
+                  <input
+                    type="text"
+                    name="workingHours"
+                    value={formData.workingHours}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
+                    placeholder="เช่น 08:00 - 18:00 น."
+                  />
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">เวลาทำการ</label>
-              <input
-                type="text"
-                name="workingHours"
-                value={formData.workingHours}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
-                placeholder="เช่น 08:00 - 18:00 น."
-              />
+            <div className="border-t border-dashed border-slate-200 pt-4">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ช่วงที่ 2 <span className="font-normal normal-case text-slate-400">(ไม่บังคับ — ว่างไว้เพื่อซ่อน)</span></p>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">วันทำการ</label>
+                  <input
+                    type="text"
+                    name="workingDays2"
+                    value={formData.workingDays2}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
+                    placeholder="เช่น เสาร์ - อาทิตย์"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">เวลาทำการ</label>
+                  <input
+                    type="text"
+                    name="workingHours2"
+                    value={formData.workingHours2}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
+                    placeholder="เช่น 08:00 - 17:00 น."
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

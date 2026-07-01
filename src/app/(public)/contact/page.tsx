@@ -155,6 +155,13 @@ export default async function ContactPage() {
                       <p className="text-slate-500 text-sm leading-relaxed">
                         {settings?.workingDays || 'จันทร์ - อาทิตย์'}<br />
                         {settings?.workingHours || '08:00 - 18:00 น.'}
+                        {settings?.workingDays2 && (
+                          <>
+                            <br />
+                            <span className="mt-1 inline-block">{settings.workingDays2}</span><br />
+                            {settings?.workingHours2}
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
