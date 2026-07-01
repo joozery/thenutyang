@@ -4,8 +4,8 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Shield, Plus, Search, ExternalLink } from 'lucide-react';
-import type { ClaimRow, ClaimStatus } from '@/lib/warranty-claims';
-import { STATUS_LABEL, STATUS_COLOR } from '@/lib/warranty-claims';
+import type { ClaimRow } from '@/lib/warranty-claims';
+import { STATUS_LABEL, STATUS_COLOR, type ClaimStatus } from '@/lib/warranty-claims-constants';
 
 const ALL_STATUSES: Array<{ value: string; label: string }> = [
   { value: 'all', label: 'ทั้งหมด' },

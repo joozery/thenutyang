@@ -7,7 +7,7 @@ import {
   Printer, Trash2, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import type { ClaimRow } from '@/lib/warranty-claims';
-import { STATUS_LABEL, STATUS_COLOR } from '@/lib/warranty-claims';
+import { STATUS_LABEL, STATUS_COLOR } from '@/lib/warranty-claims-constants';
 import {
   updateSupplierStep,
   updateAdvanceStep,
