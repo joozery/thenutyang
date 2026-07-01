@@ -21,6 +21,7 @@ const EMPTY: IDocumentSettings = {
   promptPay: '',
   paymentQrUrl: '',
   paymentNote: '',
+  lineId: '',
   updatedAt: new Date(0),
 };
 
@@ -50,6 +51,7 @@ export async function getDocumentSettings(): Promise<IDocumentSettings> {
     promptPay:            doc.promptPay ?? '',
     paymentQrUrl:         doc.paymentQrUrl ?? '',
     paymentNote:          doc.paymentNote ?? '',
+    lineId:               doc.lineId ?? '',
     updatedAt:            doc.updatedAt ?? new Date(0),
   };
 }

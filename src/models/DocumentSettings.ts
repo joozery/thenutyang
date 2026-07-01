@@ -20,6 +20,7 @@ export interface IDocumentSettings {
   promptPay: string;
   paymentQrUrl: string;
   paymentNote: string;
+  lineId: string;
   updatedAt: Date;
 }
 
@@ -43,6 +44,7 @@ const DocumentSettingsSchema = new Schema<IDocumentSettings>({
   promptPay:            { type: String, default: '' },
   paymentQrUrl:         { type: String, default: '' },
   paymentNote:          { type: String, default: '' },
+  lineId:               { type: String, default: '' },
   updatedAt:            { type: Date, default: Date.now },
 });
 

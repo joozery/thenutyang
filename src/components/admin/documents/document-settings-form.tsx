@@ -111,10 +111,15 @@ export function DocumentSettingsForm({ settings }: { settings: IDocumentSettings
             className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 resize-none" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1.5">เบอร์โทร</label>
             <input name="phone" defaultValue={settings.phone} placeholder="082-559-5666"
+              className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5">LINE @</label>
+            <input name="lineId" defaultValue={settings.lineId} placeholder="@thenuttire"
               className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100" />
           </div>
           <div>

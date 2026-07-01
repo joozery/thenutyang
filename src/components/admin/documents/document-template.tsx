@@ -1,4 +1,4 @@
-import { Phone, Mail, Globe, User, CreditCard, StickyNote, BadgeCheck } from 'lucide-react';
+import { Phone, Mail, Globe, CreditCard, StickyNote, BadgeCheck } from 'lucide-react';
 import { numberToThaiBahtText } from '@/lib/thai-baht-text';
 import { parseCarInfo } from '@/lib/car-info';
 import type { IDocumentSettings } from '@/models/DocumentSettings';
@@ -111,32 +111,28 @@ export function DocumentTemplate({
 
       {/* Seller + meta */}
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <div className="bg-green-50 border border-green-100 rounded-lg p-3 space-y-1">
-          <p className="text-[11px] text-slate-600">ผู้ขาย</p>
-          <p className="text-[12px] font-bold text-slate-900">{seller.companyName || '—'}</p>
-          {seller.address && <p className="text-[10px] text-slate-800 leading-relaxed">ที่อยู่: {seller.address}</p>}
-          <div className="text-[10px] text-slate-800 space-y-0.5">
-            {seller.phone && <IconText icon={<Phone size={10} />}>{seller.phone}</IconText>}
-            {seller.email && <IconText icon={<Mail size={10} />}>{seller.email}</IconText>}
-            {seller.website && <IconText icon={<Globe size={10} />}>{seller.website}</IconText>}
-          </div>
-          {seller.taxId && <p className="text-[10px] text-slate-800">เลขที่ผู้เสียภาษี: {seller.taxId} (สำนักงานใหญ่)</p>}
-        </div>
-
         <div className="space-y-2">
           <div className="bg-green-50 border border-green-100 rounded-lg p-3 space-y-1">
-            <Row label="เลขที่เอกสาร" value={docNumber} />
-            <Row label="วันที่ออก" value={issueDate} />
-            <Row label="อ้างอิง" value={reference || '-'} />
+            <p className="text-[11px] text-slate-600">ผู้ขาย</p>
+            <p className="text-[12px] font-bold text-slate-900">{seller.companyName || '—'}</p>
+            {seller.address && <p className="text-[10px] text-slate-800 leading-relaxed">ที่อยู่: {seller.address}</p>}
+            {seller.taxId && <p className="text-[10px] text-slate-800">เลขที่ผู้เสียภาษี: {seller.taxId} (สำนักงานใหญ่)</p>}
           </div>
           <div className="bg-green-50 border border-green-100 rounded-lg p-3">
             <p className="text-[11px] text-slate-600 mb-1">ติดต่อกลับที่</p>
             <div className="text-[10px] text-slate-900 space-y-0.5">
-              {seller.companyName && <IconText icon={<User size={10} />}>{seller.companyName}</IconText>}
               {seller.phone && <IconText icon={<Phone size={10} />}>{seller.phone}</IconText>}
+              {seller.lineId && <IconText icon={<span className="font-black text-[9px] text-green-600">LINE</span>}>{seller.lineId}</IconText>}
               {seller.email && <IconText icon={<Mail size={10} />}>{seller.email}</IconText>}
+              {seller.website && <IconText icon={<Globe size={10} />}>{seller.website}</IconText>}
             </div>
           </div>
+        </div>
+
+        <div className="bg-green-50 border border-green-100 rounded-lg p-3 space-y-1">
+          <Row label="เลขที่เอกสาร" value={docNumber} />
+          <Row label="วันที่ออก" value={issueDate} />
+          <Row label="อ้างอิง" value={reference || '-'} />
         </div>
       </div>
 
