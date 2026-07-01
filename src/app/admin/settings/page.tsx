@@ -1,8 +1,9 @@
 "use client";
+import React from 'react';
 import Link from 'next/link';
 import { Bell, Shield, Printer, CreditCard, Truck, MessageSquare, ChevronRight } from 'lucide-react';
 
-const settingGroups = [
+const settingGroups: { title: string; items: { label: string; desc: string; icon: React.ReactNode; href?: string }[] }[] = [
   {
     title: "ร้านค้า",
     items: [
