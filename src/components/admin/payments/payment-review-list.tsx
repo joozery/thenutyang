@@ -2,8 +2,8 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CheckCircle2, Clock, ImageOff, Banknote, Landmark, CreditCard, Undo2, Paperclip, RotateCcw, AlertTriangle } from 'lucide-react';
-import { updateDepositAmount, verifyDepositManually, markBalancePaid, revertBalancePayment, refundDeposit } from '@/app/actions/payment';
+import { CheckCircle2, Clock, ImageOff, Banknote, Landmark, CreditCard, Undo2, Paperclip, RotateCcw, AlertTriangle, Printer } from 'lucide-react';
+import { updateDepositAmount, verifyDepositManually, markBalancePaid, revertBalancePayment, refundDeposit, getDepositDocIdByRef } from '@/app/actions/payment';
 import type { PaymentReviewRow } from '@/lib/payment-settings';
 
 const STATUS_BADGE: Record<PaymentReviewRow['depositStatus'], { label: string; className: string }> = {
@@ -73,6 +73,16 @@ function PaymentRow({ row, highlighted }: { row: PaymentReviewRow; highlighted: 
     });
   }
 
+  const [printError, setPrintError] = useState('');
+  function printDeposit() {
+    startTransition(async () => {
+      setPrintError('');
+      const result = await getDepositDocIdByRef(row.ref);
+      if (result.error || !result.id) { setPrintError('ไม่พบเอกสารมัดจำ'); return; }
+      window.open(`/admin/documents/${result.id}/print`, '_blank');
+    });
+  }
+
   const badge = STATUS_BADGE[status];
   // เตือนเบาๆ ถ้ายอดที่กรอกมากกว่ายอดคงเหลือที่ถูกต้อง (เทียบกับ remaining ไม่ใช่ totalAmount —
   // เผื่อกรณีมัดจำเป็น 10% ของยอด ยอดคงเหลือ 90% ก็ถือว่าถูกต้องแล้ว ไม่ควรเตือน)
@@ -114,6 +124,7 @@ function PaymentRow({ row, highlighted }: { row: PaymentReviewRow; highlighted: 
             </p>
           )}
           {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+          {printError && <p className="text-xs text-red-500 mt-1">{printError}</p>}
         </div>
 
         {status !== 'not_required' && (
@@ -129,17 +140,24 @@ function PaymentRow({ row, highlighted }: { row: PaymentReviewRow; highlighted: 
               />
             </div>
             {status === 'verified' && (
-              depositRefunded ? (
-                <span className="flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
-                  <RotateCcw size={11} /> คืนมัดจำแล้ว
-                </span>
-              ) : (
-                <button type="button" onClick={doRefundDeposit} disabled={isPending}
-                  title="คืนเงินมัดจำให้ลูกค้า"
-                  className="flex items-center gap-1 text-[11px] font-bold text-orange-500 bg-orange-50 px-2.5 py-1.5 rounded-lg border border-orange-100 hover:bg-orange-100 transition-colors disabled:opacity-50">
-                  <RotateCcw size={11} /> คืนเงินมัดจำ
+              <>
+                <button type="button" onClick={printDeposit} disabled={isPending}
+                  title="พิมพ์ใบมัดจำ"
+                  className="flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors disabled:opacity-50">
+                  <Printer size={11} /> พิมพ์ใบมัดจำ
                 </button>
-              )
+                {depositRefunded ? (
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                    <RotateCcw size={11} /> คืนมัดจำแล้ว
+                  </span>
+                ) : (
+                  <button type="button" onClick={doRefundDeposit} disabled={isPending}
+                    title="คืนเงินมัดจำให้ลูกค้า"
+                    className="flex items-center gap-1 text-[11px] font-bold text-orange-500 bg-orange-50 px-2.5 py-1.5 rounded-lg border border-orange-100 hover:bg-orange-100 transition-colors disabled:opacity-50">
+                    <RotateCcw size={11} /> คืนเงินมัดจำ
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}

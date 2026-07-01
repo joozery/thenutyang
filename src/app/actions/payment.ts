@@ -201,6 +201,20 @@ export async function revertBalancePayment(ref: string): Promise<ActionResult> {
   }
 }
 
+export async function getDepositDocIdByRef(bookingRef: string): Promise<{ id?: string; error?: string }> {
+  try {
+    await connectDB();
+    const { FinancialDocument } = await import('@/models/FinancialDocument');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = await FinancialDocument.findOne({ bookingRef }).sort({ createdAt: -1 }).lean() as any;
+    if (!doc) return { error: 'ไม่พบเอกสาร' };
+    return { id: String(doc._id) };
+  } catch (err) {
+    console.error('[getDepositDocIdByRef]', err);
+    return { error: 'เกิดข้อผิดพลาด' };
+  }
+}
+
 export async function setPaymentQrImage(url: string): Promise<ActionResult> {
   try {
     await connectDB();
