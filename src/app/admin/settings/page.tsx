@@ -6,7 +6,7 @@ const settingGroups = [
   {
     title: "ร้านค้า",
     items: [
-      { label: "ข้อมูลร้านค้า", desc: "ชื่อร้าน, ที่อยู่, เบอร์โทร, โลโก้", icon: <Shield size={18} /> },
+      { label: "ข้อมูลร้านค้า", desc: "ชื่อร้าน, ที่อยู่, เบอร์โทร, โลโก้", icon: <Shield size={18} />, href: "/admin/settings/contact" },
       { label: "การพิมพ์ใบเสร็จ", desc: "หัวกระดาษ, ลายเซ็น, ตราประทับสำหรับเอกสาร", icon: <Printer size={18} />, href: "/admin/documents/settings" },
       { label: "ช่องทางการชำระเงิน", desc: "เงินสด, บัตรเครดิต, QR Code, โอน", icon: <CreditCard size={18} />, href: "/admin/payments" },
     ],
@@ -52,9 +52,9 @@ export default function SettingsPage() {
           <p className="text-sm text-slate-500">123 ถ.รัชดา แขวงดินแดง เขตดินแดง กรุงเทพฯ 10400</p>
           <p className="text-sm text-slate-500">โทร: 02-123-4567</p>
         </div>
-        <button className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 shrink-0">
+        <Link href="/admin/settings/contact" className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 shrink-0">
           แก้ไข
-        </button>
+        </Link>
       </div>
 
       {/* Setting Groups */}
