@@ -988,19 +988,23 @@ export function DocumentsClient({
 
         {/* Table */}
         <div className="overflow-x-auto pb-32 min-h-[300px]">
-          <table className="w-full min-w-[760px] text-left border-collapse whitespace-nowrap md:whitespace-normal table-fixed">
+          <table className="w-full min-w-[960px] text-left border-collapse whitespace-nowrap md:whitespace-normal table-fixed">
             <colgroup>
-              <col className="w-[26%]" />
-              <col className="w-[24%]" />
-              <col className="w-[14%]" />
-              <col className="w-[16%]" />
-              <col className="w-[20%]" />
+              <col className="w-[21%]" />
+              <col className="w-[18%]" />
+              <col className="w-[11%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[13%]" />
+              <col className="w-[13%]" />
             </colgroup>
             <thead>
               <tr className="bg-white border-b border-slate-100">
                 <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">เอกสาร</th>
                 <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">ลูกค้า</th>
                 <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell text-right">ยอดเงิน</th>
+                <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell text-right">ต้นทุน</th>
+                <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell text-right">กำไร</th>
                 <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">สถานะ</th>
                 <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">จัดการ</th>
               </tr>
@@ -1008,7 +1012,7 @@ export function DocumentsClient({
             <tbody className="divide-y divide-slate-50">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-24 text-center">
+                  <td colSpan={7} className="px-6 py-24 text-center">
                     <div className="w-20 h-20 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
                       <FileText className="w-10 h-10 text-slate-300" />
                     </div>
@@ -1017,6 +1021,10 @@ export function DocumentsClient({
                   </td>
                 </tr>
               ) : paginated.map(d => {
+                const rowCost = d.type === 'invoice'
+                  ? d.items.reduce((sum, item) => sum + (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty, 0)
+                  : null;
+                const rowProfit = rowCost !== null ? d.grandTotal - rowCost : null;
                 const bs = d.bookingRef ? bookingStatusMap[d.bookingRef] : undefined;
                 const bookingBadge = bs
                   ? bs.balanceStatus === 'paid'
@@ -1064,6 +1072,16 @@ export function DocumentsClient({
                     <p className={`text-sm font-black tabular-nums ${d.grandTotal < 0 ? 'text-orange-600' : 'text-slate-800'}`}>
                       {d.grandTotal < 0 ? `-฿${fmtMoney(Math.abs(d.grandTotal))}` : `฿${fmtMoney(d.grandTotal)}`}
                     </p>
+                  </td>
+                  <td className="px-5 py-3 hidden md:table-cell text-right">
+                    {rowCost !== null
+                      ? <p className="text-sm font-semibold tabular-nums text-slate-500">฿{fmtMoney(rowCost)}</p>
+                      : <p className="text-sm text-slate-300">—</p>}
+                  </td>
+                  <td className="px-5 py-3 hidden md:table-cell text-right">
+                    {rowProfit !== null
+                      ? <p className={`text-sm font-bold tabular-nums ${rowProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>฿{fmtMoney(rowProfit)}</p>
+                      : <p className="text-sm text-slate-300">—</p>}
                   </td>
                   <td className="px-5 py-3 text-center" onClick={e => e.stopPropagation()}>
                     <StatusBadge status={d.status} />
