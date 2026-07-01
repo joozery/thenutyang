@@ -81,7 +81,7 @@ export function DocumentSettingsForm({ settings }: { settings: IDocumentSettings
 
   useEffect(() => {
     if (state?.ok) router.refresh();
-  }, [state?.ok]);
+  }, [state]);
 
   return (
     <div className="space-y-6">

@@ -12,16 +12,18 @@ export async function updateDocumentInfo(_prev: ActionResult | null, formData: F
     await DocumentSettings.findOneAndUpdate(
       {},
       {
-        companyName: (formData.get('companyName') as string) ?? '',
-        address:     (formData.get('address') as string) ?? '',
-        phone:       (formData.get('phone') as string) ?? '',
-        email:       (formData.get('email') as string) ?? '',
-        website:     (formData.get('website') as string) ?? '',
-        lineId:      (formData.get('lineId') as string) ?? '',
-        taxId:       (formData.get('taxId') as string) ?? '',
-        issuerName:  (formData.get('issuerName') as string) ?? '',
-        approverName: (formData.get('approverName') as string) ?? '',
-        updatedAt: new Date(),
+        $set: {
+          companyName:  (formData.get('companyName') as string) ?? '',
+          address:      (formData.get('address') as string) ?? '',
+          phone:        (formData.get('phone') as string) ?? '',
+          email:        (formData.get('email') as string) ?? '',
+          website:      (formData.get('website') as string) ?? '',
+          lineId:       (formData.get('lineId') as string) ?? '',
+          taxId:        (formData.get('taxId') as string) ?? '',
+          issuerName:   (formData.get('issuerName') as string) ?? '',
+          approverName: (formData.get('approverName') as string) ?? '',
+          updatedAt:    new Date(),
+        },
       },
       { upsert: true }
     );
