@@ -316,7 +316,7 @@ function ViewModal({
           )}
 
           {/* Cost & Profit */}
-          {totalCost > 0 && (
+          {doc.grandTotal > 0 && (
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white border border-slate-200/50 rounded-xl p-5 shadow-sm">
                 <p className="text-[11px] font-bold text-slate-400 tracking-wide mb-2">ต้นทุนรวม</p>
@@ -685,6 +685,21 @@ export function DocumentsClient({
   const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  // สรุปต้นทุน + กำไรจาก docs ที่กรองอยู่ (เฉพาะ invoice/ใบเสร็จ)
+  const costProfitSummary = useMemo(() => {
+    let totalCost = 0;
+    let totalRevenue = 0;
+    for (const doc of filtered) {
+      if (doc.type !== 'invoice') continue;
+      totalRevenue += doc.grandTotal;
+      for (const item of doc.items) {
+        const key = item.description.trim().toLowerCase();
+        totalCost += (costMap.get(key) ?? 0) * item.qty;
+      }
+    }
+    return { totalCost, totalRevenue, profit: totalRevenue - totalCost };
+  }, [filtered, costMap]);
+
   const handleDirectPrint = (id: string) => {
     const existing = document.getElementById('print-iframe');
     if (existing) existing.remove();
@@ -880,6 +895,31 @@ export function DocumentsClient({
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Cost & Profit Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
+            <p className="text-[12px] font-bold text-slate-400 mb-1">ยอดขายรวม (ใบเสร็จ)</p>
+            <p className="text-2xl font-black text-slate-800 tabular-nums">฿{fmtMoney(costProfitSummary.totalRevenue)}</p>
+            <p className="text-[11px] text-slate-400 mt-1">{filtered.filter(d => d.type === 'invoice').length} ใบ {(dateFrom || dateTo) ? '(ตามช่วงที่เลือก)' : '(ทั้งหมด)'}</p>
+          </div>
+          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
+            <p className="text-[12px] font-bold text-slate-400 mb-1">ต้นทุนรวม</p>
+            <p className="text-2xl font-black text-orange-700 tabular-nums">฿{fmtMoney(costProfitSummary.totalCost)}</p>
+            <p className="text-[11px] text-slate-400 mt-1">จากสินค้าที่มี costPrice ใน products</p>
+          </div>
+          <div className={`rounded-2xl p-5 border ${costProfitSummary.profit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+            <p className="text-[12px] font-bold text-slate-400 mb-1">กำไรรวม</p>
+            <p className={`text-2xl font-black tabular-nums ${costProfitSummary.profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+              ฿{fmtMoney(costProfitSummary.profit)}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {costProfitSummary.totalRevenue > 0
+                ? `${((costProfitSummary.profit / costProfitSummary.totalRevenue) * 100).toFixed(1)}% margin`
+                : 'ยังไม่มีข้อมูล'}
+            </p>
+          </div>
         </div>
       </div>
 
