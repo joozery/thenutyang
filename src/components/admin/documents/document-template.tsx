@@ -116,7 +116,7 @@ export function DocumentTemplate({
           <p className="text-[12px] font-bold text-slate-900">{seller.companyName || '—'}</p>
           {seller.address && <p className="text-[10px] text-slate-800 leading-relaxed">ที่อยู่: {seller.address}</p>}
           {seller.taxId && <p className="text-[10px] text-slate-800">เลขที่ผู้เสียภาษี: {seller.taxId} (สำนักงานใหญ่)</p>}
-          <div className="text-[10px] text-slate-900 space-y-0.5 pt-1 border-t border-green-200 mt-1">
+          <div className="text-[10px] text-slate-900 space-y-0.5 mt-1">
             {seller.phone && <IconText icon={<Phone size={10} />}>{seller.phone}</IconText>}
             {seller.lineId && <IconText icon={<span className="font-black text-[9px] text-green-600">LINE</span>}>{seller.lineId}</IconText>}
             {seller.email && <IconText icon={<Mail size={10} />}>{seller.email}</IconText>}
