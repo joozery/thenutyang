@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Plus, Trash2, Send, FileText,
-  User, Phone, Hash, ChevronDown,
+  User, Phone, Mail, Hash, ChevronDown,
   AlertCircle, Receipt, FileEdit, FileMinus, FileClock, BookMarked,
   Search, X, Building2, MapPin, Car, UserPlus, Wrench, PackageSearch, Gauge, HardHat, Banknote, Check,
 } from 'lucide-react';
@@ -153,6 +153,8 @@ export function NewDocumentClient({
   const [bookingRef]                          = useState(prefill?.bookingRef ?? '');
   const [customerAddress, setCustomerAddress] = useState(prefill?.customerAddress ?? '');
   const [customerTaxId,   setCustomerTaxId]   = useState(prefill?.customerTaxId ?? '');
+  const [customerEmail,   setCustomerEmail]   = useState('');
+  const [customerLineId,  setCustomerLineId]  = useState('');
   const [customerSelected, setCustomerSelected] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [saveVehiclePending, setSaveVehiclePending] = useState(false);
@@ -434,9 +436,11 @@ export function NewDocumentClient({
     startTransition(async () => {
       const payload: DocFormPayload = {
         type:         docType,
-        customerName: effectiveCustomerName,
-        customerPhone: customerPhone.trim(),
-        customerCar:   composeCarInfo({ carBrand, carModel, carColor, licensePlate, mileage, chassisNo }),
+        customerName:   effectiveCustomerName,
+        customerPhone:  customerPhone.trim(),
+        customerEmail:  customerEmail.trim(),
+        customerLineId: customerLineId.trim(),
+        customerCar:    composeCarInfo({ carBrand, carModel, carColor, licensePlate, mileage, chassisNo }),
         bookingRef:    bookingRef,
         customerAddress: customerAddress.trim(),
         customerTaxId:   customerTaxId.trim(),
@@ -722,16 +726,43 @@ export function NewDocumentClient({
                 </div>
               )}
             </div>
-            <div>
-              <Label>เบอร์โทรศัพท์</Label>
-              <div className="relative">
-                <Phone size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={customerPhone}
-                  onChange={e => setCustomerPhone(e.target.value)}
-                  placeholder="08X-XXX-XXXX"
-                  className={inputCls + ' pl-8'}
-                />
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>เบอร์โทรศัพท์</Label>
+                <div className="relative">
+                  <Phone size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={customerPhone}
+                    onChange={e => setCustomerPhone(e.target.value)}
+                    placeholder="08X-XXX-XXXX"
+                    className={inputCls + ' pl-8'}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>LINE @</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-black text-[10px] text-green-600 leading-none">LINE</span>
+                  <input
+                    value={customerLineId}
+                    onChange={e => setCustomerLineId(e.target.value)}
+                    placeholder="@lineid"
+                    className={inputCls + ' pl-10'}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>อีเมล</Label>
+                <div className="relative">
+                  <Mail size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="email"
+                    value={customerEmail}
+                    onChange={e => setCustomerEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className={inputCls + ' pl-8'}
+                  />
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">

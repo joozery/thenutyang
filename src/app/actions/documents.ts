@@ -10,9 +10,11 @@ import type { DocType, PaymentMethod } from '@/lib/documents';
 
 export type DocFormPayload = {
   type:          DocType;
-  customerName:  string;
-  customerPhone: string;
-  customerCar:   string;
+  customerName:   string;
+  customerPhone:  string;
+  customerEmail:  string;
+  customerLineId: string;
+  customerCar:    string;
   bookingRef?:   string;
   customerAddress: string;
   customerTaxId:   string;
@@ -103,6 +105,8 @@ export async function updateDocument(
     const update: Record<string, unknown> = {
       customerName:    data.customerName,
       customerPhone:   data.customerPhone,
+      customerEmail:   data.customerEmail,
+      customerLineId:  data.customerLineId,
       customerCar:     data.customerCar,
       customerAddress: data.customerAddress,
       customerTaxId:   data.customerTaxId,

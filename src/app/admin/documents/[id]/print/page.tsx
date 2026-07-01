@@ -56,6 +56,8 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
     customer: {
       name: doc.customerName,
       phone: doc.customerPhone || undefined,
+      email: doc.customerEmail || undefined,
+      lineId: doc.customerLineId || undefined,
       note: doc.customerCar || undefined,
       address: doc.customerAddress || undefined,
       taxId: doc.customerTaxId || undefined,

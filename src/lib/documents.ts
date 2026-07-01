@@ -22,6 +22,8 @@ export type DocRow = {
   relatedDocNumber: string;
   customerName:    string;
   customerPhone:   string;
+  customerEmail:   string;
+  customerLineId:  string;
   customerCar:     string;
   customerAddress: string;
   customerTaxId:   string;
@@ -64,6 +66,8 @@ function normalize(d: any): DocRow {
     relatedDocNumber: d.relatedDocNumber ?? '',
     customerName:    d.customerName    ?? '',
     customerPhone:   d.customerPhone   ?? '',
+    customerEmail:   d.customerEmail   ?? '',
+    customerLineId:  d.customerLineId  ?? '',
     customerCar:     d.customerCar     ?? '',
     customerAddress: d.customerAddress ?? '',
     customerTaxId:   d.customerTaxId   ?? '',

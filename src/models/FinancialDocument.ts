@@ -19,6 +19,8 @@ const financialDocSchema = new Schema({
 
   customerName:    { type: String, required: true },
   customerPhone:   { type: String, default: '' },
+  customerEmail:   { type: String, default: '' },
+  customerLineId:  { type: String, default: '' },
   customerCar:     { type: String, default: '' },
   customerAddress: { type: String, default: '' },
   customerTaxId:   { type: String, default: '' },
