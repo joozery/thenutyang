@@ -235,9 +235,23 @@ export function PaymentReviewList({ bookings }: { bookings: PaymentReviewRow[] }
   const searchParams = useSearchParams();
   const highlightRef = searchParams.get('ref');
 
-  const pendingDeposits = bookings.filter(b => b.balanceStatus !== 'paid' && (b.depositStatus === 'pending' || b.depositStatus === 'submitted'));
-  const pendingBalances = bookings.filter(b => b.balanceStatus === 'unpaid' && (b.depositStatus === 'verified' || b.depositStatus === 'not_required'));
-  const completed = bookings.filter(b => b.balanceStatus === 'paid');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const filterByDate = (list: PaymentReviewRow[]) => {
+    return list.filter(b => {
+      const d = new Date(b.createdAt);
+      const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+      const to   = dateTo   ? new Date(dateTo   + 'T23:59:59') : null;
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+      return true;
+    });
+  };
+
+  const pendingDeposits = filterByDate(bookings.filter(b => b.balanceStatus !== 'paid' && (b.depositStatus === 'pending' || b.depositStatus === 'submitted')));
+  const pendingBalances = filterByDate(bookings.filter(b => b.balanceStatus === 'unpaid' && (b.depositStatus === 'verified' || b.depositStatus === 'not_required')));
+  const completed       = filterByDate(bookings.filter(b => b.balanceStatus === 'paid'));
 
   const tabOf = (ref: string | null): 'deposit' | 'balance' | 'completed' => {
     const row = ref ? bookings.find(b => b.ref === ref) : undefined;
@@ -260,6 +274,33 @@ export function PaymentReviewList({ bookings }: { bookings: PaymentReviewRow[] }
 
   return (
     <div className="flex flex-col h-full">
+      {/* Date filter */}
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-slate-100 bg-white flex-wrap">
+        <span className="text-xs font-medium text-slate-500 shrink-0">กรองวันที่</span>
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={e => setDateFrom(e.target.value)}
+          className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100"
+        />
+        <span className="text-xs text-slate-400">—</span>
+        <input
+          type="date"
+          value={dateTo}
+          onChange={e => setDateTo(e.target.value)}
+          className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100"
+        />
+        {(dateFrom || dateTo) && (
+          <button
+            type="button"
+            onClick={() => { setDateFrom(''); setDateTo(''); }}
+            className="text-xs text-slate-400 hover:text-slate-600 underline"
+          >
+            ล้าง
+          </button>
+        )}
+      </div>
+
       <div className="flex border-b border-slate-100 bg-slate-50/50 px-4 pt-4 gap-4 overflow-x-auto">
         <button
           onClick={() => setActiveTab('deposit')}
