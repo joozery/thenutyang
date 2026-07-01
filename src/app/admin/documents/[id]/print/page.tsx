@@ -76,7 +76,7 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
     depositAmount: doc.type === 'booking_note' ? doc.depositAmount : 0,
     payment: doc.paymentMethod !== 'pending' ? { method: PAYMENT_LABEL[doc.paymentMethod], date: fmtDate(doc.issuedAt) } : undefined,
     notes: doc.note ? [doc.note] : [],
-    footerNote: `เอกสารนี้ออกโดยระบบ ${settings.companyName || ''} · ${doc.docNumber} · พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH', { dateStyle: 'long' })}`,
+    footerNote: undefined,
     technicianName: doc.technicianName || undefined,
   };
 
