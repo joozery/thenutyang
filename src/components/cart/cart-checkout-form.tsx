@@ -94,10 +94,10 @@ export function CartCheckoutForm({
         )}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            {customerType === 'corporate' ? 'ชื่อผู้ติดต่อ' : 'ชื่อ'} {customerType === 'individual' && <span className="text-green-500">*</span>}
+            {customerType === 'corporate' ? 'ชื่อผู้ติดต่อ' : 'ชื่อ'}
           </label>
           <input
-            type="text" name="firstName" required={customerType === 'individual'} placeholder="สมชาย" defaultValue={profile?.firstName ?? ''}
+            type="text" name="firstName" placeholder="สมชาย" defaultValue={profile?.firstName ?? ''}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
           />
         </div>
@@ -109,11 +109,9 @@ export function CartCheckoutForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">
-            เบอร์โทรศัพท์ <span className="text-green-500">*</span>
-          </label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">เบอร์โทรศัพท์</label>
           <input
-            type="tel" name="phone" required placeholder="081-234-5678" pattern="[0-9]{9,10}" defaultValue={profile?.phone ?? ''}
+            type="tel" name="phone" placeholder="081-234-5678" pattern="[0-9]{9,10}" defaultValue={profile?.phone ?? ''}
             className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
           />
         </div>

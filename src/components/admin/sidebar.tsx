@@ -8,7 +8,7 @@ import {
   UserCircle, UserCircle2, CalendarDays, BarChart2, Settings,
   Settings2, HeadphonesIcon, ChevronRight, ClipboardList, ShieldCheck, Tag,
   CalendarClock, CalendarOff, Layout, QrCode, Sparkles, Wrench,
-  CalendarRange,
+  CalendarRange, Shield,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,6 +31,7 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
       items: [
         { icon: <ClipboardList size={20} />, label: "การจอง", href: "/admin/bookings", active: pathname.startsWith("/admin/bookings") },
         { icon: <QrCode size={20} />, label: "การชำระเงิน", href: "/admin/payments", active: pathname.startsWith("/admin/payments") },
+        { icon: <Shield size={20} />, label: "เครมประกัน", href: "/admin/warranty-claims", active: pathname.startsWith("/admin/warranty-claims") },
         { icon: <Users size={20} />, label: "ลูกค้า", href: "/admin/customers", active: pathname === "/admin/customers" },
         { icon: <Car size={20} />, label: "ยี่ห้อ/รุ่นรถ", href: "/admin/car-data", active: pathname.startsWith("/admin/car-data") },
         { icon: <FileText size={20} />, label: "บิล/เอกสาร", href: "/admin/documents", active: pathname.startsWith("/admin/documents") && !pathname.startsWith("/admin/documents/settings/services"), hasSub: true },
