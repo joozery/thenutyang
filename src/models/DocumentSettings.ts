@@ -48,4 +48,7 @@ const DocumentSettingsSchema = new Schema<IDocumentSettings>({
   updatedAt:            { type: Date, default: Date.now },
 });
 
-export const DocumentSettings = models.DocumentSettings ?? model<IDocumentSettings>('DocumentSettings', DocumentSettingsSchema);
+if (models.DocumentSettings) {
+  delete models.DocumentSettings;
+}
+export const DocumentSettings = model<IDocumentSettings>('DocumentSettings', DocumentSettingsSchema);

@@ -92,35 +92,35 @@ export function DocumentTemplate({
   const minRows = 4;
 
   return (
-    <div id="print-document" style={{ width: '210mm', minHeight: '297mm', background: 'white', padding: '8mm 12mm 14mm' }} className="text-slate-800 text-[13px]">
+    <div id="print-document" style={{ width: '210mm', minHeight: '297mm', background: 'white', padding: '8mm 12mm 14mm' }} className="text-slate-800 text-[14px]">
       {/* Header */}
       <div className="flex justify-between items-start mb-3">
         <div className="h-10 flex items-center">
           {seller.logoUrl ? (
             <img src={seller.logoUrl} alt={seller.companyName} className="h-full w-auto object-contain" />
           ) : (
-            <span className="text-xl font-black text-slate-900">{seller.companyName || 'บริษัทของคุณ'}</span>
+            <span className="text-2xl font-black text-slate-900">{seller.companyName || 'บริษัทของคุณ'}</span>
           )}
         </div>
         <div className="text-right">
-          <div className="text-xl font-black text-green-700">{docTypeLabel}</div>
-          {docTypeLabelEn && <div className="text-[12px] font-bold text-slate-800">{docTypeLabelEn}</div>}
-          <div className="text-[12px] text-slate-800 mt-0.5">{copyLabel}</div>
+          <div className="text-2xl font-black text-green-700">{docTypeLabel}</div>
+          {docTypeLabelEn && <div className="text-[14px] font-bold text-slate-800">{docTypeLabelEn}</div>}
+          <div className="text-[14px] text-slate-800 mt-0.5">{copyLabel}</div>
         </div>
       </div>
 
       {/* Seller + meta */}
       <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="bg-green-50 border border-green-100 rounded-lg p-3 space-y-1">
-          <p className="text-[12px] text-slate-600">ผู้ขาย</p>
-          <p className="text-[13px] font-bold text-slate-900">{seller.companyName || '—'}</p>
+          <p className="text-[13px] text-slate-600">ผู้ขาย</p>
+          <p className="text-[14px] font-bold text-slate-900">{seller.companyName || '—'}</p>
           {seller.address && <p className="text-[12px] text-slate-800 leading-relaxed">ที่อยู่: {seller.address}</p>}
           {seller.taxId && <p className="text-[12px] text-slate-800">เลขที่ผู้เสียภาษี: {seller.taxId} (สำนักงานใหญ่)</p>}
           <div className="text-[12px] text-slate-900 space-y-0.5 mt-1">
-            {seller.phone && <IconText icon={<Phone size={12} />}>{seller.phone}</IconText>}
+            {seller.phone && <IconText icon={<Phone size={14} />}>{seller.phone}</IconText>}
             {seller.lineId && <IconText icon={<span className="font-black text-[11px] text-green-600">LINE</span>}>{seller.lineId}</IconText>}
-            {seller.email && <IconText icon={<Mail size={12} />}>{seller.email}</IconText>}
-            {seller.website && <IconText icon={<Globe size={12} />}>{seller.website}</IconText>}
+            {seller.email && <IconText icon={<Mail size={14} />}>{seller.email}</IconText>}
+            {seller.website && <IconText icon={<Globe size={14} />}>{seller.website}</IconText>}
           </div>
         </div>
 
@@ -134,28 +134,28 @@ export function DocumentTemplate({
       {/* Customer */}
       <div className="grid grid-cols-3 gap-4 mb-4 pb-3 border-b border-slate-100 items-start">
         {/* Left Column */}
-        <div className="space-y-1.5 text-[12px] text-slate-800">
+        <div className="space-y-1.5 text-[13px] text-slate-800">
           <p><span className="text-slate-500 w-20 inline-block">ลูกค้า:</span> <span className="font-bold text-slate-900">{customer.name}</span> {customer.code && <span className="text-slate-500 font-normal">({customer.code})</span>}</p>
           {customer.address && <p><span className="text-slate-500 w-20 inline-block align-top">ที่อยู่:</span> <span className="inline-block w-[calc(100%-5rem)]">{customer.address}</span></p>}
           {customer.taxId && <p><span className="text-slate-500 w-20 inline-block">เลขผู้เสียภาษี:</span> <span>{customer.taxId}</span></p>}
         </div>
 
         {/* Middle Column */}
-        <div className="space-y-1.5 text-[12px] text-slate-800 pl-4 border-l border-slate-100">
+        <div className="space-y-1.5 text-[13px] text-slate-800 pl-4 border-l border-slate-100">
           <p><span className="text-slate-500 w-[70px] inline-block">เบอร์โทรศัพท์</span> <span>{customer.phone || '-'}</span></p>
           <p><span className="text-slate-500 w-[70px] inline-block">email</span> <span>{customer.email || '-'}</span></p>
           <p><span className="text-slate-500 w-[70px] inline-block">line</span> <span>{customer.lineId || '-'}</span></p>
         </div>
 
         {/* Right Column */}
-        <div className="text-[12px] pl-4 border-l border-slate-100">
+        <div className="text-[13px] pl-4 border-l border-slate-100">
           {customer.note && (() => {
             const car = parseCarInfo(customer.note);
             if (!car.carBrand && !car.carModel && !car.licensePlate) {
               return customer.note.split(' • ').map((line, i) => <p key={i} className="text-slate-900">{line}</p>);
             }
             return (
-              <table className="text-[11px] text-slate-800 border-separate" style={{ borderSpacing: '8px 2px', marginTop: '-2px', marginLeft: '-8px' }}>
+              <table className="text-[12px] text-slate-800 border-separate" style={{ borderSpacing: '8px 2px', marginTop: '-2px', marginLeft: '-8px' }}>
                 <tbody>
                   {car.licensePlate && <tr><td className="text-slate-500 font-semibold text-right whitespace-nowrap">ทะเบียนรถ</td><td className="font-bold">: {car.licensePlate}</td></tr>}
                   {(car.carBrand || car.carModel) && <tr><td className="text-slate-500 font-semibold text-right whitespace-nowrap">ยี่ห้อ/รุ่น</td><td className="font-bold uppercase">: {[car.carBrand, car.carModel].filter(Boolean).join(' / ')}</td></tr>}
@@ -170,7 +170,7 @@ export function DocumentTemplate({
       </div>
 
       {/* Items */}
-      <table className="w-full text-[12px] border-collapse mb-4">
+      <table className="w-full text-[13px] border-collapse mb-4">
         <thead>
           <tr className="bg-green-700 text-white">
             <th className="text-left py-2 px-2 font-semibold">คำอธิบาย</th>
@@ -200,12 +200,12 @@ export function DocumentTemplate({
 
       {/* Summary */}
       <div className="flex justify-between gap-6 mb-4">
-        <div className="flex-1 text-[12px] text-slate-800 self-end">
+        <div className="flex-1 text-[13px] text-slate-800 self-end">
           <p>จำนวนเงินทั้งสิ้น</p>
           <p className="font-semibold text-slate-700">({numberToThaiBahtText(grandTotal)})</p>
         </div>
-        <div className="w-72 shrink-0">
-          <table className="w-full text-[12px]">
+        <div className="w-80 shrink-0">
+          <table className="w-full text-[13px]">
             <tbody>
               <tr><td className="py-1 text-slate-800">มูลค่าที่คำนวณภาษี {vatRate}%</td><td className="py-1 text-right tabular-nums">{fmt(vatBase)} บาท</td></tr>
               <tr><td className="py-1 text-slate-800">ภาษีมูลค่าเพิ่ม {vatRate}%</td><td className="py-1 text-right tabular-nums">{fmt(vatAmount)} บาท</td></tr>
@@ -231,8 +231,8 @@ export function DocumentTemplate({
 
       {/* Payment */}
       {payment && (payment.date || payment.method) && (
-        <div className="mb-3 text-[12px] flex items-center gap-4 bg-slate-50 rounded-lg p-2.5">
-          <span className="font-semibold text-slate-900 flex items-center gap-1"><CreditCard size={13} /> ชำระเงิน</span>
+        <div className="mb-3 text-[13px] flex items-center gap-4 bg-slate-50 rounded-lg p-2.5">
+          <span className="font-semibold text-slate-900 flex items-center gap-1"><CreditCard size={15} /> ชำระเงิน</span>
           {payment.date && <span className="text-slate-800">วันที่ชำระ: <span className="font-medium text-slate-800">{payment.date}</span></span>}
           {payment.method && <span className="text-slate-800">วิธี: <span className="font-medium text-slate-800">{payment.method}</span></span>}
           <span className="text-slate-800 ml-auto">จำนวนเงินรวม: <span className="font-bold text-slate-800">{fmt(paid)} บาท</span></span>
@@ -241,15 +241,15 @@ export function DocumentTemplate({
 
       {/* Notes */}
       {notes.length > 0 && (
-        <div className="mb-2 text-[10px] text-slate-800">
-          <p className="font-semibold text-slate-900 mb-0.5 flex items-center gap-1"><StickyNote size={11} /> หมายเหตุ</p>
+        <div className="mb-2 text-[12px] text-slate-800">
+          <p className="font-semibold text-slate-900 mb-0.5 flex items-center gap-1"><StickyNote size={13} /> หมายเหตุ</p>
           {notes.map((n, i) => <p key={i} className="whitespace-pre-wrap leading-snug">* {n}</p>)}
         </div>
       )}
 
       {/* Certification / signatures */}
       <div className="pt-4 border-t border-slate-200">
-        <p className="font-semibold text-slate-900 text-[12px] mb-3 flex items-center gap-1"><BadgeCheck size={13} /> รับรอง</p>
+        <p className="font-semibold text-slate-900 text-[13px] mb-3 flex items-center gap-1"><BadgeCheck size={15} /> รับรอง</p>
         <div className="grid grid-cols-3 gap-4 text-center">
           {[
             { role: 'ลูกค้า', sig: '', name: '' },
