@@ -196,11 +196,9 @@ function ViewModal({
   const remaining = Math.max(0, doc.grandTotal - paidSoFar);
   const bookingStatus = doc.bookingRef ? bookingStatusMap[doc.bookingRef] : undefined;
 
-  const totalCost = doc.items.reduce((sum, item) => {
-    const key = item.description.trim().toLowerCase();
-    const cost = costMap.get(key) ?? 0;
-    return sum + cost * item.qty;
-  }, 0);
+  const totalCost = doc.costPrice > 0
+    ? doc.costPrice
+    : doc.items.reduce((sum, item) => sum + (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty, 0);
   const profit = doc.grandTotal - totalCost;
 
   const PayIcon = doc.paymentMethod === 'cash' ? Banknote
@@ -692,9 +690,12 @@ export function DocumentsClient({
     for (const doc of filtered) {
       if (doc.type !== 'invoice') continue;
       totalRevenue += doc.grandTotal;
-      for (const item of doc.items) {
-        const key = item.description.trim().toLowerCase();
-        totalCost += (costMap.get(key) ?? 0) * item.qty;
+      if (doc.costPrice > 0) {
+        totalCost += doc.costPrice;
+      } else {
+        for (const item of doc.items) {
+          totalCost += (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty;
+        }
       }
     }
     return { totalCost, totalRevenue, profit: totalRevenue - totalCost };
@@ -1022,7 +1023,9 @@ export function DocumentsClient({
                 </tr>
               ) : paginated.map(d => {
                 const rowCost = d.type === 'invoice'
-                  ? d.items.reduce((sum, item) => sum + (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty, 0)
+                  ? (d.costPrice > 0
+                    ? d.costPrice
+                    : d.items.reduce((sum, item) => sum + (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty, 0))
                   : null;
                 const rowProfit = rowCost !== null ? d.grandTotal - rowCost : null;
                 const bs = d.bookingRef ? bookingStatusMap[d.bookingRef] : undefined;
