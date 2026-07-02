@@ -1,5 +1,4 @@
 import connectDB from './mongodb';
-import { Income } from '@/models/Income';
 import { Expense } from '@/models/Expense';
 import { PurchaseOrder } from '@/models/PurchaseOrder';
 import { Payslip } from '@/models/Payslip';
@@ -46,11 +45,14 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
   const yearStart = new Date(start.getFullYear(), 0, 1);
   const yearEnd   = new Date(start.getFullYear(), 11, 31, 23, 59, 59, 999);
 
-  const [incomeAgg, expenseMiscAgg, poAgg, payslipAgg, incomeCatAgg, expenseCatAgg,
-    billCount, newCustomerCount, topProductsAgg, ytdIncomeAgg] = await Promise.all([
-    Income.aggregate<AggRow>([
-      { $match: { incomeDate: { $gte: start, $lte: end } } },
-      { $group: { _id: { y: { $year: '$incomeDate' }, m: { $month: '$incomeDate' } }, total: { $sum: '$amount' } } },
+  const invoiceMatch = { type: 'invoice', status: 'paid', issuedAt: { $gte: start, $lte: end } };
+
+  const [invoiceAgg, expenseMiscAgg, poAgg, payslipAgg, expenseCatAgg,
+    billCount, newCustomerCount, topProductsAgg, ytdInvoiceAgg] = await Promise.all([
+    // รายรับจากใบเสร็จที่จ่ายแล้ว กรองตาม issuedAt (ตรงกับ dashboard)
+    FinancialDocument.aggregate<AggRow>([
+      { $match: invoiceMatch },
+      { $group: { _id: { y: { $year: '$issuedAt' }, m: { $month: '$issuedAt' } }, total: { $sum: '$grandTotal' } } },
     ]),
     Expense.aggregate<AggRow>([
       { $match: { expenseDate: { $gte: start, $lte: end } } },
@@ -64,34 +66,28 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
       { $match: { status: 'paid', paidAt: { $gte: start, $lte: end } } },
       { $group: { _id: { y: { $year: '$paidAt' }, m: { $month: '$paidAt' } }, total: { $sum: '$netPay' } } },
     ]),
-    // รายรับแยกหมวด
-    Income.aggregate<{ _id: string; total: number }>([
-      { $match: { incomeDate: { $gte: start, $lte: end } } },
-      { $group: { _id: '$category', total: { $sum: '$amount' } } },
-      { $sort: { total: -1 } },
-    ]),
     // รายจ่ายแยกหมวด (misc)
     Expense.aggregate<{ _id: string; total: number }>([
       { $match: { expenseDate: { $gte: start, $lte: end } } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
       { $sort: { total: -1 } },
     ]),
-    // จำนวนบิล (invoice ที่จ่ายแล้วในช่วงเวลา)
-    FinancialDocument.countDocuments({ type: 'invoice', status: 'paid', paidAt: { $gte: start, $lte: end } }),
+    // จำนวนบิล (invoice ที่จ่ายแล้ว กรองตาม issuedAt)
+    FinancialDocument.countDocuments(invoiceMatch),
     // ลูกค้าใหม่ในช่วงเวลา
     Customer.countDocuments({ createdAt: { $gte: start, $lte: end } }),
-    // สินค้าขายดี — unwind items จาก invoice ที่จ่ายแล้ว
+    // สินค้าขายดี
     FinancialDocument.aggregate<{ _id: string; qty: number; revenue: number }>([
-      { $match: { type: 'invoice', status: 'paid', paidAt: { $gte: start, $lte: end } } },
+      { $match: invoiceMatch },
       { $unwind: '$items' },
       { $group: { _id: '$items.description', qty: { $sum: '$items.qty' }, revenue: { $sum: '$items.lineTotal' } } },
       { $sort: { qty: -1 } },
       { $limit: 5 },
     ]),
     // รายได้ YTD (ตลอดปี)
-    Income.aggregate<{ total: number }>([
-      { $match: { incomeDate: { $gte: yearStart, $lte: yearEnd } } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
+    FinancialDocument.aggregate<{ total: number }>([
+      { $match: { type: 'invoice', status: 'paid', issuedAt: { $gte: yearStart, $lte: yearEnd } } },
+      { $group: { _id: null, total: { $sum: '$grandTotal' } } },
     ]),
   ]);
 
@@ -102,7 +98,7 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
   while (cursor <= endMonth) {
     const y = cursor.getFullYear();
     const m = cursor.getMonth() + 1;
-    const income  = findMonth(incomeAgg, y, m);
+    const income  = findMonth(invoiceAgg, y, m);
     const expense = findMonth(expenseMiscAgg, y, m) + findMonth(poAgg, y, m) + findMonth(payslipAgg, y, m);
     monthly.push({
       year: y, month: m,
@@ -112,18 +108,16 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
     cursor.setMonth(cursor.getMonth() + 1);
   }
 
-  const totalIncome  = monthly.reduce((s, m) => s + m.income, 0);
+  const totalIncome         = invoiceAgg.reduce((s, r) => s + r.total, 0);
   const totalExpenseMisc    = expenseMiscAgg.reduce((s, r) => s + r.total, 0);
   const totalExpensePO      = poAgg.reduce((s, r) => s + r.total, 0);
   const totalExpensePayroll = payslipAgg.reduce((s, r) => s + r.total, 0);
   const totalExpense = totalExpenseMisc + totalExpensePO + totalExpensePayroll;
   const netProfit    = totalIncome - totalExpense;
 
-  const incomeByCategory = incomeCatAgg.map((r) => ({
-    label: r._id || 'อื่นๆ',
-    amount: r.total,
-    pct: pct(r.total, totalIncome),
-  }));
+  const incomeByCategory = [
+    { label: 'ยอดขาย (ใบเสร็จที่ชำระแล้ว)', amount: totalIncome, pct: 100 },
+  ].filter((c) => c.amount > 0);
 
   const expenseByCategory = [
     { label: 'ต้นทุนสินค้า (จัดซื้อ)', amount: totalExpensePO,      pct: pct(totalExpensePO, totalExpense) },
@@ -137,7 +131,7 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
     revenue: r.revenue,
   }));
 
-  const ytdIncome = ytdIncomeAgg[0]?.total ?? 0;
+  const ytdIncome = ytdInvoiceAgg[0]?.total ?? 0;
 
   return {
     totalIncome, totalExpense, netProfit, monthly, incomeByCategory, expenseByCategory,
