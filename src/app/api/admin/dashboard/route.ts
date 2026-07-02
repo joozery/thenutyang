@@ -40,15 +40,15 @@ export async function GET(req: Request) {
     const [rangeDocs, prevDayDocs, monthDocs] = await Promise.all([
       FinancialDocument.find({
         type: 'invoice',
-        createdAt: { $gte: rangeStart, $lte: rangeEnd },
+        issuedAt: { $gte: rangeStart, $lte: rangeEnd },
       }).lean(),
       isRange ? Promise.resolve([]) : FinancialDocument.find({
         type: 'invoice',
-        createdAt: { $gte: prevDayStart, $lt: rangeStart },
+        issuedAt: { $gte: prevDayStart, $lt: rangeStart },
       }).lean(),
       FinancialDocument.find({
         type: 'invoice',
-        createdAt: { $gte: monthStart, $lt: nextMonthStart },
+        issuedAt: { $gte: monthStart, $lt: nextMonthStart },
       }).lean(),
     ]);
 
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
     });
 
     // ─── Recent invoices (ในช่วงที่เลือก) ─────────────────────────
-    const recentInvoices = await FinancialDocument.find({ type: 'invoice', createdAt: { $gte: rangeStart, $lte: rangeEnd } })
+    const recentInvoices = await FinancialDocument.find({ type: 'invoice', issuedAt: { $gte: rangeStart, $lte: rangeEnd } })
       .sort({ createdAt: -1 })
       .limit(8)
       .lean();
@@ -103,7 +103,7 @@ export async function GET(req: Request) {
       const docs = await FinancialDocument.find({
         type: 'invoice',
         status: 'paid',
-        createdAt: { $gte: mStart, $lt: mEnd },
+        issuedAt: { $gte: mStart, $lt: mEnd },
       }).lean();
       const total = docs.reduce((s, d) => s + d.grandTotal, 0);
       const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
