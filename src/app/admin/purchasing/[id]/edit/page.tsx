@@ -6,9 +6,10 @@ import { NewPurchasingClient } from '@/components/admin/new-purchasing-client';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'แก้ไขใบสั่งซื้อ | Admin' };
 
-export default async function EditPurchasingPage({ params }: { params: { id: string } }) {
+export default async function EditPurchasingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const [po, suppliers, products] = await Promise.all([
-    getPurchaseOrderById(params.id),
+    getPurchaseOrderById(id),
     getSuppliers(),
     getAllProductsAdmin(),
   ]);
@@ -21,7 +22,7 @@ export default async function EditPurchasingPage({ params }: { params: { id: str
       suppliers={suppliers}
       products={products}
       initialData={po}
-      poId={params.id}
+      poId={id}
     />
   );
 }
