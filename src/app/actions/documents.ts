@@ -76,7 +76,7 @@ export async function createDocument(
         category: 'Sales',
         description: `ชำระเงินบิล ${docNumber} (${data.customerName})`,
         amount: data.grandTotal,
-        incomeDate: new Date(),
+        incomeDate: data.issuedDate ? new Date(data.issuedDate) : new Date(),
         note: `อ้างอิงเอกสาร ${docNumber}`,
       });
     }
@@ -139,7 +139,7 @@ export async function updateDocument(
         category: 'Sales',
         description: `ชำระเงินบิล ${existing.docNumber} (${data.customerName})`,
         amount: data.grandTotal,
-        incomeDate: new Date(),
+        incomeDate: existing.issuedAt ?? new Date(),
         note: `อ้างอิงเอกสาร ${existing.docNumber}`,
       });
     }
@@ -407,7 +407,7 @@ export async function updateDocStatus(
         category: 'Sales',
         description: `ชำระเงินบิล ${doc.docNumber}`,
         amount: doc.grandTotal,
-        incomeDate: new Date(),
+        incomeDate: doc.issuedAt ?? new Date(),
         note: `อ้างอิงเอกสาร ${doc.docNumber}`,
       });
     }
