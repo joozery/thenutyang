@@ -15,7 +15,6 @@ export default async function EditPurchasingPage({ params }: { params: Promise<{
   ]);
 
   if (!po) notFound();
-  if (po.status === 'ยกเลิก') notFound();
 
   return (
     <NewPurchasingClient
