@@ -5,6 +5,8 @@ import { Product } from '@/models/Product';
 import { Booking } from '@/models/Booking';
 import { Income } from '@/models/Income';
 import { Expense } from '@/models/Expense';
+import { PurchaseOrder } from '@/models/PurchaseOrder';
+import { Payslip } from '@/models/Payslip';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,7 +60,7 @@ export async function GET(req: Request) {
     const prevDayBills = prevDayDocs.length;
     const monthRevenue = monthDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
 
-    const [monthIncomes, monthExpenses] = await Promise.all([
+    const [monthIncomes, monthExpenses, monthPO, monthPayslip] = await Promise.all([
       Income.aggregate([
         { $match: { incomeDate: { $gte: monthStart, $lt: nextMonthStart } } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
@@ -66,10 +68,18 @@ export async function GET(req: Request) {
       Expense.aggregate([
         { $match: { expenseDate: { $gte: monthStart, $lt: nextMonthStart } } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
-      ])
+      ]),
+      PurchaseOrder.aggregate([
+        { $match: { status: 'received', createdAt: { $gte: monthStart, $lt: nextMonthStart } } },
+        { $group: { _id: null, total: { $sum: '$grandTotal' } } }
+      ]),
+      Payslip.aggregate([
+        { $match: { status: 'paid', paidAt: { $gte: monthStart, $lt: nextMonthStart } } },
+        { $group: { _id: null, total: { $sum: '$netPay' } } }
+      ]),
     ]);
     const totalIncomeMonth = monthIncomes[0]?.total ?? 0;
-    const totalExpenseMonth = monthExpenses[0]?.total ?? 0;
+    const totalExpenseMonth = (monthExpenses[0]?.total ?? 0) + (monthPO[0]?.total ?? 0) + (monthPayslip[0]?.total ?? 0);
 
     // เทียบเปอร์เซ็นต์ได้เฉพาะตอนเลือกวันเดียว (เทียบกับวันก่อนหน้า) — ช่วงหลายวันเทียบกับช่วงก่อนหน้าไม่สมเหตุ จึงไม่แสดง
     const revenueTrend = !isRange && prevDayRevenue > 0
