@@ -337,7 +337,7 @@ export function NewDocumentClient({
   function selectPickerEntry(key: number, entry: PickerEntry) {
     setLines((prev) => prev.map((l) => l.key !== key ? l : entry.kind === 'product'
       ? { ...l, description: `${entry.data.brand} ${entry.data.model} ${entry.data.size}`, unitPrice: entry.data.priceCash, lineCostPrice: entry.data.costPrice ?? 0 }
-      : { ...l, description: entry.data.name, unitPrice: entry.data.price, lineCostPrice: 0 }
+      : { ...l, description: entry.data.name, unitPrice: entry.data.price, lineCostPrice: entry.data.cost ?? 0 }
     ));
     setProductPickerLineKey(null);
   }
