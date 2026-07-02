@@ -364,6 +364,11 @@ function ActionMenu({ order, onView, onReceive, onCancelRequest, onPayRequest, o
             <button onClick={() => { setOpen(false); onView(); }} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 font-medium">
               <Eye size={14} className="text-slate-400" /> ดูรายละเอียด
             </button>
+            {(order.status === 'ร่าง' || order.status === 'รอรับสินค้า') && (
+              <Link href={`/admin/purchasing/${order.id}/edit`} onClick={() => setOpen(false)} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 font-medium">
+                <Pencil size={14} /> แก้ไข
+              </Link>
+            )}
             {order.paymentStatus !== 'paid' && order.status !== 'ยกเลิก' && (
               <button onClick={() => { setOpen(false); onPayRequest(); }} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 font-medium">
                 💰 ชำระเงิน
