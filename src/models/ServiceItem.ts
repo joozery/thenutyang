@@ -4,6 +4,7 @@ import { Schema, model, models } from 'mongoose';
 export interface IServiceItem {
   name: string;
   price: number;
+  cost: number;
   unit: string;
   note: string;
   createdAt: Date;
@@ -12,6 +13,7 @@ export interface IServiceItem {
 const ServiceItemSchema = new Schema<IServiceItem>({
   name:      { type: String, required: true },
   price:     { type: Number, required: true, default: 0 },
+  cost:      { type: Number, default: 0 },
   unit:      { type: String, default: 'ครั้ง' },
   note:      { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },

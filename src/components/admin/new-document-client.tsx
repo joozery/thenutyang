@@ -353,11 +353,11 @@ export function NewDocumentClient({
     setQuickAddPending(true);
     setQuickAddError('');
     const price = Number(newServicePrice) || 0;
-    const res = await createServiceItem({ name: newServiceName.trim(), price, unit: 'ครั้ง', note: '' });
+    const res = await createServiceItem({ name: newServiceName.trim(), price, cost: 0, unit: 'ครั้ง', note: '' });
     setQuickAddPending(false);
     if (res.error || !res.item) { setQuickAddError(res.error ?? 'เพิ่มไม่สำเร็จ'); return; }
-    setServiceItemsState((prev) => [...prev, { id: res.item!.id, name: res.item!.name, price: res.item!.price, unit: res.item!.unit, note: res.item!.note }]);
-    selectPickerEntry(key, { kind: 'service', data: { id: res.item.id, name: res.item.name, price: res.item.price, unit: res.item.unit, note: res.item.note } });
+    setServiceItemsState((prev) => [...prev, { id: res.item!.id, name: res.item!.name, price: res.item!.price, cost: res.item!.cost, unit: res.item!.unit, note: res.item!.note }]);
+    selectPickerEntry(key, { kind: 'service', data: { id: res.item.id, name: res.item.name, price: res.item.price, cost: res.item.cost, unit: res.item.unit, note: res.item.note } });
     setNewServiceName('');
     setNewServicePrice('');
   }
