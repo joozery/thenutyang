@@ -9,7 +9,7 @@ import {
 import { createServiceItem, updateServiceItem, deleteServiceItem, type ServiceItemInput } from '@/app/actions/service-items';
 import type { ServiceItemRow } from '@/lib/service-items';
 
-const EMPTY_FORM: ServiceItemInput = { name: '', price: 0, cost: 0, unit: 'ครั้ง', note: '' };
+const EMPTY_FORM: ServiceItemInput = { name: '', price: 0, unit: 'ครั้ง', note: '' };
 
 const UNIT_PRESETS = ['ครั้ง', 'คัน', 'เส้น', 'ชั่วโมง', 'ชุด', 'งาน'];
 
@@ -33,7 +33,7 @@ function ServicePanel({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<ServiceItemInput>(
-    initial ? { name: initial.name, price: initial.price, cost: initial.cost, unit: initial.unit, note: initial.note } : EMPTY_FORM
+    initial ? { name: initial.name, price: initial.price, unit: initial.unit, note: initial.note } : EMPTY_FORM
   );
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -94,11 +94,11 @@ function ServicePanel({
             />
           </div>
 
-          {/* ราคา + ต้นทุน */}
+          {/* ราคา + หน่วย */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
-                <Banknote size={11} /> ราคาขาย (฿) <span className="text-green-500">*</span>
+                <Banknote size={11} /> ราคา (฿) <span className="text-green-500">*</span>
               </label>
               <input
                 type="number"
@@ -111,76 +111,44 @@ function ServicePanel({
             </div>
             <div>
               <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
-                <Banknote size={11} /> ต้นทุน (฿)
+                <Tag size={11} /> หน่วย
               </label>
               <input
-                type="number"
-                min={0}
-                value={form.cost || ''}
-                onChange={(e) => set('cost', Number(e.target.value))}
-                placeholder="0"
-                className={inputCls + ' tabular-nums'}
+                value={form.unit}
+                onChange={(e) => set('unit', e.target.value)}
+                placeholder="ครั้ง / เส้น / คัน"
+                className={inputCls}
               />
-            </div>
-          </div>
-
-          {/* หน่วย */}
-          <div>
-            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
-              <Tag size={11} /> หน่วย
-            </label>
-            <input
-              value={form.unit}
-              onChange={(e) => set('unit', e.target.value)}
-              placeholder="ครั้ง / เส้น / คัน"
-              className={inputCls}
-            />
-            {/* Unit presets */}
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {UNIT_PRESETS.map((u) => (
-                <button
-                  key={u}
-                  type="button"
-                  onClick={() => set('unit', u)}
-                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-colors ${
-                    form.unit === u
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-green-300 hover:text-green-700'
-                  }`}
-                >
-                  {u}
-                </button>
-              ))}
+              {/* Unit presets */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {UNIT_PRESETS.map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => set('unit', u)}
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-colors ${
+                      form.unit === u
+                        ? 'bg-green-600 text-white border-green-600'
+                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-green-300 hover:text-green-700'
+                    }`}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Preview */}
           {form.name && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">ตัวอย่าง</p>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">ตัวอย่าง</p>
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold text-slate-800">{form.name}</p>
                 <p className="text-base font-black text-green-700">
                   ฿{(form.price || 0).toLocaleString()} <span className="text-xs font-medium text-slate-400">/ {form.unit || 'ครั้ง'}</span>
                 </p>
               </div>
-              {(form.cost > 0 || form.price > 0) && (
-                <div className="flex items-center gap-3 pt-1 border-t border-slate-200 text-xs">
-                  <span className="text-slate-500">ต้นทุน ฿{(form.cost || 0).toLocaleString()}</span>
-                  <span className="text-slate-300">·</span>
-                  <span className={`font-bold ${(form.price - form.cost) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                    กำไร ฿{(form.price - (form.cost || 0)).toLocaleString()}
-                  </span>
-                  {form.price > 0 && (
-                    <>
-                      <span className="text-slate-300">·</span>
-                      <span className={`font-bold ${(form.price - form.cost) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                        {(((form.price - (form.cost || 0)) / form.price) * 100).toFixed(1)}%
-                      </span>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
@@ -316,24 +284,12 @@ export function ServiceItemsClient({ items: initialItems }: { items: ServiceItem
                   </div>
                 </div>
 
-                {/* Price + Profit */}
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-1">
-                    <span className={`text-2xl font-black ${color.price}`}>
-                      ฿{item.price.toLocaleString()}
-                    </span>
-                    <span className="text-xs text-slate-400 font-medium">/ {item.unit}</span>
-                  </div>
-                  {item.cost > 0 && (
-                    <div className="flex items-center gap-1.5 text-[11px]">
-                      <span className="text-slate-400">ต้นทุน ฿{item.cost.toLocaleString()}</span>
-                      <span className="text-slate-300">·</span>
-                      <span className="font-bold text-emerald-600">
-                        กำไร ฿{(item.price - item.cost).toLocaleString()}
-                        {item.price > 0 && ` (${(((item.price - item.cost) / item.price) * 100).toFixed(0)}%)`}
-                      </span>
-                    </div>
-                  )}
+                {/* Price */}
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-2xl font-black ${color.price}`}>
+                    ฿{item.price.toLocaleString()}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">/ {item.unit}</span>
                 </div>
 
                 {/* Actions — always visible on mobile, hover on desktop */}

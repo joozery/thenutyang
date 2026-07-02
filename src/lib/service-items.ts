@@ -5,7 +5,6 @@ export type ServiceItemRow = {
   id: string;
   name: string;
   price: number;
-  cost: number;
   unit: string;
   note: string;
 };
@@ -17,7 +16,6 @@ export async function getServiceItems(): Promise<ServiceItemRow[]> {
     id: String(d._id),
     name: d.name ?? '',
     price: d.price ?? 0,
-    cost: d.cost ?? 0,
     unit: d.unit ?? 'ครั้ง',
     note: d.note ?? '',
   }));

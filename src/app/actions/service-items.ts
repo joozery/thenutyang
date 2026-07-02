@@ -4,12 +4,11 @@ import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { ServiceItem } from '@/models/ServiceItem';
 
-type ActionResult = { error?: string; ok?: boolean; item?: { id: string; name: string; price: number; cost: number; unit: string; note: string } };
+type ActionResult = { error?: string; ok?: boolean; item?: { id: string; name: string; price: number; unit: string; note: string } };
 
 export type ServiceItemInput = {
   name: string;
   price: number;
-  cost: number;
   unit: string;
   note: string;
 };
@@ -28,7 +27,7 @@ export async function createServiceItem(input: ServiceItemInput): Promise<Action
     await connectDB();
     const doc = await ServiceItem.create(input);
     revalidatePath('/admin/documents/settings/services');
-    return { ok: true, item: { id: String(doc._id), name: doc.name, price: doc.price, cost: doc.cost, unit: doc.unit, note: doc.note } };
+    return { ok: true, item: { id: String(doc._id), name: doc.name, price: doc.price, unit: doc.unit, note: doc.note } };
   } catch (err) {
     console.error('[createServiceItem]', err);
     return { error: 'บันทึกไม่สำเร็จ' };

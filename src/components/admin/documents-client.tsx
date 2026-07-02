@@ -196,13 +196,11 @@ function ViewModal({
   const remaining = Math.max(0, doc.grandTotal - paidSoFar);
   const bookingStatus = doc.bookingRef ? bookingStatusMap[doc.bookingRef] : undefined;
 
-  const totalCost = doc.costPrice > 0
-    ? doc.costPrice
-    : doc.items.reduce((sum, item) => {
-        const key = item.description.trim().toLowerCase();
-        const cost = costMap.get(key) ?? 0;
-        return sum + cost * item.qty;
-      }, 0);
+  const totalCost = doc.items.reduce((sum, item) => {
+    const key = item.description.trim().toLowerCase();
+    const cost = costMap.get(key) ?? 0;
+    return sum + cost * item.qty;
+  }, 0);
   const profit = doc.grandTotal - totalCost;
 
   const PayIcon = doc.paymentMethod === 'cash' ? Banknote
@@ -694,13 +692,9 @@ export function DocumentsClient({
     for (const doc of filtered) {
       if (doc.type !== 'invoice') continue;
       totalRevenue += doc.grandTotal;
-      if (doc.costPrice > 0) {
-        totalCost += doc.costPrice;
-      } else {
-        for (const item of doc.items) {
-          const key = item.description.trim().toLowerCase();
-          totalCost += (costMap.get(key) ?? 0) * item.qty;
-        }
+      for (const item of doc.items) {
+        const key = item.description.trim().toLowerCase();
+        totalCost += (costMap.get(key) ?? 0) * item.qty;
       }
     }
     return { totalCost, totalRevenue, profit: totalRevenue - totalCost };

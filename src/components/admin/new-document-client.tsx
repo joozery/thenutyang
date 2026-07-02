@@ -337,7 +337,7 @@ export function NewDocumentClient({
   function selectPickerEntry(key: number, entry: PickerEntry) {
     setLines((prev) => prev.map((l) => l.key !== key ? l : entry.kind === 'product'
       ? { ...l, description: `${entry.data.brand} ${entry.data.model} ${entry.data.size}`, unitPrice: entry.data.priceCash, lineCostPrice: entry.data.costPrice ?? 0 }
-      : { ...l, description: entry.data.name, unitPrice: entry.data.price, lineCostPrice: entry.data.cost ?? 0 }
+      : { ...l, description: entry.data.name, unitPrice: entry.data.price, lineCostPrice: 0 }
     ));
     setProductPickerLineKey(null);
   }
@@ -353,11 +353,11 @@ export function NewDocumentClient({
     setQuickAddPending(true);
     setQuickAddError('');
     const price = Number(newServicePrice) || 0;
-    const res = await createServiceItem({ name: newServiceName.trim(), price, cost: 0, unit: 'ครั้ง', note: '' });
+    const res = await createServiceItem({ name: newServiceName.trim(), price, unit: 'ครั้ง', note: '' });
     setQuickAddPending(false);
     if (res.error || !res.item) { setQuickAddError(res.error ?? 'เพิ่มไม่สำเร็จ'); return; }
-    setServiceItemsState((prev) => [...prev, { id: res.item!.id, name: res.item!.name, price: res.item!.price, cost: res.item!.cost, unit: res.item!.unit, note: res.item!.note }]);
-    selectPickerEntry(key, { kind: 'service', data: { id: res.item.id, name: res.item.name, price: res.item.price, cost: res.item.cost, unit: res.item.unit, note: res.item.note } });
+    setServiceItemsState((prev) => [...prev, { id: res.item!.id, name: res.item!.name, price: res.item!.price, unit: res.item!.unit, note: res.item!.note }]);
+    selectPickerEntry(key, { kind: 'service', data: { id: res.item.id, name: res.item.name, price: res.item.price, unit: res.item.unit, note: res.item.note } });
     setNewServiceName('');
     setNewServicePrice('');
   }
