@@ -170,6 +170,7 @@ export function NewPurchasingClient({
 
   // header
   const [poType, setPOType] = useState<POType>(initialData?.poType ?? 'standard');
+  const [orderDate, setOrderDate] = useState(initialData?.orderDate ? initialData.orderDate.slice(0, 10) : new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(initialData?.dueDate ? initialData.dueDate.slice(0, 10) : '');
   const [vatType, setVatType] = useState<'included' | 'excluded' | 'none'>(initialData?.vatType ?? 'none');
   const [isReceived, setIsReceived] = useState(false);
@@ -318,6 +319,7 @@ export function NewPurchasingClient({
       grandTotal:    calc.grand,
       vatType,
       isReceived,
+      orderDate,
     };
   }
 
@@ -438,7 +440,7 @@ export function NewPurchasingClient({
               </div>
               <div>
                 <Label>วันที่สั่งซื้อ</Label>
-                <input value={today()} disabled className={inputCls} />
+                <input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} className={inputCls} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

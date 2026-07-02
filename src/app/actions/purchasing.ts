@@ -31,6 +31,7 @@ export type POFormPayload = {
   grandTotal:      number;
   vatType:         'included' | 'excluded' | 'none';
   isReceived?:     boolean;
+  orderDate?:      string;
 };
 
 async function savePO(data: POFormPayload, status: 'pending' | 'draft') {
@@ -43,6 +44,7 @@ async function savePO(data: POFormPayload, status: 'pending' | 'draft') {
     supplierId: data.supplierId || undefined,
     supplierSnapshot: data.supplierSnapshot,
     reference:  data.reference ?? '',
+    createdAt: data.orderDate ? new Date(data.orderDate) : new Date(),
     dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
     items: data.items,
     paymentTerm:     data.paymentTerm,
@@ -102,6 +104,7 @@ export async function updatePO(
       supplierId: data.supplierId || undefined,
       supplierSnapshot: data.supplierSnapshot,
       reference:  data.reference ?? '',
+      ...(data.orderDate && { createdAt: new Date(data.orderDate) }),
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
       items: data.items,
       paymentTerm:     data.paymentTerm,

@@ -1,4 +1,4 @@
-import { Phone, Mail, Globe, CreditCard, StickyNote, BadgeCheck } from 'lucide-react';
+import { Phone, Mail, Globe, CreditCard, StickyNote, BadgeCheck, MessageCircle, User } from 'lucide-react';
 import { numberToThaiBahtText } from '@/lib/thai-baht-text';
 import { parseCarInfo } from '@/lib/car-info';
 import type { IDocumentSettings } from '@/models/DocumentSettings';
@@ -92,39 +92,39 @@ export function DocumentTemplate({
   const minRows = 4;
 
   return (
-    <div id="print-document" style={{ width: '210mm', minHeight: '297mm', background: 'white', padding: '8mm 12mm 14mm' }} className="text-slate-800 text-[14px]">
+    <div id="print-document" style={{ width: '210mm', minHeight: '297mm', background: 'white', padding: '5mm 12mm 14mm' }} className="text-slate-800 text-[14px]">
       {/* Header */}
-      <div className="flex justify-between items-start mb-3">
-        <div className="h-10 flex items-center">
+      <div className="flex justify-between items-start mb-2">
+        <div className="h-8 flex items-center">
           {seller.logoUrl ? (
             <img src={seller.logoUrl} alt={seller.companyName} className="h-full w-auto object-contain" />
           ) : (
-            <span className="text-2xl font-black text-slate-900">{seller.companyName || 'บริษัทของคุณ'}</span>
+            <span className="text-xl font-black text-slate-900">{seller.companyName || 'บริษัทของคุณ'}</span>
           )}
         </div>
         <div className="text-right">
-          <div className="text-2xl font-black text-green-700">{docTypeLabel}</div>
-          {docTypeLabelEn && <div className="text-[14px] font-bold text-slate-800">{docTypeLabelEn}</div>}
-          <div className="text-[14px] text-slate-800 mt-0.5">{copyLabel}</div>
+          <div className="text-xl font-black text-green-700">{docTypeLabel}</div>
+          {docTypeLabelEn && <div className="text-[13px] font-bold text-slate-800">{docTypeLabelEn}</div>}
+          <div className="text-[13px] text-slate-800">{copyLabel}</div>
         </div>
       </div>
 
       {/* Seller + meta */}
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div className="bg-green-50 border border-green-100 rounded-lg p-3 space-y-1">
-          <p className="text-[13px] text-slate-600">ผู้ขาย</p>
-          <p className="text-[14px] font-bold text-slate-900">{seller.companyName || '—'}</p>
-          {seller.address && <p className="text-[12px] text-slate-800 leading-relaxed">ที่อยู่: {seller.address}</p>}
-          {seller.taxId && <p className="text-[12px] text-slate-800">เลขที่ผู้เสียภาษี: {seller.taxId} (สำนักงานใหญ่)</p>}
-          <div className="text-[12px] text-slate-900 space-y-0.5 mt-1">
-            {seller.phone && <IconText icon={<Phone size={14} />}>{seller.phone}</IconText>}
-            {seller.lineId && <IconText icon={<span className="font-black text-[11px] text-green-600">LINE</span>}>{seller.lineId}</IconText>}
-            {seller.email && <IconText icon={<Mail size={14} />}>{seller.email}</IconText>}
-            {seller.website && <IconText icon={<Globe size={14} />}>{seller.website}</IconText>}
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="bg-green-50 border border-green-100 rounded-lg p-2 space-y-0.5">
+          <p className="text-[11px] text-slate-600">ผู้ขาย</p>
+          <p className="text-[13px] font-bold text-slate-900">{seller.companyName || '—'}</p>
+          {seller.address && <p className="text-[11px] text-slate-800">ที่อยู่: {seller.address}</p>}
+          {seller.taxId && <p className="text-[11px] text-slate-800">เลขที่ผู้เสียภาษี: {seller.taxId} (สำนักงานใหญ่)</p>}
+          <div className="text-[11px] text-slate-900 flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+            {seller.phone && <IconText icon={<Phone size={11} />}>{seller.phone}</IconText>}
+            {seller.lineId && <IconText icon={<span className="font-black text-[10px] text-green-600">LINE</span>}>{seller.lineId}</IconText>}
+            {seller.email && <IconText icon={<Mail size={11} />}>{seller.email}</IconText>}
+            {seller.website && <IconText icon={<Globe size={11} />}>{seller.website}</IconText>}
           </div>
         </div>
 
-        <div className="bg-green-50 border border-green-100 rounded-lg p-3 space-y-1">
+        <div className="bg-green-50 border border-green-100 rounded-lg p-2 space-y-0.5">
           <Row label="เลขที่เอกสาร" value={docNumber} />
           <Row label="วันที่ออก" value={issueDate} />
           <Row label="อ้างอิง" value={reference || '-'} />
@@ -132,22 +132,22 @@ export function DocumentTemplate({
       </div>
 
       {/* Customer */}
-      <div className="grid grid-cols-3 gap-4 mb-4 pb-3 border-b border-slate-100 items-start">
-        {/* Left Column */}
+      <div className="grid grid-cols-3 gap-4 mb-3 pb-2 border-b border-slate-100 items-start">
+        {/* Left Column: name + address + taxId */}
         <div className="space-y-1.5 text-[13px] text-slate-800">
-          <p><span className="text-slate-500 w-20 inline-block">ลูกค้า:</span> <span className="font-bold text-slate-900">{customer.name}</span> {customer.code && <span className="text-slate-500 font-normal">({customer.code})</span>}</p>
-          {customer.address && <p><span className="text-slate-500 w-20 inline-block align-top">ที่อยู่:</span> <span className="inline-block w-[calc(100%-5rem)]">{customer.address}</span></p>}
-          {customer.taxId && <p><span className="text-slate-500 w-20 inline-block">เลขผู้เสียภาษี:</span> <span>{customer.taxId}</span></p>}
+          <p><span className="text-slate-500 mr-1">ลูกค้า:</span><span className="font-bold text-slate-900">{customer.name}</span> {customer.code && <span className="text-slate-500 font-normal">({customer.code})</span>}</p>
+          {customer.address && <p><span className="text-slate-500 w-14 inline-block align-top">ที่อยู่:</span><span className="inline-block w-[calc(100%-3.5rem)]">{customer.address}</span></p>}
+          {customer.taxId && <p><span className="text-slate-500 w-14 inline-block">เลขผู้เสียภาษี:</span><span>{customer.taxId}</span></p>}
         </div>
 
-        {/* Middle Column */}
+        {/* Middle Column: contact info with icons */}
         <div className="space-y-1.5 text-[13px] text-slate-800 pl-4 border-l border-slate-100">
-          <p><span className="text-slate-500 w-[70px] inline-block">เบอร์โทรศัพท์</span> <span>{customer.phone || '-'}</span></p>
-          <p><span className="text-slate-500 w-[70px] inline-block">email</span> <span>{customer.email || '-'}</span></p>
-          <p><span className="text-slate-500 w-[70px] inline-block">line</span> <span>{customer.lineId || '-'}</span></p>
+          <p className="flex items-center gap-1.5"><Phone size={12} className="text-slate-400 shrink-0" /><span>{customer.phone || '-'}</span></p>
+          <p className="flex items-center gap-1.5"><Mail size={12} className="text-slate-400 shrink-0" /><span>{customer.email || '-'}</span></p>
+          <p className="flex items-center gap-1.5"><MessageCircle size={12} className="text-green-500 shrink-0" /><span>{customer.lineId || '-'}</span></p>
         </div>
 
-        {/* Right Column */}
+        {/* Right Column: car info */}
         <div className="text-[13px] pl-4 border-l border-slate-100">
           {customer.note && (() => {
             const car = parseCarInfo(customer.note);

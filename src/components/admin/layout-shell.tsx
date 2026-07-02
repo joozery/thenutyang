@@ -17,7 +17,7 @@ export function AdminLayoutShell({ children, adminUser }: { children: React.Reac
   const pathname = usePathname();
 
   // หน้าพรีวิวก่อนพิมพ์ (เปิดแท็บใหม่) ไม่ต้องมี sidebar/header ของแอดมิน
-  if (pathname.endsWith('/print')) {
+  if (pathname.includes('/print')) {
     return <>{children}</>;
   }
 
