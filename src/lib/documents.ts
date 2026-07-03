@@ -5,11 +5,12 @@ export type DocType      = 'invoice' | 'quote' | 'credit_note' | 'billing_note' 
 export type PaymentMethod = 'cash' | 'transfer' | 'credit_card' | 'pending';
 
 export type DocItem = {
-  description: string;
-  qty:         number;
-  unitPrice:   number;
-  discount:    number;
-  lineTotal:   number;
+  description:  string;
+  qty:          number;
+  unitPrice:    number;
+  discount:     number;
+  discountType: 'pct' | 'amt';
+  lineTotal:    number;
 };
 
 export type DocRow = {

@@ -21,11 +21,12 @@ export type DocFormPayload = {
   relatedDocId?:     string;
   relatedDocNumber?: string;
   items: {
-    description: string;
-    qty:         number;
-    unitPrice:   number;
-    discount:    number;
-    lineTotal:   number;
+    description:  string;
+    qty:          number;
+    unitPrice:    number;
+    discount:     number;
+    discountType: 'pct' | 'amt';
+    lineTotal:    number;
   }[];
   subtotal:      number;
   discountTotal: number;

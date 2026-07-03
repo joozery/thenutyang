@@ -1,18 +1,16 @@
 import { Schema, model, models } from 'mongoose';
 
-export type BrandProductType = 'tires' | 'wheels' | 'accessories' | 'brakes' | 'shock' | 'oil';
-
 export interface IBrand {
   name: string;
   logo: string;
-  productType: BrandProductType;
+  productType: string;
   createdAt: Date;
 }
 
 const BrandSchema = new Schema<IBrand>({
   name:        { type: String, required: true },
   logo:        { type: String, default: '' },
-  productType: { type: String, enum: ['tires','wheels','accessories','brakes','shock','oil'], default: 'tires' },
+  productType: { type: String, default: 'tires' },
   createdAt:   { type: Date, default: Date.now },
 });
 

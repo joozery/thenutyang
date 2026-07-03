@@ -18,6 +18,7 @@ export type DocumentTemplateItem = {
   unit?: string;
   unitPrice: number;
   discountPercent?: number;
+  discountType?: 'pct' | 'amt';
   lineTotal: number;
 };
 
@@ -136,8 +137,8 @@ export function DocumentTemplate({
         {/* Left Column: name + address + taxId */}
         <div className="space-y-1.5 text-[13px] text-slate-800">
           <p><span className="text-slate-500 mr-1">ลูกค้า:</span><span className="font-bold text-slate-900">{customer.name}</span> {customer.code && <span className="text-slate-500 font-normal">({customer.code})</span>}</p>
-          {customer.address && <p><span className="text-slate-500 w-14 inline-block align-top">ที่อยู่:</span><span className="inline-block w-[calc(100%-3.5rem)]">{customer.address}</span></p>}
-          {customer.taxId && <p><span className="text-slate-500 w-14 inline-block">เลขผู้เสียภาษี:</span><span>{customer.taxId}</span></p>}
+          {customer.address && <p><span className="text-slate-500 mr-1">ที่อยู่:</span><span>{customer.address}</span></p>}
+          {customer.taxId && <p><span className="text-slate-500 mr-1">เลขผู้เสียภาษี:</span><span>{customer.taxId}</span></p>}
         </div>
 
         {/* Middle Column: contact info with icons */}
@@ -187,7 +188,11 @@ export function DocumentTemplate({
               <td className="py-2 px-2">{i + 1}. {item.description}</td>
               <td className="py-2 px-2 text-center tabular-nums">{item.qty.toFixed(2)}</td>
               <td className="py-2 px-2 text-right tabular-nums">{fmt(item.unitPrice)}</td>
-              <td className="py-2 px-2 text-right tabular-nums">{fmt(item.discountPercent ?? 0)}</td>
+              <td className="py-2 px-2 text-right tabular-nums">
+                {(item.discountPercent ?? 0) === 0 ? '–' : item.discountType === 'amt'
+                  ? `฿${fmt(item.discountPercent ?? 0)}`
+                  : `${item.discountPercent ?? 0}%`}
+              </td>
               <td className="py-2 px-2 text-center">{vatRate}%</td>
               <td className="py-2 px-2 text-right tabular-nums font-medium">{fmt(item.lineTotal)}</td>
             </tr>

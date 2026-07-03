@@ -7,26 +7,38 @@ import {
   ChevronUp, ChevronDown, ChevronsUpDown, Tag, Layers,
   ChevronLeft, ChevronRight as ChevronRightIcon,
   Upload, ImageIcon, CircleDot, Disc3, Wrench, Disc, Zap, Droplets,
+  Car, Battery, Filter, Gauge, Shield, Box, Settings,
 } from 'lucide-react';
 import { createProduct, updateProduct, deleteProduct } from '@/app/actions/products';
+import { createCategory, deleteCategory } from '@/app/actions/categories';
+import { createProductType, deleteProductType } from '@/app/actions/productTypes';
 import { uploadImage } from '@/app/actions/upload';
 import type { ProductRow } from '@/lib/products';
 import type { BrandRow } from '@/app/actions/brands';
-import type { ProductType } from '@/models/Product';
+import type { CategoryRow } from '@/app/actions/categories';
+import type { ProductTypeRow } from '@/app/actions/productTypes';
 
 type SortDir = 'asc' | 'desc';
 
-const TIRE_CATEGORIES: Record<string, string> = {
-  touring: 'ทั่วไป', eco: 'ประหยัดพลังงาน', sport: 'สปอร์ต', suv: 'SUV/PPV', allseason: 'ออลซีซั่น',
+const ICON_MAP: Record<string, React.ElementType> = {
+  CircleDot, Disc3, Wrench, Disc, Zap, Droplets,
+  Package, Car, Battery, Filter, Gauge, Shield, Box, Settings,
 };
 
-const PRODUCT_TABS: { type: ProductType; label: string; icon: React.ElementType; unit: string }[] = [
-  { type: 'tires',       label: 'ยาง',           icon: CircleDot, unit: 'เส้น' },
-  { type: 'wheels',      label: 'ล้อแม็ก',        icon: Disc3,     unit: 'วง' },
-  { type: 'accessories', label: 'ของแต่ง',        icon: Wrench,    unit: 'ชิ้น' },
-  { type: 'brakes',      label: 'เบรค',           icon: Disc,      unit: 'ชิ้น' },
-  { type: 'shock',       label: 'โช๊ค',           icon: Zap,       unit: 'ต้น' },
-  { type: 'oil',         label: 'น้ำมันเครื่อง',  icon: Droplets,  unit: 'ขวด' },
+const ICON_OPTIONS = [
+  { name: 'CircleDot', label: 'ยาง' },
+  { name: 'Disc3',     label: 'ล้อ' },
+  { name: 'Wrench',    label: 'เครื่องมือ' },
+  { name: 'Disc',      label: 'จาน' },
+  { name: 'Zap',       label: 'โช๊ค' },
+  { name: 'Droplets',  label: 'น้ำมัน' },
+  { name: 'Package',   label: 'กล่อง' },
+  { name: 'Car',       label: 'รถ' },
+  { name: 'Battery',   label: 'แบต' },
+  { name: 'Filter',    label: 'กรอง' },
+  { name: 'Gauge',     label: 'มาตรวัด' },
+  { name: 'Shield',    label: 'โล่' },
+  { name: 'Box',       label: 'สินค้า' },
 ];
 
 const PAGE_SIZE = 15;
@@ -42,7 +54,7 @@ const EMPTY_FORM = {
   priceCash: 0, priceCredit: 0, priceInstallment: 0, costPrice: 0,
   oldPrice: undefined as number | undefined,
   badge: '', image: '/yang.png',
-  category: 'touring' as const,
+  category: 'touring',
   stock: 0, year: '26',
 };
 
@@ -58,10 +70,14 @@ function SortIcon({ col, sortKey, sortDir }: { col: string; sortKey: string; sor
 export function ProductsClient({
   initialProducts,
   initialBrands,
+  initialCategories,
+  initialProductTypes,
   activeType,
 }: {
   initialProducts: ProductRow[];
   initialBrands: BrandRow[];
+  initialCategories: CategoryRow[];
+  initialProductTypes: ProductTypeRow[];
   activeType: string;
 }) {
   const router = useRouter();
@@ -70,20 +86,39 @@ export function ProductsClient({
   const [brandOpen, setBrandOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [search, setSearch]           = useState('');
-  const [sizeTab, setSizeTab]         = useState('all');
-  const [brandFilter, setBrandFilter] = useState('');
-  const [sortKey, setSortKey]         = useState('brand');
-  const [sortDir, setSortDir]         = useState<SortDir>('asc');
-  const [modal, setModal]             = useState<'add' | 'edit' | null>(null);
-  const [editTarget, setEditTarget]   = useState<ProductRow | null>(null);
-  const [form, setForm]               = useState(EMPTY_FORM);
-  const [deleteTarget, setDeleteTarget] = useState<ProductRow | null>(null);
-  const [page, setPage]               = useState(1);
-  const [error, setError]             = useState('');
+  const [search, setSearch]               = useState('');
+  const [sizeTab, setSizeTab]             = useState('all');
+  const [brandFilter, setBrandFilter]     = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [sortKey, setSortKey]             = useState('brand');
+  const [sortDir, setSortDir]             = useState<SortDir>('asc');
+  const [modal, setModal]                 = useState<'add' | 'edit' | null>(null);
+  const [editTarget, setEditTarget]       = useState<ProductRow | null>(null);
+  const [form, setForm]                   = useState(EMPTY_FORM);
+  const [deleteTarget, setDeleteTarget]   = useState<ProductRow | null>(null);
+  const [page, setPage]                   = useState(1);
+  const [error, setError]                 = useState('');
+
+  /* ─── categories state ─── */
+  const [categories, setCategories]     = useState<CategoryRow[]>(initialCategories);
+  const [catModalOpen, setCatModalOpen] = useState(false);
+  const [newCatKey, setNewCatKey]       = useState('');
+  const [newCatLabel, setNewCatLabel]   = useState('');
+  const [catError, setCatError]         = useState('');
+  const [catPending, setCatPending]     = useState(false);
+
+  /* ─── product types state ─── */
+  const [productTypes, setProductTypes]   = useState<ProductTypeRow[]>(initialProductTypes);
+  const [ptModalOpen, setPtModalOpen]     = useState(false);
+  const [newPtKey, setNewPtKey]           = useState('');
+  const [newPtLabel, setNewPtLabel]       = useState('');
+  const [newPtIcon, setNewPtIcon]         = useState('Package');
+  const [newPtUnit, setNewPtUnit]         = useState('ชิ้น');
+  const [ptError, setPtError]             = useState('');
+  const [ptPending, setPtPending]         = useState(false);
 
   const isTire = activeType === 'tires';
-  const tabInfo = PRODUCT_TABS.find(t => t.type === activeType) ?? PRODUCT_TABS[0];
+  const tabInfo = productTypes.find(t => t.key === activeType) ?? productTypes[0] ?? { label: 'สินค้า', unit: 'ชิ้น', icon: 'Package' };
 
   /* ─── filters ─── */
   const allSizes = useMemo(
@@ -99,13 +134,14 @@ export function ProductsClient({
     const q = search.toLowerCase();
     return initialProducts
       .filter(p => {
-        const matchSize  = sizeTab === 'all' || p.size === sizeTab;
-        const matchBrand = !brandFilter || p.brand === brandFilter;
+        const matchSize     = sizeTab === 'all' || p.size === sizeTab;
+        const matchBrand    = !brandFilter || p.brand === brandFilter;
+        const matchCategory = !categoryFilter || p.category === categoryFilter;
         const matchSearch = !q ||
           p.brand.toLowerCase().includes(q) ||
           p.model.toLowerCase().includes(q) ||
           (p.size || '').toLowerCase().includes(q);
-        return matchSize && matchBrand && matchSearch;
+        return matchSize && matchBrand && matchCategory && matchSearch;
       })
       .sort((a, b) => {
         const av = a[sortKey as keyof ProductRow] as string | number;
@@ -135,7 +171,7 @@ export function ProductsClient({
       priceInstallment: p.priceInstallment, costPrice: p.costPrice ?? 0,
       oldPrice: p.oldPrice, badge: p.badge ?? '',
       image: p.image || '/yang.png',
-      category: p.category as typeof EMPTY_FORM.category,
+      category: p.category ?? 'touring',
       stock: p.stock, year: p.year,
     });
     setError('');
@@ -165,7 +201,7 @@ export function ProductsClient({
     if (isTire && !form.size) return;
     const data = {
       ...form,
-      productType: activeType as ProductType,
+      productType: activeType,
       oldPrice: form.oldPrice || undefined,
       badge: form.badge || undefined,
     };
@@ -188,6 +224,55 @@ export function ProductsClient({
     });
   }
 
+  async function handleAddProductType() {
+    setPtError('');
+    const key   = newPtKey.trim().toLowerCase().replace(/\s+/g, '_');
+    const label = newPtLabel.trim();
+    const unit  = newPtUnit.trim() || 'ชิ้น';
+    if (!key || !label) { setPtError('กรุณากรอก Key และชื่อประเภทสินค้า'); return; }
+    setPtPending(true);
+    const res = await createProductType({ key, label, icon: newPtIcon, unit });
+    setPtPending(false);
+    if (!res.ok) { setPtError(res.error ?? 'เกิดข้อผิดพลาด'); return; }
+    setProductTypes(prev => [...prev, { id: Date.now().toString(), key, label, icon: newPtIcon, unit, order: prev.length }]);
+    setNewPtKey(''); setNewPtLabel(''); setNewPtIcon('Package'); setNewPtUnit('ชิ้น');
+    router.refresh();
+  }
+
+  async function handleDeleteProductType(id: string) {
+    setPtPending(true);
+    await deleteProductType(id);
+    setPtPending(false);
+    setProductTypes(prev => prev.filter(t => t.id !== id));
+    router.refresh();
+  }
+
+  async function handleAddCategory() {
+    setCatError('');
+    const key   = newCatKey.trim().toLowerCase().replace(/\s+/g, '_');
+    const label = newCatLabel.trim();
+    if (!key || !label) { setCatError('กรุณากรอก Key และชื่อหมวดหมู่'); return; }
+    setCatPending(true);
+    const res = await createCategory(activeType, key, label);
+    setCatPending(false);
+    if (!res.ok) { setCatError(res.error ?? 'เกิดข้อผิดพลาด'); return; }
+    setCategories(prev => [...prev, { id: Date.now().toString(), key, label, productType: activeType }]);
+    setNewCatKey('');
+    setNewCatLabel('');
+    router.refresh();
+  }
+
+  async function handleDeleteCategory(id: string) {
+    setCatPending(true);
+    await deleteCategory(id);
+    setCatPending(false);
+    setCategories(prev => prev.filter(c => c.id !== id));
+    if (categoryFilter && categories.find(c => c.id === id)?.key === categoryFilter) {
+      setCategoryFilter('');
+    }
+    router.refresh();
+  }
+
   const totalStock = initialProducts.reduce((s, p) => s + p.stock, 0);
 
   return (
@@ -198,23 +283,31 @@ export function ProductsClient({
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">สินค้า / สต๊อก</h1>
           <p className="text-xs text-slate-400 mt-0.5">จัดการสินค้าทุกหมวดหมู่</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 transition-colors shadow-sm">
-          <Plus size={13} /> เพิ่ม{tabInfo.label}
-        </button>
+        <div className="flex items-center gap-2">
+          {isTire && (
+            <button onClick={() => { setCatModalOpen(true); setCatError(''); }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-colors shadow-sm">
+              <Tag size={13} /> หมวดหมู่
+            </button>
+          )}
+          <button onClick={openAdd} className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 transition-colors shadow-sm">
+            <Plus size={13} /> เพิ่ม{tabInfo.label}
+          </button>
+        </div>
       </div>
 
       {/* Product Type Tabs */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="flex items-center overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-          {PRODUCT_TABS.map(tab => {
-            const Icon = tab.icon;
-            const isActive = tab.type === activeType;
+          {productTypes.map(tab => {
+            const Icon = ICON_MAP[tab.icon] ?? Package;
+            const isActive = tab.key === activeType;
             return (
               <button
-                key={tab.type}
+                key={tab.key}
                 onClick={() => {
-                  setSizeTab('all'); setBrandFilter(''); setSearch(''); setPage(1);
-                  router.push(`/admin/products?type=${tab.type}`);
+                  setSizeTab('all'); setBrandFilter(''); setCategoryFilter(''); setSearch(''); setPage(1);
+                  router.push(`/admin/products?type=${tab.key}`);
                 }}
                 className={`shrink-0 flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
                   isActive
@@ -227,6 +320,13 @@ export function ProductsClient({
               </button>
             );
           })}
+          <button
+            onClick={() => { setPtModalOpen(true); setPtError(''); }}
+            className="shrink-0 ml-auto mr-2 p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            title="จัดการประเภทสินค้า"
+          >
+            <Settings size={14} />
+          </button>
         </div>
       </div>
 
@@ -268,6 +368,24 @@ export function ProductsClient({
               <button key={size} onClick={() => { setSizeTab(size); setBrandFilter(''); setPage(1); }}
                 className={`shrink-0 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${sizeTab === size ? 'border-green-500 text-green-600 bg-green-50/50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
                 {size} <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{initialProducts.filter(p => p.size === size).length}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Category filter pills — tire only */}
+        {isTire && categories.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap px-4 py-2.5 border-b border-slate-100 bg-white">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">หมวดหมู่:</span>
+            <button onClick={() => { setCategoryFilter(''); setPage(1); }}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${!categoryFilter ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+              ทั้งหมด
+            </button>
+            {categories.map(cat => (
+              <button key={cat.key} onClick={() => { setCategoryFilter(cat.key === categoryFilter ? '' : cat.key); setPage(1); }}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${categoryFilter === cat.key ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                {cat.label}
+                <span className="ml-1 opacity-60">{initialProducts.filter(p => p.category === cat.key).length}</span>
               </button>
             ))}
           </div>
@@ -504,8 +622,8 @@ export function ProductsClient({
                 {/* Category (tire only) */}
                 {isTire ? (
                   <Field label="หมวดหมู่ยาง">
-                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value as typeof form.category }))} className={inputCls}>
-                      {Object.entries(TIRE_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className={inputCls}>
+                      {categories.map(cat => <option key={cat.key} value={cat.key}>{cat.label}</option>)}
                     </select>
                   </Field>
                 ) : (
@@ -604,6 +722,175 @@ export function ProductsClient({
                 className="px-5 py-2 text-xs font-semibold bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">
                 {isPending ? 'กำลังบันทึก...' : modal === 'add' ? `เพิ่ม${tabInfo.label}` : 'บันทึก'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Type Management Modal */}
+      {ptModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setPtModalOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Settings size={15} className="text-slate-600" />
+                <h2 className="font-bold text-slate-900 text-sm">จัดการประเภทสินค้า</h2>
+              </div>
+              <button onClick={() => setPtModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={15} /></button>
+            </div>
+
+            <div className="p-6 space-y-5 max-h-[72vh] overflow-y-auto">
+              {/* Existing product types */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ประเภทสินค้าปัจจุบัน</p>
+                <div className="space-y-1.5">
+                  {productTypes.map(pt => {
+                    const Icon = ICON_MAP[pt.icon] ?? Package;
+                    return (
+                      <div key={pt.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 group">
+                        <div className="flex items-center gap-3">
+                          <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center">
+                            <Icon size={14} className="text-slate-600" />
+                          </div>
+                          <span className="text-sm font-semibold text-slate-800">{pt.label}</span>
+                          <span className="text-[10px] font-mono text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">{pt.key}</span>
+                          <span className="text-[10px] text-slate-400">{pt.unit}</span>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteProductType(pt.id)}
+                          disabled={ptPending}
+                          className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-30">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Add new product type */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">เพิ่มประเภทสินค้าใหม่</p>
+                {ptError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{ptError}</p>}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-500">Key (ภาษาอังกฤษ) *</label>
+                    <input value={newPtKey} onChange={e => setNewPtKey(e.target.value)} placeholder="filter_oil" className={inputCls} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-500">ชื่อที่แสดง *</label>
+                    <input value={newPtLabel} onChange={e => setNewPtLabel(e.target.value)} placeholder="กรองน้ำมัน" className={inputCls} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-500">หน่วยนับ</label>
+                    <input value={newPtUnit} onChange={e => setNewPtUnit(e.target.value)} placeholder="ชิ้น" className={inputCls} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-500">ไอคอน</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ICON_OPTIONS.map(opt => {
+                        const Ic = ICON_MAP[opt.name] ?? Package;
+                        return (
+                          <button key={opt.name} type="button"
+                            onClick={() => setNewPtIcon(opt.name)}
+                            title={opt.label}
+                            className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${newPtIcon === opt.name ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-400'}`}>
+                            <Ic size={14} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleAddProductType}
+                  disabled={ptPending || !newPtKey.trim() || !newPtLabel.trim()}
+                  className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <Plus size={13} />
+                  {ptPending ? 'กำลังเพิ่ม...' : 'เพิ่มประเภทสินค้า'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Management Modal */}
+      {catModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setCatModalOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Tag size={15} className="text-slate-600" />
+                <h2 className="font-bold text-slate-900 text-sm">จัดการหมวดหมู่ยาง</h2>
+              </div>
+              <button onClick={() => setCatModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={15} /></button>
+            </div>
+
+            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+              {/* Existing categories */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">หมวดหมู่ปัจจุบัน</p>
+                {categories.length === 0 && (
+                  <p className="text-xs text-slate-400 py-4 text-center">ยังไม่มีหมวดหมู่</p>
+                )}
+                <div className="space-y-1.5">
+                  {categories.map(cat => (
+                    <div key={cat.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-100 group">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-mono text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">{cat.key}</span>
+                        <span className="text-sm font-semibold text-slate-800">{cat.label}</span>
+                        <span className="text-[10px] text-slate-400">{initialProducts.filter(p => p.category === cat.key).length} รายการ</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCategory(cat.id)}
+                        disabled={catPending}
+                        className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-30">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add new category */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">เพิ่มหมวดหมู่ใหม่</p>
+                {catError && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{catError}</p>}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-500">Key (ภาษาอังกฤษ)</label>
+                    <input
+                      value={newCatKey}
+                      onChange={e => setNewCatKey(e.target.value)}
+                      placeholder="ev_tire"
+                      className={inputCls}
+                      onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-500">ชื่อที่แสดง</label>
+                    <input
+                      value={newCatLabel}
+                      onChange={e => setNewCatLabel(e.target.value)}
+                      placeholder="ยาง EV"
+                      className={inputCls}
+                      onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleAddCategory}
+                  disabled={catPending || !newCatKey.trim() || !newCatLabel.trim()}
+                  className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <Plus size={13} />
+                  {catPending ? 'กำลังเพิ่ม...' : 'เพิ่มหมวดหมู่'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

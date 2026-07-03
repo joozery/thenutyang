@@ -2,26 +2,25 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, X, Upload, Edit2, Tag, Image as ImageIcon, CircleDot, Disc3, Wrench, Disc, Zap, Droplets } from 'lucide-react';
+import { Plus, Trash2, X, Upload, Edit2, Tag, Image as ImageIcon, Package,
+  CircleDot, Disc3, Wrench, Disc, Zap, Droplets, Car, Battery, Filter, Gauge, Shield, Box, Settings } from 'lucide-react';
 import { createBrand, updateBrand, deleteBrand } from '@/app/actions/brands';
 import { uploadImage } from '@/app/actions/upload';
 import type { BrandRow } from '@/app/actions/brands';
-import type { LucideIcon } from 'lucide-react';
+import type { ProductTypeRow } from '@/app/actions/productTypes';
 
-const PRODUCT_TABS: { value: string; label: string; icon: LucideIcon }[] = [
-  { value: 'tires',       label: 'ยาง',           icon: CircleDot },
-  { value: 'wheels',      label: 'ล้อแม็ก',       icon: Disc3 },
-  { value: 'accessories', label: 'ของแต่ง',       icon: Wrench },
-  { value: 'brakes',      label: 'เบรค',           icon: Disc },
-  { value: 'shock',       label: 'โช๊ค',           icon: Zap },
-  { value: 'oil',         label: 'น้ำมันเครื่อง', icon: Droplets },
-];
+const ICON_MAP: Record<string, React.ElementType> = {
+  CircleDot, Disc3, Wrench, Disc, Zap, Droplets,
+  Package, Car, Battery, Filter, Gauge, Shield, Box, Settings,
+};
 
 export function BrandsClient({
   initialBrands,
+  initialProductTypes,
   activeType,
 }: {
   initialBrands: BrandRow[];
+  initialProductTypes: ProductTypeRow[];
   activeType: string;
 }) {
   const router = useRouter();
@@ -35,7 +34,7 @@ export function BrandsClient({
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const activeTab = PRODUCT_TABS.find(t => t.value === activeType) ?? PRODUCT_TABS[0];
+  const activeTab = initialProductTypes.find(t => t.key === activeType) ?? initialProductTypes[0] ?? { label: 'สินค้า', icon: 'Package' };
 
   function openAdd() { setName(''); setLogo(''); setError(''); setModal('add'); }
   function openEdit(b: BrandRow) { setEditTarget(b); setName(b.name); setLogo(b.logo); setError(''); setModal('edit'); }
@@ -107,13 +106,13 @@ export function BrandsClient({
       {/* Category Tabs */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {PRODUCT_TABS.map(tab => {
-            const Icon = tab.icon;
-            const isActive = tab.value === activeType;
+          {initialProductTypes.map(tab => {
+            const Icon = ICON_MAP[tab.icon] ?? Package;
+            const isActive = tab.key === activeType;
             return (
               <button
-                key={tab.value}
-                onClick={() => router.push(`/admin/brands?type=${tab.value}`)}
+                key={tab.key}
+                onClick={() => router.push(`/admin/brands?type=${tab.key}`)}
                 className={`flex items-center gap-2 px-5 py-3.5 text-sm font-bold whitespace-nowrap border-b-2 transition-all ${
                   isActive
                     ? 'border-green-500 text-green-700 bg-green-50'

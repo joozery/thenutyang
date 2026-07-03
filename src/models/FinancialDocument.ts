@@ -1,11 +1,12 @@
 import { Schema, model, models } from 'mongoose';
 
 const itemSchema = new Schema({
-  description: { type: String, required: true },
-  qty:         { type: Number, required: true },
-  unitPrice:   { type: Number, required: true },
-  discount:    { type: Number, default: 0 },
-  lineTotal:   { type: Number, required: true },
+  description:  { type: String, required: true },
+  qty:          { type: Number, required: true },
+  unitPrice:    { type: Number, required: true },
+  discount:     { type: Number, default: 0 },
+  discountType: { type: String, enum: ['pct', 'amt'], default: 'pct' },
+  lineTotal:    { type: Number, required: true },
 }, { _id: false });
 
 const financialDocSchema = new Schema({

@@ -1,9 +1,9 @@
 import { Schema, model, models } from 'mongoose';
 
-export type ProductType = 'tires' | 'wheels' | 'accessories' | 'brakes' | 'shock' | 'oil';
+export type ProductType = string;
 
 export interface IProduct {
-  productType: ProductType;
+  productType: string;
   brand: string;
   model: string;
   size: string;
@@ -17,7 +17,7 @@ export interface IProduct {
   oldPrice?: number;
   badge?: string;
   image: string;
-  category: 'touring' | 'sport' | 'eco' | 'suv' | 'allseason';
+  category: string;
   specs: { load: string; speed: string; type: string };
   stock: number;
   year: string;
@@ -26,7 +26,7 @@ export interface IProduct {
 }
 
 const ProductSchema = new Schema<IProduct>({
-  productType:      { type: String, enum: ['tires','wheels','accessories','brakes','shock','oil'], default: 'tires' },
+  productType:      { type: String, default: 'tires' },
   brand:            { type: String, required: true },
   model:            { type: String, required: true },
   size:             { type: String, default: '' },
@@ -40,7 +40,7 @@ const ProductSchema = new Schema<IProduct>({
   oldPrice:         { type: Number },
   badge:            { type: String },
   image:            { type: String, default: '/yang.png' },
-  category:         { type: String, enum: ['touring', 'sport', 'eco', 'suv', 'allseason'], default: 'touring' },
+  category:         { type: String, default: 'touring' },
   specs: {
     load:  { type: String, default: '91' },
     speed: { type: String, default: 'V' },

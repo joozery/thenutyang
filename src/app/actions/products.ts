@@ -21,7 +21,7 @@ type ProductInput = {
   oldPrice?: number;
   badge?: string;
   image?: string;
-  category: 'touring' | 'sport' | 'eco' | 'suv' | 'allseason';
+  category: string;
   stock: number;
   year: string;
   published?: boolean;

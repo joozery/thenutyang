@@ -51,6 +51,7 @@ interface LineItem {
   qty:           number;
   unitPrice:     number;
   discount:      number;
+  discountType:  'pct' | 'amt';
   lineCostPrice: number;
 }
 
@@ -321,8 +322,8 @@ export function NewDocumentClient({
   // line items
   const [lines, setLines] = useState<LineItem[]>(
     prefill?.items.length
-      ? prefill.items.map((it, idx) => ({ key: idx + 1, ...it, lineCostPrice: 0 }))
-      : [{ key: 1, description: '', qty: 1, unitPrice: 0, discount: 0, lineCostPrice: 0 }]
+      ? prefill.items.map((it, idx) => ({ key: idx + 1, ...it, discountType: 'pct' as const, lineCostPrice: 0 }))
+      : [{ key: 1, description: '', qty: 1, unitPrice: 0, discount: 0, discountType: 'pct' as const, lineCostPrice: 0 }]
   );
   const [productPickerLineKey, setProductPickerLineKey] = useState<number | null>(null);
 
@@ -386,12 +387,12 @@ export function NewDocumentClient({
   // ── line item helpers ──────────────────────────────────────────────────────
 
   const addLine = () =>
-    setLines(p => [...p, { key: Date.now(), description: '', qty: 1, unitPrice: 0, discount: 0, lineCostPrice: 0 }]);
+    setLines(p => [...p, { key: Date.now(), description: '', qty: 1, unitPrice: 0, discount: 0, discountType: 'pct' as const, lineCostPrice: 0 }]);
 
   // เพิ่มแถวใหม่พร้อมเปิดตัวเลือก สินค้า/บริการ ทันที ไม่ต้องกดค้นหาซ้ำอีกที
   const addLineAndOpenPicker = () => {
     const key = Date.now();
-    setLines(p => [...p, { key, description: '', qty: 1, unitPrice: 0, discount: 0, lineCostPrice: 0 }]);
+    setLines(p => [...p, { key, description: '', qty: 1, unitPrice: 0, discount: 0, discountType: 'pct' as const, lineCostPrice: 0 }]);
     setProductPickerLineKey(key);
   };
 
@@ -406,7 +407,9 @@ export function NewDocumentClient({
   const calc = useMemo(() => {
     const lineCalcs = lines.map(l => {
       const gross   = l.qty * l.unitPrice;
-      const discAmt = gross * (l.discount / 100);
+      const discAmt = l.discountType === 'amt'
+        ? Math.min(l.discount, gross)
+        : gross * (Math.round(l.discount) / 100);
       return { gross, discAmt, net: gross - discAmt };
     });
     const subtotal      = lineCalcs.reduce((s, l) => s + l.gross, 0);
@@ -446,11 +449,12 @@ export function NewDocumentClient({
         customerAddress: customerAddress.trim(),
         customerTaxId:   customerTaxId.trim(),
         items: lines.map((l, idx) => ({
-          description: l.description,
-          qty:         l.qty,
-          unitPrice:   l.unitPrice,
-          discount:    l.discount,
-          lineTotal:   calc.lineCalcs[idx]?.net ?? 0,
+          description:  l.description,
+          qty:          l.qty,
+          unitPrice:    l.unitPrice,
+          discount:     l.discount,
+          discountType: l.discountType,
+          lineTotal:    calc.lineCalcs[idx]?.net ?? 0,
         })),
         subtotal:      calc.subtotal,
         discountTotal: calc.discountTotal,
@@ -996,7 +1000,7 @@ export function NewDocumentClient({
                 <th className="text-left px-3 py-3">รายการ / รุ่นยาง *</th>
                 <th className="text-center px-3 py-3 w-24">จำนวน *</th>
                 <th className="text-right px-3 py-3 w-32">ราคา/หน่วย (฿) *</th>
-                <th className="text-right px-3 py-3 w-24">ส่วนลด (%)</th>
+                <th className="text-right px-3 py-3 w-28">ส่วนลด</th>
                 <th className="text-center px-3 py-3 w-16">VAT</th>
                 <th className="text-right px-4 py-3 w-32">มูลค่าก่อนภาษี</th>
                 <th className="w-10 px-2 py-3" />
@@ -1040,13 +1044,34 @@ export function NewDocumentClient({
                       />
                     </td>
                     <td className="px-3 py-2.5">
-                      <div className="relative">
+                      <div className="flex items-center gap-1">
                         <input
-                          type="number" min={0} max={100} value={line.discount || ''} placeholder="0"
-                          onChange={e => updateLine(line.key, 'discount', Math.min(100, Math.max(0, Number(e.target.value))))}
-                          className="w-full px-2.5 py-2 pr-6 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 text-right placeholder:text-slate-300"
+                          type="number"
+                          min={0}
+                          max={line.discountType === 'pct' ? 100 : undefined}
+                          step={line.discountType === 'pct' ? 1 : 'any'}
+                          value={line.discount || ''}
+                          placeholder="0"
+                          onChange={e => {
+                            const raw = Number(e.target.value);
+                            const val = line.discountType === 'pct'
+                              ? Math.min(100, Math.max(0, Math.round(raw)))
+                              : Math.max(0, raw);
+                            updateLine(line.key, 'discount', val);
+                          }}
+                          className="w-full px-2 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:border-green-400 text-right placeholder:text-slate-300"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">%</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateLine(line.key, 'discountType', line.discountType === 'pct' ? 'amt' : 'pct');
+                            updateLine(line.key, 'discount', 0);
+                          }}
+                          className="shrink-0 w-8 h-8 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-500 hover:bg-slate-100 hover:border-slate-300 transition-colors"
+                          title="สลับระหว่างส่วนลด % และจำนวนเงิน (฿)"
+                        >
+                          {line.discountType === 'pct' ? '%' : '฿'}
+                        </button>
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-center text-xs font-medium text-slate-500">
