@@ -75,11 +75,12 @@ function normalize(d: any): DocRow {
     customerTaxId:   d.customerTaxId   ?? '',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items: (d.items ?? []).map((item: any) => ({
-      description: item.description ?? '',
-      qty:         item.qty         ?? 0,
-      unitPrice:   item.unitPrice   ?? 0,
-      discount:    item.discount    ?? 0,
-      lineTotal:   item.lineTotal   ?? 0,
+      description:  item.description  ?? '',
+      qty:          item.qty          ?? 0,
+      unitPrice:    item.unitPrice    ?? 0,
+      discount:     item.discount     ?? 0,
+      discountType: (item.discountType === 'amt' ? 'amt' : 'pct') as 'pct' | 'amt',
+      lineTotal:    item.lineTotal    ?? 0,
     })),
     subtotal:      d.subtotal      ?? 0,
     discountTotal: d.discountTotal ?? 0,
