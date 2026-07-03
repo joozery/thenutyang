@@ -358,7 +358,13 @@ function ViewModal({
                       <td className="px-5 py-3.5 text-center font-semibold text-slate-600">{item.qty}</td>
                       <td className="px-5 py-3.5 text-right text-slate-600 tabular-nums">฿{fmtMoney(item.unitPrice)}</td>
                       {doc.items.some(i => i.discount > 0) && (
-                        <td className="px-5 py-3.5 text-right font-medium text-emerald-600">{item.discount > 0 ? `${item.discount}%` : '—'}</td>
+                        <td className="px-5 py-3.5 text-right font-medium text-emerald-600">
+                          {item.discount > 0
+                            ? item.discountType === 'amt'
+                              ? `฿${fmtMoney(item.discount)}`
+                              : `${item.discount}%`
+                            : '—'}
+                        </td>
                       )}
                       <td className="px-5 py-3.5 text-right font-bold text-slate-800 tabular-nums">฿{fmtMoney(item.lineTotal)}</td>
                     </tr>
