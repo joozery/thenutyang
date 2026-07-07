@@ -673,12 +673,20 @@ export function DocumentsClient({
 
   // filtered & paginated
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
+    // ค้นทะเบียนรถแบบไม่สนช่องว่าง/ขีด — พิมพ์ 'ญข929' ต้องเจอ 'ญข 929' ที่บันทึกไว้
+    const qCompact = q.replace(/[\s-]+/g, '');
     const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
     const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
     return docs.filter(d => {
       const issuedTime = new Date(d.issuedAt).getTime();
-      return (!q || d.docNumber.toLowerCase().includes(q) || d.customerName.toLowerCase().includes(q)) &&
+      const matchSearch = !q
+        || d.docNumber.toLowerCase().includes(q)
+        || d.customerName.toLowerCase().includes(q)
+        || d.customerPhone.includes(q)
+        || d.customerCar.toLowerCase().includes(q)
+        || (!!qCompact && d.customerCar.toLowerCase().replace(/[\s-]+/g, '').includes(qCompact));
+      return matchSearch &&
         (!typeFilter || d.type === typeFilter) &&
         (!statFilter || d.status === statFilter) &&
         (!fromTime || issuedTime >= fromTime) &&
@@ -940,7 +948,7 @@ export function DocumentsClient({
               type="text"
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder="ค้นหาเลขที่เอกสาร, ชื่อลูกค้า..."
+              placeholder="ค้นหาเลขที่เอกสาร, ชื่อลูกค้า, ทะเบียนรถ, เบอร์โทร..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-medium"
             />
           </div>
