@@ -48,12 +48,41 @@ function validate(input: CustomerFormInput): string | null {
   return null;
 }
 
+// เช็คว่าทะเบียนไปซ้ำกับรถของลูกค้า "คนอื่น" ในระบบหรือไม่ — กันลงทะเบียนรถคันเดียวกันไว้หลายคน
+// (ต้องเรียกหลัง connectDB แล้ว) คืน error message ถ้าซ้ำ, null ถ้าไม่ซ้ำ
+async function checkPlateOwnedByOther(vehicles: VehicleEntry[], excludeCustomerId?: string): Promise<string | null> {
+  const plates = vehicles.map(v => normalizePlate(v.licensePlate)).filter(Boolean);
+  if (plates.length === 0) return null;
+
+  const others = await Customer.find(
+    {
+      'vehicles.licensePlate': { $nin: ['', null] },
+      ...(excludeCustomerId ? { _id: { $ne: excludeCustomerId } } : {}),
+    },
+    { firstName: 1, lastName: 1, companyName: 1, customerType: 1, 'vehicles.licensePlate': 1 },
+  ).lean() as { firstName?: string; lastName?: string; companyName?: string; customerType?: string; vehicles?: { licensePlate?: string }[] }[];
+
+  for (const c of others) {
+    const hit = (c.vehicles ?? []).find(v => plates.includes(normalizePlate(v.licensePlate ?? '')));
+    if (hit) {
+      const owner = c.customerType === 'corporate' && c.companyName
+        ? c.companyName
+        : `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || 'ไม่ระบุชื่อ';
+      return `ทะเบียน "${hit.licensePlate}" ถูกลงทะเบียนไว้แล้วกับลูกค้า "${owner}"`;
+    }
+  }
+  return null;
+}
+
 export async function createCustomer(input: CustomerFormInput): Promise<ActionResult> {
   try {
     const error = validate(input);
     if (error) return { error };
 
     await connectDB();
+    const plateError = await checkPlateOwnedByOther(input.vehicles);
+    if (plateError) return { error: plateError };
+
     const doc = await Customer.create({ ...input, source: 'walkin' });
     revalidatePath('/admin/customers');
     const name = input.customerType === 'corporate' && input.companyName.trim()
@@ -75,6 +104,9 @@ export async function updateCustomer(id: string, input: CustomerFormInput): Prom
     if (error) return { error };
 
     await connectDB();
+    const plateError = await checkPlateOwnedByOther(input.vehicles, id);
+    if (plateError) return { error: plateError };
+
     await Customer.findByIdAndUpdate(id, { ...input, updatedAt: new Date() });
     revalidatePath('/admin/customers');
     return { ok: true };
@@ -145,6 +177,10 @@ export async function addVehicleToCustomer(
         revalidatePath('/admin/customers');
         return { ok: true, updated: true };
       }
+
+      // ทะเบียนไปซ้ำกับรถของลูกค้าคนอื่น → ไม่ให้เพิ่ม
+      const plateError = await checkPlateOwnedByOther([vehicle], customerId);
+      if (plateError) return { error: plateError };
     }
 
     await Customer.findByIdAndUpdate(customerId, {
