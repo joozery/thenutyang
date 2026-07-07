@@ -47,9 +47,11 @@ export function mergeCustomerSources(
 ): UnifiedCustomerRow[] {
   const byPhone = new Map<string, UnifiedCustomerRow>();
   const noPhone: UnifiedCustomerRow[] = [];
+  // จับคู่เบอร์โทรด้วยตัวเลขล้วน — '081-234-5678' กับ '0812345678' คือคนเดียวกัน
+  const phoneKey = (p: string) => (p ?? '').replace(/\D/g, '') || p;
 
   for (const b of bookingRows) {
-    byPhone.set(b.phone, {
+    byPhone.set(phoneKey(b.phone), {
       id: null,
       customerType: 'individual',
       name: b.name,
@@ -68,7 +70,7 @@ export function mergeCustomerSources(
   }
 
   for (const d of directoryRows) {
-    const existing = d.phone ? byPhone.get(d.phone) : undefined;
+    const existing = d.phone ? byPhone.get(phoneKey(d.phone)) : undefined;
     // ถ้า Customer directory ไม่มี carInfo (เช่น sync มาจาก booking แต่ยังไม่เคยแก้ในหน้าลูกค้า) ใช้ของจากการจองล่าสุดแทน
     const merged: UnifiedCustomerRow = {
       id: d.id,
@@ -95,16 +97,58 @@ export function mergeCustomerSources(
       tag: existing?.tag ?? 'ใหม่',
       source: d.source,
     };
-    if (d.phone) byPhone.set(d.phone, merged);
+    if (d.phone) byPhone.set(phoneKey(d.phone), merged);
     else noPhone.push(merged);
   }
 
   return [...byPhone.values(), ...noPhone].sort((a, b) => b.totalSpent - a.totalSpent);
 }
 
+// ยอดซื้อจากเอกสาร (ใบเสร็จ/ใบรับชำระ) รวมต่อเบอร์โทร — เบอร์ normalize เป็นตัวเลขล้วนกันกรอกคนละรูปแบบ
+type DocSpend = { phone: string; name: string; spent: number; bills: number; lastVisit: Date | null };
+
+async function getDocSpendByPhone(): Promise<Map<string, DocSpend>> {
+  const { FinancialDocument } = await import('@/models/FinancialDocument');
+  const docRows = await FinancialDocument.find(
+    {
+      customerPhone: { $nin: ['', null] },
+      status: { $ne: 'cancelled' },
+      type: { $in: ['invoice', 'payment_note', 'billing_note'] },
+    },
+    { type: 1, status: 1, customerPhone: 1, customerName: 1, grandTotal: 1, issuedAt: 1, bookingRef: 1, relatedDocId: 1 },
+  ).lean() as { _id: unknown; type: string; status: string; customerPhone: string; customerName: string; grandTotal: number; issuedAt?: Date; bookingRef?: string; relatedDocId?: unknown }[];
+
+  // ใบแจ้งหนี้ที่จ่ายครบ = มีใบเสร็จเต็มจำนวนออกอัตโนมัติแล้ว — ใบรับชำระรายงวดของมันต้องไม่ถูกนับซ้ำ
+  const paidBillingIds = new Set(
+    docRows.filter(d => d.type === 'billing_note' && d.status === 'paid').map(d => String(d._id)),
+  );
+
+  const spendByPhone = new Map<string, DocSpend>();
+  for (const d of docRows) {
+    if (d.type === 'billing_note') continue;
+    if (d.bookingRef) continue; // เอกสารจากระบบจอง — ยอดถูกนับผ่าน Booking แล้ว
+    if (d.type === 'payment_note' && d.relatedDocId && paidBillingIds.has(String(d.relatedDocId))) continue;
+
+    const key = d.customerPhone.replace(/\D/g, '');
+    if (!key) continue;
+    const cur = spendByPhone.get(key) ?? { phone: d.customerPhone, name: '', spent: 0, bills: 0, lastVisit: null };
+    cur.spent += d.grandTotal ?? 0;
+    cur.bills += 1;
+    cur.name = d.customerName || cur.name;
+    if (d.issuedAt instanceof Date && (!cur.lastVisit || d.issuedAt > cur.lastVisit)) cur.lastVisit = d.issuedAt;
+    spendByPhone.set(key, cur);
+  }
+  return spendByPhone;
+}
+
+function customerTag(totalSpent: number, totalBills: number): 'VIP' | 'ปกติ' | 'ใหม่' {
+  return totalSpent >= 50000 ? 'VIP' : totalBills <= 1 ? 'ใหม่' : 'ปกติ';
+}
+
 export async function getCustomers(): Promise<CustomerRow[]> {
   await connectDB();
 
+  const docSpendByPhone = await getDocSpendByPhone();
   const [rows, carInfoRows] = await Promise.all([
     Booking.aggregate([
       { $sort: { createdAt: 1 } },
@@ -139,9 +183,19 @@ export async function getCustomers(): Promise<CustomerRow[]> {
 
   const carInfoByPhone = new Map(carInfoRows.map((c) => [c._id as string, c]));
 
-  return rows.map(r => {
+  const result = rows.map(r => {
     const c = carInfoByPhone.get(r._id as string);
     const mileage = c ? ((c.mileageAfter ?? c.mileageBefore) as number | null) : null;
+
+    // รวมยอดจากเอกสาร (บิลหน้าร้าน) เข้ากับยอดจากระบบจอง — จับคู่ด้วยเบอร์โทรตัวเลขล้วน
+    const phoneKey = String(r._id ?? '').replace(/\D/g, '');
+    const docSpend = phoneKey ? docSpendByPhone.get(phoneKey) : undefined;
+    if (docSpend) docSpendByPhone.delete(phoneKey);
+    const totalSpent = (r.totalSpent as number) + (docSpend?.spent ?? 0);
+    const totalBills = (r.totalBills as number) + (docSpend?.bills ?? 0);
+    const bookingLastVisit = r.lastVisit instanceof Date ? r.lastVisit : new Date(String(r.lastVisit));
+    const lastVisit = docSpend?.lastVisit && docSpend.lastVisit > bookingLastVisit ? docSpend.lastVisit : bookingLastVisit;
+
     return {
       phone:      r._id as string,
       name:       r.name as string,
@@ -149,15 +203,34 @@ export async function getCustomers(): Promise<CustomerRow[]> {
       lineId:     r.lineId as string | undefined,
       cars:       r.cars as string[],
       carInfo:    composeCarInfo({ licensePlate: (c?.licensePlate as string) ?? '', mileage: mileage != null ? String(mileage) : '' }),
-      totalBills: r.totalBills as number,
-      totalSpent: r.totalSpent as number,
-      lastVisit:  r.lastVisit instanceof Date ? r.lastVisit.toISOString() : String(r.lastVisit),
-      tag:        (r.totalSpent >= 50000 ? 'VIP' : r.totalBills === 1 ? 'ใหม่' : 'ปกติ') as 'VIP' | 'ปกติ' | 'ใหม่',
+      totalBills,
+      totalSpent,
+      lastVisit:  lastVisit.toISOString(),
+      tag:        customerTag(totalSpent, totalBills),
     };
   });
+
+  // เบอร์ที่มีแต่เอกสาร ไม่เคยจองเลย — สร้างแถวให้ด้วย ให้ mergeCustomerSources จับคู่กับ directory ต่อ
+  for (const d of docSpendByPhone.values()) {
+    result.push({
+      phone:      d.phone,
+      name:       d.name,
+      lineUserId: undefined,
+      lineId:     undefined,
+      cars:       [],
+      carInfo:    '',
+      totalBills: d.bills,
+      totalSpent: d.spent,
+      lastVisit:  d.lastVisit ? d.lastVisit.toISOString() : '',
+      tag:        customerTag(d.spent, d.bills),
+    });
+  }
+
+  return result;
 }
 
 export function formatLastVisit(iso: string): string {
+  if (!iso || isNaN(new Date(iso).getTime())) return '—';
   const diff = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diff / 86400000);
   if (days === 0) return 'วันนี้';

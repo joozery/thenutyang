@@ -31,6 +31,8 @@ export type CustomerDoc = {
   grandTotal: number;
   status: string;
   paymentMethod: string;
+  bookingRef: string;
+  relatedDocId: string;
   createdAt: string;
 };
 
@@ -107,7 +109,7 @@ export async function getCustomerDetail(id: string): Promise<CustomerDetailResul
       ? FinancialDocument.find({ customerPhone: phone })
           .sort({ createdAt: -1 })
           .limit(50)
-          .select('docNumber type customerCar grandTotal status paymentMethod createdAt')
+          .select('docNumber type customerCar grandTotal status paymentMethod bookingRef relatedDocId createdAt')
           .lean()
       : Promise.resolve([]),
     phone
@@ -127,6 +129,8 @@ export async function getCustomerDetail(id: string): Promise<CustomerDetailResul
     grandTotal:    Number(doc.grandTotal ?? 0),
     status:        String(doc.status ?? ''),
     paymentMethod: String(doc.paymentMethod ?? ''),
+    bookingRef:    String(doc.bookingRef ?? ''),
+    relatedDocId:  doc.relatedDocId ? String(doc.relatedDocId) : '',
     createdAt:     doc.createdAt instanceof Date ? doc.createdAt.toISOString() : String(doc.createdAt ?? ''),
   }));
 
@@ -142,7 +146,18 @@ export async function getCustomerDetail(id: string): Promise<CustomerDetailResul
     createdAt:    b.createdAt instanceof Date ? b.createdAt.toISOString() : String(b.createdAt ?? ''),
   }));
 
-  const totalSpent   = docs.filter(d => d.type === 'invoice' || d.type === 'payment_note').reduce((s, d) => s + d.grandTotal, 0);
+  // ยอดซื้อรวม = ยอดจากการจอง + เอกสารที่ไม่ได้มาจากการจอง (กันนับเงินก้อนเดียวซ้ำสองทาง)
+  // ใบแจ้งหนี้ที่จ่ายครบมีใบเสร็จเต็มจำนวนออกอัตโนมัติ — ใบรับชำระรายงวดของมันไม่ถูกนับซ้ำ
+  const paidBillingIds = new Set(docs.filter(d => d.type === 'billing_note' && d.status === 'paid').map(d => d.id));
+  const docSpent = docs
+    .filter(d =>
+      d.status !== 'cancelled' &&
+      !d.bookingRef &&
+      (d.type === 'invoice' || (d.type === 'payment_note' && !(d.relatedDocId && paidBillingIds.has(d.relatedDocId))))
+    )
+    .reduce((s, d) => s + d.grandTotal, 0);
+  const bookingSpent = bookings.reduce((s, b) => s + b.tirePrice * b.quantity, 0);
+  const totalSpent   = docSpent + bookingSpent;
   const totalDocs    = docs.length;
   const totalBookings = bookings.length;
 
