@@ -597,28 +597,34 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
   useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
   useEffect(() => { setReturns(initialReturns); }, [initialReturns]);
 
-  const filtered = useMemo(() => {
+  // กรองตามคำค้น + ช่วงวันที่ (ยังไม่รวมสถานะ) — ใช้เป็นฐานของการ์ดสถิติด้วย
+  // การ์ดไม่ผูกกับ statusFilter เพราะตัวการ์ดแยกตามสถานะอยู่แล้ว
+  const dateFiltered = useMemo(() => {
     const q = search.toLowerCase();
     const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
     const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
     return orders.filter(o => {
       const matchSearch = o.poNumber.toLowerCase().includes(q) || o.supplier.toLowerCase().includes(q);
-      const matchStatus = statusFilter === 'ทั้งหมด' || o.status === statusFilter;
       const orderTime = new Date(o.orderDate).getTime();
       const matchDate = (!fromTime || orderTime >= fromTime) && (!toTime || orderTime <= toTime);
-      return matchSearch && matchStatus && matchDate;
+      return matchSearch && matchDate;
     });
-  }, [orders, search, statusFilter, dateFrom, dateTo]);
+  }, [orders, search, dateFrom, dateTo]);
+
+  const filtered = useMemo(
+    () => dateFiltered.filter(o => statusFilter === 'ทั้งหมด' || o.status === statusFilter),
+    [dateFiltered, statusFilter],
+  );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const stats = useMemo(() => ({
-    pending:    orders.filter(o => o.status === 'รอรับสินค้า').length,
-    received:   orders.filter(o => o.status === 'รับสินค้าแล้ว').length,
-    totalValue: orders.filter(o => o.status !== 'ยกเลิก').reduce((s, o) => s + o.grandTotal, 0),
-    suppliers:  new Set(orders.map(o => o.supplier)).size,
-  }), [orders]);
+    pending:    dateFiltered.filter(o => o.status === 'รอรับสินค้า').length,
+    received:   dateFiltered.filter(o => o.status === 'รับสินค้าแล้ว').length,
+    totalValue: dateFiltered.filter(o => o.status !== 'ยกเลิก').reduce((s, o) => s + o.grandTotal, 0),
+    suppliers:  new Set(dateFiltered.map(o => o.supplier)).size,
+  }), [dateFiltered]);
 
   const handleReceive = (id: string) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'รับสินค้าแล้ว' as POStatusThai } : o));
