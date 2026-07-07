@@ -19,6 +19,7 @@ export type EmployeeRow = {
   lateDeductRate:    number;
   otRate:            number;
   hasSocialSecurity: boolean;
+  sssCustomAmount:   number;
   startDate: string;
   bankAccount: string;
   bankName: string;
@@ -39,6 +40,7 @@ function normalize(doc: Record<string, unknown>): EmployeeRow {
     lateDeductRate:    Number(rest.lateDeductRate ?? 300),
     otRate:            Number(rest.otRate ?? 200),
     hasSocialSecurity: rest.hasSocialSecurity !== false, // default true
+    sssCustomAmount:   Number(rest.sssCustomAmount ?? 0),
     ...rest,
   } as unknown as EmployeeRow;
 }

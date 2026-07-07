@@ -361,7 +361,7 @@ export function PayrollClient({
                 <Row label={`ขาดงาน ${editTarget.daysAbsent} วัน`} value={`-${fmt(editTarget.absentDeduct)}`} color="text-red-500" />
                 <Row label={`สาย ${editTarget.lateDeductRate > 0 ? (editTarget.lateDeduct / editTarget.lateDeductRate) : 0} ชม. × ฿${editTarget.lateDeductRate}`} value={`-${fmt(editTarget.lateDeduct)}`} color="text-red-500" />
                 <Row label={`ลาไม่รับเงิน ${editTarget.daysLeaveUnpaid} วัน`} value={`-${fmt(editTarget.leaveDeduct)}`} color="text-red-500" />
-                <Row label="ประกันสังคม (5%)" value={`-${fmt(editTarget.sss)}`} color="text-red-500" />
+                <Row label="ประกันสังคม" value={`-${fmt(editTarget.sss)}`} color="text-red-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

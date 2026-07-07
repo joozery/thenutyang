@@ -19,6 +19,7 @@ export type PayComputeInput = {
   bonus:             number;
   otherDeduct:       number;
   hasSocialSecurity: boolean;
+  sssCustomAmount:   number; // หัก สปส. แบบกำหนดเอง (บาท) — 0 = คำนวณ 5% อัตโนมัติ
   lateDeductRate:    number; // อัตรารายบุคคล (บาท/ชม.)
   otRate:            number; // อัตรารายบุคคล (บาท/ชม.)
 };
@@ -41,9 +42,11 @@ export function computePay(i: PayComputeInput): PayComputed {
 
   const absentDeduct = Math.round(dailyRate * i.daysAbsent);
   const leaveDeduct  = Math.round(dailyRate * i.unpaidLeaveDays);
-  const sss = i.hasSocialSecurity
-    ? Math.min(Math.round(Math.min(i.baseSalary, PAYROLL.SSS_BASE_CAP) * PAYROLL.SSS_RATE), PAYROLL.SSS_MAX)
-    : 0;
+  const sss = !i.hasSocialSecurity
+    ? 0
+    : i.sssCustomAmount > 0
+    ? Math.round(i.sssCustomAmount)
+    : Math.min(Math.round(Math.min(i.baseSalary, PAYROLL.SSS_BASE_CAP) * PAYROLL.SSS_RATE), PAYROLL.SSS_MAX);
 
   const netPay = Math.round(
     i.baseSalary + otPay + i.bonus

@@ -53,6 +53,7 @@ export async function generatePayroll(period: string): Promise<Result> {
         bonus,
         otherDeduct,
         hasSocialSecurity: emp.hasSocialSecurity !== false,
+        sssCustomAmount:   Number(emp.sssCustomAmount ?? 0),
         lateDeductRate,
         otRate,
       });
@@ -106,7 +107,7 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
 
     const [attMap, emp] = await Promise.all([
       getAttendanceSummary(p.period),
-      Employee.findById(p.employeeId).lean() as Promise<{ hasSocialSecurity?: boolean; lateDeductRate?: number; otRate?: number } | null>,
+      Employee.findById(p.employeeId).lean() as Promise<{ hasSocialSecurity?: boolean; sssCustomAmount?: number; lateDeductRate?: number; otRate?: number } | null>,
     ]);
     const att            = attMap[String(p.employeeId)] ?? { lateBilledHours: 0, otBilledHours: 0 };
     const lateDeductRate = Number(emp?.lateDeductRate ?? p.lateDeductRate ?? 300);
@@ -121,6 +122,7 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
       bonus,
       otherDeduct,
       hasSocialSecurity: emp?.hasSocialSecurity !== false,
+      sssCustomAmount:   Number(emp?.sssCustomAmount ?? 0),
       lateDeductRate,
       otRate,
     });

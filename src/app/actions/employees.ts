@@ -20,6 +20,8 @@ type EmployeeInput = {
   shiftEnd?: string;
   lateDeductRate?: number;
   otRate?: number;
+  hasSocialSecurity?: boolean;
+  sssCustomAmount?: number;
   startDate: string;
   bankAccount?: string;
   bankName?: string;

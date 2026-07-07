@@ -23,6 +23,7 @@ const employeeSchema = new Schema({
   lateDeductRate: { type: Number, default: 300 },   // บาท/ชั่วโมง
   otRate:         { type: Number, default: 200 },   // บาท/ชั่วโมง (ประจำ) | ถ้า parttime จะใช้ hourlyRate × 1.5
   hasSocialSecurity: { type: Boolean, default: true }, // ประกันสังคม
+  sssCustomAmount:   { type: Number, default: 0 },     // หักประกันสังคมแบบกำหนดเอง (บาท/เดือน) — 0 = คำนวณ 5% อัตโนมัติ
   startDate:    { type: Date, required: true },
   bankAccount:  { type: String, default: '' },
   bankName:     { type: String, default: '' },
