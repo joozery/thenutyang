@@ -28,6 +28,7 @@ export type UnifiedCustomerRow = {
   email: string;
   address: string;
   taxId: string;
+  branch: string;
   carInfo: string;
   vehicles: VehicleEntry[];
   note: string;
@@ -54,7 +55,7 @@ export function mergeCustomerSources(
       name: b.name,
       firstName: '', lastName: '', companyName: '',
       phone: b.phone,
-      email: '', address: '', taxId: '', carInfo: b.carInfo, vehicles: [],
+      email: '', address: '', taxId: '', branch: '', carInfo: b.carInfo, vehicles: [],
       note: '',
       lineUserId: b.lineUserId,
       cars: b.cars,
@@ -80,6 +81,7 @@ export function mergeCustomerSources(
       email: d.email,
       address: d.address,
       taxId: d.taxId,
+      branch: d.branch,
       carInfo: d.carInfo || existing?.carInfo || '',
       vehicles: d.vehicles ?? [],
       note: d.note,

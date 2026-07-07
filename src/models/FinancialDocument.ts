@@ -25,6 +25,8 @@ const financialDocSchema = new Schema({
   customerCar:     { type: String, default: '' },
   customerAddress: { type: String, default: '' },
   customerTaxId:   { type: String, default: '' },
+  // สำนักงานใหญ่/สาขา ของลูกค้า (สำหรับใบกำกับภาษี) — '' | 'สำนักงานใหญ่' | 'สาขาที่ 00001'
+  customerBranch:  { type: String, default: '' },
 
   items:         { type: [itemSchema], default: [] },
 

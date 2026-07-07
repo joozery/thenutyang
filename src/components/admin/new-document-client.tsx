@@ -25,6 +25,7 @@ import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 import { PickerModal } from '@/components/admin/picker-modal';
 import { CustomerModal } from '@/components/admin/customers-client';
 import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
+import { composeTaxBranch, parseTaxBranch, type TaxBranchType } from '@/lib/tax-branch';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export type DocPrefill = {
   bookingRef:      string;
   customerAddress: string;
   customerTaxId:   string;
+  customerBranch?: string;
   items: { description: string; qty: number; unitPrice: number; discount: number }[];
   vatRate:       number;
   paymentMethod: PaymentMethod;
@@ -155,6 +157,9 @@ export function NewDocumentClient({
   const [bookingRef]                          = useState(prefill?.bookingRef ?? '');
   const [customerAddress, setCustomerAddress] = useState(prefill?.customerAddress ?? '');
   const [customerTaxId,   setCustomerTaxId]   = useState(prefill?.customerTaxId ?? '');
+  const prefillBranch = parseTaxBranch(prefill?.customerBranch);
+  const [branchType, setBranchType] = useState<TaxBranchType>(prefillBranch.type);
+  const [branchCode, setBranchCode] = useState(prefillBranch.code);
   const [customerEmail,   setCustomerEmail]   = useState('');
   const [customerLineId,  setCustomerLineId]  = useState('');
   const [customerSelected, setCustomerSelected] = useState(false);
@@ -231,11 +236,18 @@ export function NewDocumentClient({
     setChassisNo(v.chassisNo);
   }
 
+  function applyBranch(branch: string) {
+    const b = parseTaxBranch(branch);
+    setBranchType(b.type);
+    setBranchCode(b.code);
+  }
+
   function selectCustomer(c: UnifiedCustomerRow) {
     setCustomerName(c.name);
     setCustomerPhone(c.phone);
     setCustomerAddress(c.address);
     setCustomerTaxId(c.taxId);
+    applyBranch(c.branch);
     setCustomerSelected(true);
     setSelectedCustomerId(c.id);
     setSaveVehicleMsg(null);
@@ -265,6 +277,8 @@ export function NewDocumentClient({
     setCustomerPhone('');
     setCustomerAddress('');
     setCustomerTaxId('');
+    setBranchType('none');
+    setBranchCode('');
     setCustomerVehicles([]);
     setSelectedVehicleIdx(0);
     setCarBrand('');
@@ -275,13 +289,14 @@ export function NewDocumentClient({
     setChassisNo('');
   }
 
-  function handleNewCustomerSaved(c?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string; vehicles: VehicleEntry[] }) {
+  function handleNewCustomerSaved(c?: { id: string; name: string; phone: string; address: string; taxId: string; branch: string; carInfo: string; vehicles: VehicleEntry[] }) {
     setAddCustomerOpen(false);
     if (!c) return;
     setCustomerName(c.name);
     setCustomerPhone(c.phone);
     setCustomerAddress(c.address);
     setCustomerTaxId(c.taxId);
+    applyBranch(c.branch);
     setCustomerSelected(true);
     setSelectedCustomerId(c.id);
     setSaveVehicleMsg(null);
@@ -312,8 +327,18 @@ export function NewDocumentClient({
     });
     setSaveVehiclePending(false);
     if (result.ok) {
-      setCustomerVehicles(prev => [...prev, { carBrand, carModel, carColor, licensePlate, mileage, chassisNo }]);
-      setSaveVehicleMsg({ ok: true, text: 'บันทึกรถไว้กับลูกค้าแล้ว' });
+      const vehicle = { carBrand, carModel, carColor, licensePlate, mileage, chassisNo };
+      if (result.updated) {
+        // ทะเบียนเดิม — ฝั่ง server อัปเดตคันเดิมให้แล้ว อัปเดต list ในหน้าจอให้ตรงกัน ไม่เพิ่มซ้ำ
+        const plate = licensePlate.trim().replace(/[\s-]+/g, '').toLowerCase();
+        setCustomerVehicles(prev => prev.map(v =>
+          v.licensePlate.trim().replace(/[\s-]+/g, '').toLowerCase() === plate ? vehicle : v
+        ));
+        setSaveVehicleMsg({ ok: true, text: 'ทะเบียนนี้มีอยู่แล้ว — อัปเดตข้อมูลรถคันเดิมให้แทน' });
+      } else {
+        setCustomerVehicles(prev => [...prev, vehicle]);
+        setSaveVehicleMsg({ ok: true, text: 'บันทึกรถไว้กับลูกค้าแล้ว' });
+      }
     } else {
       setSaveVehicleMsg({ ok: false, text: result.error ?? 'บันทึกไม่สำเร็จ' });
     }
@@ -448,6 +473,7 @@ export function NewDocumentClient({
         bookingRef:    bookingRef,
         customerAddress: customerAddress.trim(),
         customerTaxId:   customerTaxId.trim(),
+        customerBranch:  composeTaxBranch(branchType, branchCode),
         items: lines.map((l, idx) => ({
           description:  l.description,
           qty:          l.qty,
@@ -957,16 +983,43 @@ export function NewDocumentClient({
                 />
               </div>
             </div>
-            <div>
-              <Label>เลขที่ผู้เสียภาษี</Label>
-              <div className="relative">
-                <Hash size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  value={customerTaxId}
-                  onChange={e => setCustomerTaxId(e.target.value)}
-                  placeholder="สำหรับลูกค้านิติบุคคล"
-                  className={inputCls + ' pl-8'}
-                />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>เลขที่ผู้เสียภาษี</Label>
+                <div className="relative">
+                  <Hash size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={customerTaxId}
+                    onChange={e => setCustomerTaxId(e.target.value)}
+                    placeholder="สำหรับลูกค้านิติบุคคล"
+                    className={inputCls + ' pl-8'}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>สำนักงานใหญ่/สาขา</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <select
+                      value={branchType}
+                      onChange={e => setBranchType(e.target.value as TaxBranchType)}
+                      className={inputCls + ' appearance-none pr-8 bg-white'}
+                    >
+                      <option value="none">— ไม่ระบุ —</option>
+                      <option value="head">สำนักงานใหญ่</option>
+                      <option value="branch">สาขาที่...</option>
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                  {branchType === 'branch' && (
+                    <input
+                      value={branchCode}
+                      onChange={e => setBranchCode(e.target.value)}
+                      placeholder="00001"
+                      className={inputCls + ' w-24 shrink-0'}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>

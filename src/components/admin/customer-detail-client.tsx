@@ -92,6 +92,7 @@ export function CustomerDetailClient({ data, carBrands = [], carModels = [] }: {
     email: customer.email,
     address: customer.address,
     taxId: customer.taxId,
+    branch: customer.branch,
     carInfo: customer.carInfo,
     vehicles: customer.vehicles,
     note: customer.note,

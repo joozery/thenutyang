@@ -19,6 +19,7 @@ export interface ICustomer {
   email: string;
   address: string;
   taxId: string;
+  branch: string;
   carInfo: string;
   vehicles: VehicleEntry[];
   note: string;
@@ -46,6 +47,8 @@ const CustomerSchema = new Schema<ICustomer>({
   email:        { type: String, default: '' },
   address:      { type: String, default: '' },
   taxId:        { type: String, default: '' },
+  // สำนักงานใหญ่/สาขา (สำหรับใบกำกับภาษี) — '' | 'สำนักงานใหญ่' | 'สาขาที่ 00001'
+  branch:       { type: String, default: '' },
   carInfo:      { type: String, default: '' },
   vehicles:     { type: [vehicleSchema], default: [] },
   note:         { type: String, default: '' },

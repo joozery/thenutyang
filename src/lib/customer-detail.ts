@@ -15,6 +15,7 @@ export type CustomerDetailData = {
   email: string;
   address: string;
   taxId: string;
+  branch: string;
   carInfo: string;
   vehicles: VehicleEntry[];
   note: string;
@@ -91,6 +92,7 @@ export async function getCustomerDetail(id: string): Promise<CustomerDetailResul
     email:    String(d.email    ?? ''),
     address:  String(d.address  ?? ''),
     taxId:    String(d.taxId    ?? ''),
+    branch:   String(d.branch   ?? ''),
     carInfo:  String(d.carInfo  ?? ''),
     vehicles: (d.vehicles as VehicleEntry[] | undefined) ?? [],
     note:     String(d.note     ?? ''),

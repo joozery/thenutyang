@@ -13,6 +13,7 @@ export type CustomerDirectoryRow = {
   email: string;
   address: string;
   taxId: string;
+  branch: string;
   carInfo: string;
   vehicles: VehicleEntry[];
   note: string;
@@ -41,6 +42,7 @@ export async function getCustomerDirectory(): Promise<CustomerDirectoryRow[]> {
     email: d.email ?? '',
     address: d.address ?? '',
     taxId: d.taxId ?? '',
+    branch: d.branch ?? '',
     carInfo: d.carInfo ?? '',
     vehicles: (d.vehicles as VehicleEntry[] | undefined) ?? [],
     note: d.note ?? '',

@@ -13,7 +13,7 @@ export type VehicleEntry = {
   chassisNo:    string;
 };
 
-type SavedCustomer = { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string; vehicles: VehicleEntry[] };
+type SavedCustomer = { id: string; name: string; phone: string; address: string; taxId: string; branch: string; carInfo: string; vehicles: VehicleEntry[] };
 type ActionResult = { error?: string; ok?: boolean; customer?: SavedCustomer };
 
 export type CustomerFormInput = {
@@ -25,10 +25,16 @@ export type CustomerFormInput = {
   email: string;
   address: string;
   taxId: string;
+  branch: string;
   carInfo: string;
   vehicles: VehicleEntry[];
   note: string;
 };
+
+// เทียบทะเบียนรถแบบไม่สนช่องว่าง/ตัวพิมพ์ — 'กก 1234' กับ 'กก-1234' คนพิมพ์ต่างกันแต่คือคันเดียวกัน
+function normalizePlate(plate: string): string {
+  return plate.trim().replace(/[\s-]+/g, '').toLowerCase();
+}
 
 function validate(input: CustomerFormInput): string | null {
   if (input.customerType === 'corporate' && !input.companyName.trim()) return 'กรุณากรอกชื่อบริษัท';
@@ -36,6 +42,9 @@ function validate(input: CustomerFormInput): string | null {
   if (input.customerType === 'individual' && !input.firstName.trim() && !hasVehicle) {
     return 'กรุณากรอกชื่อลูกค้า หรือข้อมูลรถอย่างน้อย 1 คัน';
   }
+  const plates = input.vehicles.map(v => normalizePlate(v.licensePlate)).filter(Boolean);
+  const dupPlate = plates.find((p, i) => plates.indexOf(p) !== i);
+  if (dupPlate) return 'มีทะเบียนรถซ้ำกันในรายการรถของลูกค้า';
   return null;
 }
 
@@ -52,7 +61,7 @@ export async function createCustomer(input: CustomerFormInput): Promise<ActionRe
       : `${input.firstName} ${input.lastName}`.trim();
     return {
       ok: true,
-      customer: { id: String(doc._id), name, phone: input.phone, address: input.address, taxId: input.taxId, carInfo: input.carInfo, vehicles: input.vehicles },
+      customer: { id: String(doc._id), name, phone: input.phone, address: input.address, taxId: input.taxId, branch: input.branch, carInfo: input.carInfo, vehicles: input.vehicles },
     };
   } catch (err) {
     console.error('[createCustomer]', err);
@@ -117,11 +126,27 @@ export async function upsertCustomerFromBooking(input: {
 export async function addVehicleToCustomer(
   customerId: string,
   vehicle: VehicleEntry,
-): Promise<{ ok?: boolean; error?: string }> {
+): Promise<{ ok?: boolean; updated?: boolean; error?: string }> {
   try {
     if (!customerId) return { error: 'ไม่พบลูกค้า' };
     if (!vehicle.licensePlate.trim() && !vehicle.carBrand.trim()) return { error: 'กรุณากรอกทะเบียนหรือยี่ห้อรถ' };
     await connectDB();
+
+    // ทะเบียนเดิมที่มีอยู่แล้ว → อัปเดตข้อมูลคันเดิม (สี/ไมล์/เลขตัวถัง ฯลฯ) แทนการเพิ่มรถซ้ำอีกคัน
+    const plate = normalizePlate(vehicle.licensePlate);
+    if (plate) {
+      const customer = await Customer.findById(customerId).lean() as { vehicles?: VehicleEntry[] } | null;
+      if (!customer) return { error: 'ไม่พบลูกค้า' };
+      const idx = (customer.vehicles ?? []).findIndex(v => normalizePlate(v.licensePlate) === plate);
+      if (idx >= 0) {
+        await Customer.findByIdAndUpdate(customerId, {
+          $set: { [`vehicles.${idx}`]: vehicle, updatedAt: new Date() },
+        });
+        revalidatePath('/admin/customers');
+        return { ok: true, updated: true };
+      }
+    }
+
     await Customer.findByIdAndUpdate(customerId, {
       $push: { vehicles: vehicle },
       $set:  { updatedAt: new Date() },

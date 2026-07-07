@@ -28,6 +28,7 @@ export type DocRow = {
   customerCar:     string;
   customerAddress: string;
   customerTaxId:   string;
+  customerBranch:  string;
   items:         DocItem[];
   subtotal:      number;
   discountTotal: number;
@@ -73,6 +74,7 @@ function normalize(d: any): DocRow {
     customerCar:     d.customerCar     ?? '',
     customerAddress: d.customerAddress ?? '',
     customerTaxId:   d.customerTaxId   ?? '',
+    customerBranch:  d.customerBranch  ?? '',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items: (d.items ?? []).map((item: any) => ({
       description:  item.description  ?? '',

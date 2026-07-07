@@ -12,6 +12,7 @@ import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput,
 import { createCarBrand, createCarModel } from '@/app/actions/car-data';
 import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
+import { composeTaxBranch, parseTaxBranch, type TaxBranchType } from '@/lib/tax-branch';
 
 function emptyVehicle(): VehicleEntry {
   return { carBrand: '', carModel: '', carColor: '', licensePlate: '', mileage: '', chassisNo: '' };
@@ -45,7 +46,7 @@ const TAG_ICON: Record<string, React.ReactNode> = {
 const EMPTY_FORM: CustomerFormInput = {
   customerType: 'individual',
   firstName: '', lastName: '', companyName: '',
-  phone: '', email: '', address: '', taxId: '', carInfo: '',
+  phone: '', email: '', address: '', taxId: '', branch: '', carInfo: '',
   vehicles: [],
   note: '',
 };
@@ -57,7 +58,7 @@ export function CustomerModal({
 }: {
   initial: EditableCustomer | null;
   onClose: () => void;
-  onSaved: (customer?: { id: string; name: string; phone: string; address: string; taxId: string; carInfo: string; vehicles: VehicleEntry[] }) => void;
+  onSaved: (customer?: { id: string; name: string; phone: string; address: string; taxId: string; branch: string; carInfo: string; vehicles: VehicleEntry[] }) => void;
   carBrands?: CarBrandRow[];
   carModels?: CarModelRow[];
 }) {
@@ -81,6 +82,7 @@ export function CustomerModal({
           email: initial.email,
           address: initial.address,
           taxId: initial.taxId,
+          branch: initial.branch,
           carInfo: initial.carInfo,
           vehicles: initVehicles(),
           note: initial.note,
@@ -90,6 +92,17 @@ export function CustomerModal({
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+
+  // สำนักงานใหญ่/สาขา — แยก type/code ไว้ใน state เอง แล้ว compose เป็น string เดียวลง form.branch
+  const initTaxBranch = parseTaxBranch(initial?.branch);
+  const [branchType, setBranchType] = useState<TaxBranchType>(initTaxBranch.type);
+  const [branchCode, setBranchCode] = useState(initTaxBranch.code);
+
+  function updateBranch(type: TaxBranchType, code: string) {
+    setBranchType(type);
+    setBranchCode(code);
+    set('branch', composeTaxBranch(type, code));
+  }
 
   // per-vehicle combobox state
   const [localBrands, setLocalBrands] = useState<CarBrandRow[]>(carBrands);
@@ -247,9 +260,33 @@ export function CustomerModal({
             <textarea value={form.address} onChange={(e) => set('address', e.target.value)} rows={2} placeholder="ที่อยู่สำหรับออกเอกสาร" className={inputCls + ' resize-none'} />
           </div>
 
-          <div>
-            <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Hash size={11} /> เลขที่ผู้เสียภาษี</label>
-            <input value={form.taxId} onChange={(e) => set('taxId', e.target.value)} placeholder="0-0000-00000-00-0" className={inputCls} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Hash size={11} /> เลขที่ผู้เสียภาษี</label>
+              <input value={form.taxId} onChange={(e) => set('taxId', e.target.value)} placeholder="0-0000-00000-00-0" className={inputCls} />
+            </div>
+            <div>
+              <label className="flex items-center gap-1 text-xs font-semibold text-slate-500 mb-1.5"><Building2 size={11} /> สำนักงานใหญ่/สาขา</label>
+              <div className="flex gap-2">
+                <select
+                  value={branchType}
+                  onChange={(e) => updateBranch(e.target.value as TaxBranchType, branchCode)}
+                  className={inputCls + ' bg-white'}
+                >
+                  <option value="none">— ไม่ระบุ —</option>
+                  <option value="head">สำนักงานใหญ่</option>
+                  <option value="branch">สาขาที่...</option>
+                </select>
+                {branchType === 'branch' && (
+                  <input
+                    value={branchCode}
+                    onChange={(e) => updateBranch('branch', e.target.value)}
+                    placeholder="00001"
+                    className={inputCls + ' w-24 shrink-0'}
+                  />
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Multi-vehicle section */}

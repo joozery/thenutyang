@@ -254,7 +254,7 @@ function ViewModal({
                  <p className="font-bold text-slate-800 text-[15px]">{doc.customerName}</p>
                  {doc.customerPhone && <p className="text-sm text-slate-500 mt-1 flex items-center gap-1.5"><Phone size={14} className="text-slate-400"/> {doc.customerPhone}</p>}
                  {doc.customerAddress && <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{doc.customerAddress}</p>}
-                 {doc.customerTaxId && <p className="text-xs text-slate-500 mt-1.5 font-medium">เลขผู้เสียภาษี: <span className="text-slate-700">{doc.customerTaxId}</span></p>}
+                 {doc.customerTaxId && <p className="text-xs text-slate-500 mt-1.5 font-medium">เลขผู้เสียภาษี: <span className="text-slate-700">{doc.customerTaxId}{doc.customerBranch ? ` (${doc.customerBranch})` : ''}</span></p>}
                </div>
             </div>
             

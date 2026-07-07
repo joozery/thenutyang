@@ -18,6 +18,7 @@ export type DocFormPayload = {
   bookingRef?:   string;
   customerAddress: string;
   customerTaxId:   string;
+  customerBranch:  string;
   relatedDocId?:     string;
   relatedDocNumber?: string;
   items: {
@@ -112,6 +113,7 @@ export async function updateDocument(
       customerCar:     data.customerCar,
       customerAddress: data.customerAddress,
       customerTaxId:   data.customerTaxId,
+      customerBranch:  data.customerBranch,
       items:           data.items,
       subtotal:        data.subtotal,
       discountTotal:   data.discountTotal,

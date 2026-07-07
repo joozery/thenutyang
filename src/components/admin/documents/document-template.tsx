@@ -35,6 +35,7 @@ export type DocumentTemplateProps = {
     name: string;
     address?: string;
     taxId?: string;
+    branch?: string;
     phone?: string;
     email?: string;
     lineId?: string;
@@ -138,7 +139,7 @@ export function DocumentTemplate({
         <div className="space-y-1.5 text-[13px] text-slate-800">
           <p><span className="text-slate-500 mr-1">ลูกค้า:</span><span className="font-bold text-slate-900">{customer.name}</span> {customer.code && <span className="text-slate-500 font-normal">({customer.code})</span>}</p>
           {customer.address && <p><span className="text-slate-500 mr-1">ที่อยู่:</span><span>{customer.address}</span></p>}
-          {customer.taxId && <p><span className="text-slate-500 mr-1">เลขผู้เสียภาษี:</span><span>{customer.taxId}</span></p>}
+          {customer.taxId && <p><span className="text-slate-500 mr-1">เลขผู้เสียภาษี:</span><span>{customer.taxId}{customer.branch ? ` (${customer.branch})` : ''}</span></p>}
         </div>
 
         {/* Middle Column: contact info with icons */}
