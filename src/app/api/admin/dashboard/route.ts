@@ -65,13 +65,15 @@ export async function GET(req: Request) {
         { $match: { incomeDate: { $gte: monthStart, $lt: nextMonthStart } } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]),
+      // ตัดหมวด PurchaseOrder ออก — ยอดจ่ายค่าจัดซื้อนับจาก PO (amountPaid) ด้านล่างแล้ว ไม่ให้ซ้ำ
       Expense.aggregate([
-        { $match: { expenseDate: { $gte: monthStart, $lt: nextMonthStart } } },
+        { $match: { category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: monthStart, $lt: nextMonthStart } } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
       ]),
+      // นับเฉพาะ PO ที่กดชำระแล้ว (ยอดจ่ายจริง ตามวันชำระ) — ยังไม่ชำระไม่ถือเป็นค่าใช้จ่าย
       PurchaseOrder.aggregate([
-        { $match: { status: 'received', createdAt: { $gte: monthStart, $lt: nextMonthStart } } },
-        { $group: { _id: null, total: { $sum: '$grandTotal' } } }
+        { $match: { status: 'received', paymentStatus: { $in: ['partial', 'paid'] }, paymentDate: { $gte: monthStart, $lt: nextMonthStart } } },
+        { $group: { _id: null, total: { $sum: '$amountPaid' } } }
       ]),
       Payslip.aggregate([
         { $match: { status: 'paid', paidAt: { $gte: monthStart, $lt: nextMonthStart } } },

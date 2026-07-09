@@ -13,6 +13,7 @@ export type FinanceTransaction = {
   type:   'in' | 'out';
   amount: number;
   deletable: boolean;
+  href?:  string; // ลิงก์ไปดูเอกสารต้นทาง (PO/อินวอย) ถ้ามี
 };
 
 export type CategoryBreakdown = { label: string; amount: number; pct: number };
@@ -37,7 +38,7 @@ type DocLean = {
   _id: unknown; grandTotal: number; customerName: string; docNumber: string;
   paidAt?: Date | null; issuedAt: Date; relatedDocId?: unknown; type?: string; bookingRef?: string;
 };
-type POLean = { _id: unknown; grandTotal: number; poNumber: string; supplierSnapshot?: { name?: string }; createdAt: Date };
+type POLean = { _id: unknown; grandTotal: number; amountPaid?: number; paymentDate?: Date | null; poNumber: string; supplierSnapshot?: { name?: string }; createdAt: Date };
 type PayslipLean = { _id: unknown; netPay: number; employeeName: string; period: string; paidAt?: Date | null; createdAt: Date };
 type ExpenseLean = { _id: unknown; amount: number; category: string; description: string; expenseDate: Date };
 type BookingLean = {
@@ -53,9 +54,11 @@ export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promi
     FinancialDocument.find({ type: 'invoice', status: 'paid', bookingRef: '', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
     FinancialDocument.find({ type: 'payment_note', bookingRef: '', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
     FinancialDocument.find({ type: 'credit_note', status: { $ne: 'cancelled' }, bookingRef: '', issuedAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
-    PurchaseOrder.find({ status: 'received', createdAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<POLean[]>,
+    // นับเฉพาะ PO ที่กดชำระแล้ว (ยอดจ่ายจริง ตามวันชำระ) — ยังไม่ชำระไม่ถือเป็นค่าใช้จ่าย
+    PurchaseOrder.find({ status: 'received', paymentStatus: { $in: ['partial', 'paid'] }, paymentDate: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<POLean[]>,
     Payslip.find({ status: 'paid', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<PayslipLean[]>,
-    Expense.find({ expenseDate: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<ExpenseLean[]>,
+    // ตัดหมวด PurchaseOrder ออก — ยอดจ่ายค่าจัดซื้อนับจาก PO ด้านบนแล้ว ไม่ให้ซ้ำ
+    Expense.find({ category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<ExpenseLean[]>,
     Booking.find({ status: { $ne: 'cancelled' }, depositStatus: 'verified', depositRefunded: { $ne: true }, depositPaidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<BookingLean[]>,
     Booking.find({ status: { $ne: 'cancelled' }, balanceStatus: 'paid', balancePaidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<BookingLean[]>,
   ]);
@@ -79,7 +82,7 @@ export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promi
   const incomeFromCreditNotes = creditNotes.reduce((s, d) => s + Math.abs(d.grandTotal ?? 0), 0);
   const totalIncome = incomeFromDeposits + incomeFromBalances + incomeFromInvoices + incomeFromPayments - incomeFromCreditNotes;
 
-  const expenseFromPO      = purchaseOrders.reduce((s, d) => s + (d.grandTotal ?? 0), 0);
+  const expenseFromPO      = purchaseOrders.reduce((s, d) => s + (d.amountPaid ?? 0), 0);
   const expenseFromPayroll = payslips.reduce((s, d) => s + (d.netPay ?? 0), 0);
   const expenseFromMisc    = expenses.reduce((s, d) => s + (d.amount ?? 0), 0);
   const totalExpense = expenseFromPO + expenseFromPayroll + expenseFromMisc;
@@ -118,18 +121,22 @@ export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promi
     ...invoices.map((d) => ({
       id: String(d._id), date: new Date(d.paidAt ?? d.issuedAt).toISOString(),
       desc: `รับเงินจาก ${d.customerName}`, ref: d.docNumber, type: 'in' as const, amount: d.grandTotal, deletable: false,
+      href: `/admin/documents/${String(d._id)}/print`,
     })),
     ...paymentNotes.map((d) => ({
       id: String(d._id), date: new Date(d.paidAt ?? d.issuedAt).toISOString(),
       desc: `รับชำระจาก ${d.customerName}`, ref: d.docNumber, type: 'in' as const, amount: d.grandTotal, deletable: false,
+      href: `/admin/documents/${String(d._id)}/print`,
     })),
     ...creditNotes.map((d) => ({
       id: String(d._id), date: new Date(d.issuedAt).toISOString(),
       desc: `ใบลดหนี้ให้ ${d.customerName}`, ref: d.docNumber, type: 'out' as const, amount: Math.abs(d.grandTotal), deletable: false,
+      href: `/admin/documents/${String(d._id)}/print`,
     })),
     ...purchaseOrders.map((d) => ({
-      id: String(d._id), date: new Date(d.createdAt).toISOString(),
-      desc: `จ่ายค่าสินค้า ${d.supplierSnapshot?.name ?? ''}`, ref: d.poNumber, type: 'out' as const, amount: d.grandTotal, deletable: false,
+      id: String(d._id), date: new Date(d.paymentDate ?? d.createdAt).toISOString(),
+      desc: `จ่ายค่าสินค้า ${d.supplierSnapshot?.name ?? ''}`, ref: d.poNumber, type: 'out' as const, amount: d.amountPaid ?? 0, deletable: false,
+      href: `/admin/purchasing/${String(d._id)}/print`,
     })),
     ...payslips.map((d) => ({
       id: String(d._id), date: new Date(d.paidAt ?? d.createdAt).toISOString(),

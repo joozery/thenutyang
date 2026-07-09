@@ -54,20 +54,22 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
       { $match: invoiceMatch },
       { $group: { _id: { y: { $year: '$issuedAt' }, m: { $month: '$issuedAt' } }, total: { $sum: '$grandTotal' } } },
     ]),
+    // ตัดหมวด PurchaseOrder ออก — ยอดจ่ายค่าจัดซื้อนับจาก PO (amountPaid) ด้านล่างแล้ว ไม่ให้ซ้ำ
     Expense.aggregate<AggRow>([
-      { $match: { expenseDate: { $gte: start, $lte: end } } },
+      { $match: { category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: start, $lte: end } } },
       { $group: { _id: { y: { $year: '$expenseDate' }, m: { $month: '$expenseDate' } }, total: { $sum: '$amount' } } },
     ]),
+    // นับเฉพาะที่กดชำระแล้ว (ยอดที่จ่ายจริง ตามวันที่ชำระ) — PO ที่ยังไม่ชำระไม่ถือเป็นค่าใช้จ่าย
     PurchaseOrder.aggregate<AggRow>([
-      { $match: { status: 'received', createdAt: { $gte: start, $lte: end } } },
-      { $group: { _id: { y: { $year: '$createdAt' }, m: { $month: '$createdAt' } }, total: { $sum: '$grandTotal' } } },
+      { $match: { status: 'received', paymentStatus: { $in: ['partial', 'paid'] }, paymentDate: { $gte: start, $lte: end } } },
+      { $group: { _id: { y: { $year: '$paymentDate' }, m: { $month: '$paymentDate' } }, total: { $sum: '$amountPaid' } } },
     ]),
     Payslip.aggregate<AggRow>([
       { $match: { status: 'paid', paidAt: { $gte: start, $lte: end } } },
       { $group: { _id: { y: { $year: '$paidAt' }, m: { $month: '$paidAt' } }, total: { $sum: '$netPay' } } },
     ]),
     Expense.aggregate<{ _id: string; total: number }>([
-      { $match: { expenseDate: { $gte: start, $lte: end } } },
+      { $match: { category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: start, $lte: end } } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
       { $sort: { total: -1 } },
     ]),
