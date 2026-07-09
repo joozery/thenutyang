@@ -7,6 +7,7 @@ import {
   Plus, X, Trash2,
 } from 'lucide-react';
 import { createExpense, deleteExpense } from '@/app/actions/expenses';
+import { FinanceCalendar } from '@/components/admin/finance-calendar';
 import type { FinanceSummary } from '@/lib/finance';
 
 const RANGE_LABEL: Record<string, string> = {
@@ -27,12 +28,14 @@ export function FinanceClient({
   activeDateFrom,
   activeDateTo,
   periodLabel,
+  periodStartIso,
 }: {
   summary: FinanceSummary;
   activeRange: string;
   activeDateFrom?: string;
   activeDateTo?: string;
   periodLabel: string;
+  periodStartIso: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -160,6 +163,9 @@ export function FinanceClient({
         </div>
       </div>
 
+      {/* ปฏิทินเงินเข้า-ออก */}
+      <FinanceCalendar transactions={summary.transactions} periodStartIso={periodStartIso} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Transaction Table */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 overflow-hidden">
@@ -191,7 +197,15 @@ export function FinanceClient({
                           </div>
                           <div>
                             <p className="font-medium text-slate-800 text-xs leading-snug">{t.desc}</p>
-                            <p className="text-xs text-slate-400">{t.ref}</p>
+                            {t.href ? (
+                              <a href={t.href} target="_blank" rel="noopener noreferrer"
+                                className="text-xs text-blue-500 hover:text-blue-700 hover:underline font-medium"
+                                title="เปิดดูเอกสาร">
+                                {t.ref} ↗
+                              </a>
+                            ) : (
+                              <p className="text-xs text-slate-400">{t.ref}</p>
+                            )}
                           </div>
                         </div>
                       </td>

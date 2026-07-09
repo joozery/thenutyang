@@ -55,6 +55,7 @@ export default async function FinancePage({
       activeDateFrom={dateFrom || ''}
       activeDateTo={dateTo || ''}
       periodLabel={label}
+      periodStartIso={start.toISOString()}
     />
   );
 }
