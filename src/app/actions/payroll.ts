@@ -37,7 +37,7 @@ export async function generatePayroll(period: string): Promise<Result> {
       if (prev?.status === 'paid') return null;
 
       const att        = attMap[id]   ?? { daysPresent: 0, daysAbsent: 0, daysLeave: 0, otMinutes: 0, lateMinutes: 0, lateBilledHours: 0, otBilledHours: 0 };
-      const lv         = leaveMap[id] ?? { paidDays: 0, unpaidDays: 0 };
+      const lv         = leaveMap[id] ?? { paidDays: 0, unpaidDays: 0, unpaidAmount: 0 };
       const baseSalary    = Number(emp.baseSalary ?? 0);
       const lateDeductRate = Number(emp.lateDeductRate ?? 300);
       const otRate         = Number(emp.otRate ?? 200);
@@ -50,6 +50,7 @@ export async function generatePayroll(period: string): Promise<Result> {
         lateBilledHours:   att.lateBilledHours,
         otBilledHours:     att.otBilledHours,
         unpaidLeaveDays:   lv.unpaidDays,
+        leaveDeductAmount: lv.unpaidAmount,
         bonus,
         otherDeduct,
         hasSocialSecurity: emp.hasSocialSecurity !== false,
@@ -74,6 +75,7 @@ export async function generatePayroll(period: string): Promise<Result> {
               daysAbsent:      att.daysAbsent,
               daysLeavePaid:   lv.paidDays,
               daysLeaveUnpaid: lv.unpaidDays,
+              leaveDeductAmount: lv.unpaidAmount,
               otMinutes:       att.otMinutes,
               lateMinutes:     att.lateMinutes,
               bonus,
@@ -119,6 +121,7 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
       lateBilledHours:   att.lateBilledHours,
       otBilledHours:     att.otBilledHours,
       unpaidLeaveDays:   p.daysLeaveUnpaid ?? 0,
+      leaveDeductAmount: p.leaveDeductAmount ?? 0,
       bonus,
       otherDeduct,
       hasSocialSecurity: emp?.hasSocialSecurity !== false,

@@ -29,6 +29,7 @@ const payslipSchema = new Schema({
   absentDeduct: { type: Number, default: 0 },
   lateDeduct:   { type: Number, default: 0 },
   leaveDeduct:  { type: Number, default: 0 },
+  leaveDeductAmount: { type: Number, default: 0 }, // ส่วนของ leaveDeduct ที่มาจากยอดบาทที่ระบุในใบลา
   sss:          { type: Number, default: 0 }, // ประกันสังคม 5%
   otherDeduct:  { type: Number, default: 0 },
 

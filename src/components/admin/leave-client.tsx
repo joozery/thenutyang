@@ -43,7 +43,8 @@ const EMPTY_FORM = {
   endDate:    '',
   reason:     '',
   deductPay:  LEAVE_QUOTA['sick'].deductPay,
-  deductDays: 0, // จำนวนวันที่หักจริง
+  deductDays: 0,   // จำนวนวันที่หักจริง
+  deductAmount: 0, // ยอดหักเป็นบาท (0 = หักตามวันลา)
 };
 
 export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRow[]; employees: EmployeeRow[] }) {
@@ -236,7 +237,10 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
                         {TYPE_LABELS[l.leaveType]}
                       </span>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${l.deductPay ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
-                        {l.deductPay ? (l.deductDays > 0 ? `หักเงินเดือน (${l.deductDays} วัน)` : 'หักเงินเดือน') : 'ไม่หักเงิน'}
+                        {!l.deductPay ? 'ไม่หักเงิน'
+                          : l.deductAmount > 0 ? `หักเงิน ฿${l.deductAmount.toLocaleString()}`
+                          : l.deductDays > 0 ? `หักเงินเดือน (${l.deductDays} วัน)`
+                          : 'หักเงินเดือน'}
                       </span>
                     </div>
                   </td>
@@ -333,7 +337,7 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
                 <select value={form.leaveType} onChange={e => {
                   const t = e.target.value as LeaveType;
                   const dp = LEAVE_QUOTA[t].deductPay;
-                  setForm(f => ({ ...f, leaveType: t, deductPay: dp, deductDays: dp ? f.deductDays : 0 }));
+                  setForm(f => ({ ...f, leaveType: t, deductPay: dp, deductDays: dp ? f.deductDays : 0, deductAmount: dp ? f.deductAmount : 0 }));
                 }} className={inputCls}>
                   {Object.entries(TYPE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>{v}</option>
@@ -344,7 +348,7 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-600">การหักเงินเดือน</label>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setForm(f => ({ ...f, deductPay: false, deductDays: 0 }))}
+                  <button type="button" onClick={() => setForm(f => ({ ...f, deductPay: false, deductDays: 0, deductAmount: 0 }))}
                     className={`flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all
                       ${!form.deductPay ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}>
                     ไม่หักเงิน
@@ -357,15 +361,15 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
                 </div>
                 {form.deductPay && (
                   <div className="flex items-center gap-3 mt-2 bg-red-50 rounded-xl px-3 py-2.5 border border-red-100">
-                    <span className="text-xs text-red-600 font-medium whitespace-nowrap">หักกี่วัน</span>
+                    <span className="text-xs text-red-600 font-medium whitespace-nowrap">ยอดเงินที่หัก</span>
                     <input
                       type="number" min={0}
-                      value={form.deductDays === 0 ? '' : form.deductDays}
-                      placeholder="0 = หักเท่ากับวันลา"
-                      onChange={e => setForm(f => ({ ...f, deductDays: Math.max(0, Number(e.target.value) || 0) }))}
+                      value={form.deductAmount === 0 ? '' : form.deductAmount}
+                      placeholder="0 = หักตามวันลา (เงินเดือน÷30 × วัน)"
+                      onChange={e => setForm(f => ({ ...f, deductAmount: Math.max(0, Number(e.target.value) || 0) }))}
                       className="flex-1 bg-white border border-red-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
                     />
-                    <span className="text-xs text-red-400">วัน</span>
+                    <span className="text-xs text-red-400">บาท</span>
                   </div>
                 )}
               </div>

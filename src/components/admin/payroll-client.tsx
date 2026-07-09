@@ -360,7 +360,11 @@ export function PayrollClient({
                 <Row label={`OT ${editTarget.otRate > 0 ? (editTarget.otPay / editTarget.otRate) : 0} ชม. × ฿${editTarget.otRate}`} value={`+${fmt(editTarget.otPay)}`} color="text-blue-600" />
                 <Row label={`ขาดงาน ${editTarget.daysAbsent} วัน`} value={`-${fmt(editTarget.absentDeduct)}`} color="text-red-500" />
                 <Row label={`สาย ${editTarget.lateDeductRate > 0 ? (editTarget.lateDeduct / editTarget.lateDeductRate) : 0} ชม. × ฿${editTarget.lateDeductRate}`} value={`-${fmt(editTarget.lateDeduct)}`} color="text-red-500" />
-                <Row label={`ลาไม่รับเงิน ${editTarget.daysLeaveUnpaid} วัน`} value={`-${fmt(editTarget.leaveDeduct)}`} color="text-red-500" />
+                <Row
+                  label={editTarget.daysLeaveUnpaid > 0
+                    ? `ลาไม่รับเงิน ${editTarget.daysLeaveUnpaid} วัน${editTarget.leaveDeductAmount > 0 ? ' + ยอดหักจากใบลา' : ''}`
+                    : editTarget.leaveDeductAmount > 0 ? 'หักจากใบลา (ระบุยอด)' : 'ลาไม่รับเงิน 0 วัน'}
+                  value={`-${fmt(editTarget.leaveDeduct)}`} color="text-red-500" />
                 <Row label="ประกันสังคม" value={`-${fmt(editTarget.sss)}`} color="text-red-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">

@@ -16,6 +16,7 @@ export type PayComputeInput = {
   lateBilledHours:   number;
   otBilledHours:     number;
   unpaidLeaveDays:   number;
+  leaveDeductAmount: number; // ยอดหักจากใบลาที่ระบุเป็นบาท (บวกเพิ่มจากการหักรายวัน)
   bonus:             number;
   otherDeduct:       number;
   hasSocialSecurity: boolean;
@@ -41,7 +42,7 @@ export function computePay(i: PayComputeInput): PayComputed {
   const otPay      = i.otBilledHours   * i.otRate;
 
   const absentDeduct = Math.round(dailyRate * i.daysAbsent);
-  const leaveDeduct  = Math.round(dailyRate * i.unpaidLeaveDays);
+  const leaveDeduct  = Math.round(dailyRate * i.unpaidLeaveDays + i.leaveDeductAmount);
   const sss = !i.hasSocialSecurity
     ? 0
     : i.sssCustomAmount > 0
@@ -76,6 +77,7 @@ export type PayslipRow = {
   absentDeduct:    number;
   lateDeduct:      number;
   leaveDeduct:     number;
+  leaveDeductAmount: number;
   sss:             number;
   otherDeduct:     number;
   netPay:          number;
@@ -105,6 +107,7 @@ function normalize(d: any): PayslipRow {
     absentDeduct:    d.absentDeduct ?? 0,
     lateDeduct:      d.lateDeduct ?? 0,
     leaveDeduct:     d.leaveDeduct ?? 0,
+    leaveDeductAmount: d.leaveDeductAmount ?? 0,
     sss:             d.sss ?? 0,
     otherDeduct:     d.otherDeduct ?? 0,
     netPay:          d.netPay ?? 0,

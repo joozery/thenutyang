@@ -17,6 +17,7 @@ const leaveRequestSchema = new Schema({
   attachmentUrl:{ type: String, default: '' },
   deductPay:    { type: Boolean, default: true }, // true = หักเงิน, false = ไม่หัก
   deductDays:   { type: Number, default: 0 },    // จำนวนวันที่หักจริง (≤ days)
+  deductAmount: { type: Number, default: 0 },    // ยอดหักเป็นบาท — ถ้า > 0 ใช้ยอดนี้แทนการคิดรายวัน
   status:       { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   rejReason:    { type: String, default: '' },
   approvedBy:   { type: String, default: '' },

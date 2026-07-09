@@ -15,6 +15,7 @@ export type LeaveRequestRow = {
   reason: string;
   deductPay:  boolean;
   deductDays: number;  // วันที่หักจริง
+  deductAmount: number; // ยอดหักเป็นบาท (0 = คิดตามวันลา)
   status: 'pending' | 'approved' | 'rejected';
   rejReason: string;
   approvedBy: string;
@@ -44,6 +45,7 @@ function normalizeRow(d: any): LeaveRequestRow {
     reason:       d.reason ?? '',
     deductPay:    d.deductPay !== false,
     deductDays:   d.deductDays ?? 0,
+    deductAmount: d.deductAmount ?? 0,
     status:       d.status ?? 'pending',
     rejReason:    d.rejReason ?? '',
     approvedBy:   d.approvedBy ?? '',

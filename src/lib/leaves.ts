@@ -14,6 +14,7 @@ export type LeaveRow = {
   reason: string;
   deductPay:  boolean;
   deductDays: number;
+  deductAmount: number;
   status: LeaveStatus;
   rejReason: string;
   createdAt: string;
@@ -37,6 +38,7 @@ function normalize(d: any): LeaveRow {
     reason:       d.reason ?? '',
     deductPay:    d.deductPay !== false,
     deductDays:   d.deductDays ?? 0,
+    deductAmount: d.deductAmount ?? 0,
     status:       d.status ?? 'pending',
     rejReason:    d.rejReason ?? '',
     createdAt:    d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt ?? ''),
@@ -51,7 +53,8 @@ export async function getLeaveRequests(status?: LeaveStatus): Promise<LeaveRow[]
 }
 
 // สรุปวันลา "ที่อนุมัติแล้ว" ในรอบเดือน ต่อพนักงาน (แยกได้เงิน/ไม่ได้เงิน)
-export type LeaveSummary = { paidDays: number; unpaidDays: number };
+// unpaidAmount = ยอดหักเป็นบาทที่ระบุตรงๆ ในใบลา (ไม่คิดจาก dailyRate)
+export type LeaveSummary = { paidDays: number; unpaidDays: number; unpaidAmount: number };
 
 export async function getApprovedLeaveSummary(period: string): Promise<Record<string, LeaveSummary>> {
   await connectDB();
@@ -73,10 +76,16 @@ export async function getApprovedLeaveSummary(period: string): Promise<Record<st
     const e = new Date(Math.min(new Date(d.endDate).getTime(), monthEnd.getTime()));
     const daysInMonth = Math.floor((e.getTime() - s.getTime()) / 86400000) + 1;
     if (daysInMonth <= 0) continue;
-    const cur = map[d.employeeId] ?? { paidDays: 0, unpaidDays: 0 };
-    const unpaid = d.deductDays > 0 ? Math.min(d.deductDays, daysInMonth) : (d.deductPay ? daysInMonth : 0);
-    cur.unpaidDays += unpaid;
-    cur.paidDays   += daysInMonth - unpaid;
+    const cur = map[d.employeeId] ?? { paidDays: 0, unpaidDays: 0, unpaidAmount: 0 };
+    if (d.deductPay && d.deductAmount > 0) {
+      // ระบุยอดหักเป็นบาทมาโดยตรง — เฉลี่ยตามสัดส่วนวันที่ตกในเดือนนี้ ไม่หักรายวันซ้ำ
+      cur.unpaidAmount += Math.round(d.deductAmount * daysInMonth / Math.max(1, d.days));
+      cur.paidDays     += daysInMonth;
+    } else {
+      const unpaid = d.deductDays > 0 ? Math.min(d.deductDays, daysInMonth) : (d.deductPay ? daysInMonth : 0);
+      cur.unpaidDays += unpaid;
+      cur.paidDays   += daysInMonth - unpaid;
+    }
     map[d.employeeId] = cur;
   }
   return map;
