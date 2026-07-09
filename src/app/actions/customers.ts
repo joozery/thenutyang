@@ -98,6 +98,12 @@ export async function createCustomer(input: CustomerFormInput): Promise<ActionRe
   }
 }
 
+function displayName(c: { customerType?: string; companyName?: string; firstName?: string; lastName?: string }): string {
+  return c.customerType === 'corporate' && c.companyName?.trim()
+    ? c.companyName.trim()
+    : `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
+}
+
 export async function updateCustomer(id: string, input: CustomerFormInput): Promise<ActionResult> {
   try {
     const error = validate(input);
@@ -107,7 +113,37 @@ export async function updateCustomer(id: string, input: CustomerFormInput): Prom
     const plateError = await checkPlateOwnedByOther(input.vehicles, id);
     if (plateError) return { error: plateError };
 
+    // เก็บข้อมูลเดิมไว้ก่อน — ใช้ตามหาบิลของลูกค้าคนนี้ (บิลเก็บชื่อ/เบอร์เป็น snapshot ไม่มี customerId)
+    const existing = await Customer.findById(id).lean() as {
+      customerType?: string; companyName?: string; firstName?: string; lastName?: string; phone?: string;
+    } | null;
+    if (!existing) return { error: 'ไม่พบลูกค้า' };
+
     await Customer.findByIdAndUpdate(id, { ...input, updatedAt: new Date() });
+
+    // sync ข้อมูลใหม่ไปยังบิล/เอกสารทั้งหมดของลูกค้าคนนี้
+    // จับคู่ด้วยเบอร์โทรเดิมเป็นหลัก ถ้าไม่มีเบอร์ใช้ชื่อเดิม (เฉพาะบิลที่ไม่มีเบอร์ กันไปแก้บิลคนอื่นที่ชื่อซ้ำ)
+    const oldName = displayName(existing);
+    const docFilter = existing.phone?.trim()
+      ? { customerPhone: existing.phone.trim() }
+      : oldName ? { customerName: oldName, customerPhone: '' } : null;
+
+    if (docFilter) {
+      const newName = displayName(input);
+      const { FinancialDocument } = await import('@/models/FinancialDocument');
+      await FinancialDocument.updateMany(docFilter, {
+        $set: {
+          ...(newName ? { customerName: newName } : {}), // ไม่ล้างชื่อบนบิลถ้าลูกค้าไม่มีชื่อ
+          customerPhone:   input.phone,
+          customerEmail:   input.email,
+          customerAddress: input.address,
+          customerTaxId:   input.taxId,
+          customerBranch:  input.branch,
+        },
+      });
+      revalidatePath('/admin/documents');
+    }
+
     revalidatePath('/admin/customers');
     return { ok: true };
   } catch (err) {
