@@ -29,12 +29,14 @@ import { composeTaxBranch, parseTaxBranch, type TaxBranchType } from '@/lib/tax-
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
-const DOC_TYPES: { value: DocType; label: string; desc: string; icon: React.ReactNode }[] = [
+const DOC_TYPES: { value: DocType; label: string; desc: string; icon: React.ReactNode; editOnly?: boolean }[] = [
   { value: 'invoice',      label: 'ใบเสร็จ / ใบกำกับภาษี', desc: 'บันทึกการขายที่ชำระแล้ว',         icon: <Receipt  size={18} /> },
   { value: 'quote',        label: 'ใบเสนอราคา',              desc: 'เสนอราคาให้ลูกค้าก่อนตัดสินใจ',   icon: <FileEdit size={18} /> },
   { value: 'billing_note', label: 'ใบแจ้งหนี้',              desc: 'บิลเครดิต ออกก่อนรับเงิน รอลูกค้าชำระ (จ่ายเป็นงวดได้)', icon: <FileClock size={18} /> },
   { value: 'credit_note',  label: 'ใบลดหนี้',                desc: 'ลดยอดหนี้จากใบเสร็จที่ออกแล้ว',  icon: <FileMinus   size={18} /> },
   { value: 'booking_note', label: 'ใบจอง',                  desc: 'จองสินค้าล่วงหน้า รับมัดจำ นัดวันรับรถ', icon: <BookMarked size={18} /> },
+  // ใบรับชำระออกอัตโนมัติจากการรับชำระใบแจ้งหนี้ — สร้างเองไม่ได้ แต่เปิดแก้ไขได้
+  { value: 'payment_note', label: 'ใบรับชำระ',              desc: 'บันทึกการรับชำระของใบแจ้งหนี้',   icon: <Receipt size={18} />, editOnly: true },
 ];
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -563,7 +565,7 @@ export function NewDocumentClient({
           {isEditMode && <span className="text-[11px] text-slate-400 font-medium">(เปลี่ยนประเภทไม่ได้ตอนแก้ไข)</span>}
         </div>
         <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {DOC_TYPES.map(t => (
+          {DOC_TYPES.filter(t => !t.editOnly || isEditMode).map(t => (
             <button
               key={t.value}
               type="button"

@@ -91,7 +91,8 @@ export async function createDocument(
   }
 }
 
-// แก้ไขเอกสารที่มีอยู่แล้ว (ไม่เปลี่ยนประเภท/เลขที่เอกสาร) — เช็คสถานะซ้ำฝั่ง server เผื่อสถานะเปลี่ยนไปแล้วระหว่างที่เปิดฟอร์มอยู่
+// แก้ไขเอกสารที่มีอยู่แล้ว (ไม่เปลี่ยนประเภท/เลขที่เอกสาร) — แก้ได้ทุกสถานะ
+// เอกสารที่บันทึกรายรับ (Income) ไปแล้วจะถูก sync ยอดตามการแก้ไข ไม่สร้างซ้ำ
 export async function updateDocument(
   id: string,
   data: Omit<DocFormPayload, 'relatedDocId' | 'relatedDocNumber'>,
@@ -129,22 +130,70 @@ export async function updateDocument(
       dueDate:         data.dueDate ? new Date(data.dueDate) : null,
     };
 
-    if (existing.type === 'booking_note') {
+    // สถานะ booking_note ผูกกับมัดจำ — อัปเดตเฉพาะตอนยังอยู่ในขั้นจอง ไม่ย้อนสถานะที่เลยไปแล้ว
+    if (existing.type === 'booking_note' && ['reserved', 'deposit_paid'].includes(existing.status)) {
       update.status = data.depositAmount > 0 ? 'deposit_paid' : 'reserved';
     }
 
-    // invoice ที่แอดมินแก้วิธีชำระจาก "รอชำระ" เป็นวิธีอื่น ระหว่างแก้ไข ถือว่าจ่ายแล้ว ณ ตอนนี้ — ทำให้สถานะ + ออก Income เหมือนตอนสร้างใหม่
-    if (existing.type === 'invoice' && data.paymentMethod !== 'pending') {
-      update.status = 'paid';
-      update.paidAt = new Date();
+    if (existing.type === 'invoice') {
+      const wasPaid = existing.status === 'paid';
+      const nowPaid = data.paymentMethod !== 'pending';
       const { Income } = await import('@/models/Income');
-      await Income.create({
-        category: 'Sales',
-        description: `ชำระเงินบิล ${existing.docNumber} (${data.customerName})`,
-        amount: data.grandTotal,
-        incomeDate: existing.issuedAt ?? new Date(),
-        note: `อ้างอิงเอกสาร ${existing.docNumber}`,
-      });
+
+      if (!wasPaid && nowPaid) {
+        // แก้วิธีชำระจาก "รอชำระ" เป็นวิธีอื่น = ถือว่าจ่ายแล้ว ณ ตอนนี้ — ออก Income เหมือนตอนสร้างใหม่
+        update.status = 'paid';
+        update.paidAt = new Date();
+        await Income.create({
+          category: 'Sales',
+          description: `ชำระเงินบิล ${existing.docNumber} (${data.customerName})`,
+          amount: data.grandTotal,
+          incomeDate: existing.issuedAt ?? new Date(),
+          note: `อ้างอิงเอกสาร ${existing.docNumber}`,
+        });
+      } else if (wasPaid && !nowPaid) {
+        // ย้อนกลับเป็น "รอชำระ" — ถอนสถานะจ่ายแล้ว + ลบ Income ที่ออกไว้
+        update.status = 'unpaid';
+        update.paidAt = null;
+        await Income.deleteMany({ note: `อ้างอิงเอกสาร ${existing.docNumber}` });
+      } else if (wasPaid) {
+        // แก้บิลที่จ่ายแล้ว — sync ยอด Income เดิมให้ตรงยอดใหม่ ไม่สร้างซ้ำ
+        await Income.updateMany(
+          { note: `อ้างอิงเอกสาร ${existing.docNumber}` },
+          { $set: { amount: data.grandTotal, description: `ชำระเงินบิล ${existing.docNumber} (${data.customerName})` } },
+        );
+      }
+    }
+
+    // ใบแจ้งหนี้: ยอดรวมเปลี่ยน → คำนวณสถานะชำระครบ/บางส่วนใหม่จากใบรับชำระที่ผูกอยู่
+    if (existing.type === 'billing_note' && existing.status !== 'cancelled') {
+      const paidAgg = await FinancialDocument.aggregate([
+        { $match: { type: 'payment_note', relatedDocId: existing._id } },
+        { $group: { _id: null, total: { $sum: '$grandTotal' } } },
+      ]);
+      const totalPaid = paidAgg[0]?.total ?? 0;
+      update.status = totalPaid >= data.grandTotal - 0.01 ? 'paid' : totalPaid > 0 ? 'partial' : 'unpaid';
+    }
+
+    // ใบรับชำระ: sync Income ที่ออกไว้ + คำนวณสถานะใบแจ้งหนี้ที่ผูกอยู่ใหม่ตามยอดที่แก้
+    if (existing.type === 'payment_note') {
+      const { Income } = await import('@/models/Income');
+      await Income.updateMany(
+        { note: `อ้างอิงใบรับชำระ ${existing.docNumber}` },
+        { $set: { amount: data.grandTotal } },
+      );
+      if (existing.relatedDocId) {
+        const billing = await FinancialDocument.findById(existing.relatedDocId).lean() as { _id: unknown; grandTotal: number; status: string } | null;
+        if (billing && billing.status !== 'cancelled') {
+          const otherPaidAgg = await FinancialDocument.aggregate([
+            { $match: { type: 'payment_note', relatedDocId: billing._id, _id: { $ne: existing._id } } },
+            { $group: { _id: null, total: { $sum: '$grandTotal' } } },
+          ]);
+          const totalPaid = (otherPaidAgg[0]?.total ?? 0) + data.grandTotal;
+          const newStatus = totalPaid >= billing.grandTotal - 0.01 ? 'paid' : totalPaid > 0 ? 'partial' : 'unpaid';
+          await FinancialDocument.findByIdAndUpdate(billing._id, { status: newStatus });
+        }
+      }
     }
 
     await FinancialDocument.findByIdAndUpdate(id, update);
