@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Search, Phone, FileText, ChevronLeft, ChevronRight, Crown, UserCheck, Sparkles,
-  Download, Filter, Plus, X, Pencil, Trash2, Building2, Mail, MapPin, Hash, Car, Gauge, ChevronDown, Check,
+  Download, Filter, Plus, X, Pencil, Trash2, Building2, Mail, MapPin, Hash, Car, Gauge, ChevronDown, Check, Handshake,
 } from 'lucide-react';
 import type { UnifiedCustomerRow } from '@/lib/customers';
 import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput, type VehicleEntry } from '@/app/actions/customers';
@@ -45,6 +45,7 @@ const TAG_ICON: Record<string, React.ReactNode> = {
 
 const EMPTY_FORM: CustomerFormInput = {
   customerType: 'individual',
+  relationType: 'customer',
   firstName: '', lastName: '', companyName: '',
   phone: '', email: '', address: '', taxId: '', branch: '', carInfo: '',
   vehicles: [],
@@ -75,6 +76,7 @@ export function CustomerModal({
     initial
       ? {
           customerType: initial.customerType,
+          relationType: initial.relationType ?? 'customer',
           firstName: initial.firstName,
           lastName: initial.lastName,
           companyName: initial.companyName,
@@ -202,12 +204,31 @@ export function CustomerModal({
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="font-bold text-slate-900">{initial ? 'แก้ไขลูกค้า' : 'เพิ่มลูกค้าใหม่'}</h2>
+          <h2 className="font-bold text-slate-900">{initial ? 'แก้ไขลูกค้า/คู่ค้า' : 'เพิ่มลูกค้า/คู่ค้าใหม่'}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
         </div>
 
         <div className="p-6 space-y-4">
           {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+
+          {/* ลูกค้า / คู่ค้า */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">ประเภทความสัมพันธ์</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button" onClick={() => set('relationType', 'customer')}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-bold transition-colors ${form.relationType === 'customer' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 text-slate-500'}`}
+              >
+                <UserCheck size={14} /> ลูกค้า
+              </button>
+              <button
+                type="button" onClick={() => set('relationType', 'partner')}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-bold transition-colors ${form.relationType === 'partner' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-100 text-slate-500'}`}
+              >
+                <Handshake size={14} /> คู่ค้า
+              </button>
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -453,6 +474,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
   const [search, setSearch]       = useState('');
   const [tagFilter, setTagFilter] = useState('ทั้งหมด');
   const [sourceFilter, setSourceFilter] = useState('ทั้งหมด');
+  const [relationFilter, setRelationFilter] = useState('ทั้งหมด');
   const [page, setPage]           = useState(1);
   const [modal, setModal]         = useState<'add' | EditableCustomer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EditableCustomer | null>(null);
@@ -483,9 +505,12 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
       const matchSource = sourceFilter === 'ทั้งหมด'
         || (sourceFilter === 'ออนไลน์' && c.source === 'online')
         || (sourceFilter === 'หน้าร้าน' && c.source === 'walkin');
-      return matchSearch && matchTag && matchSource;
+      const matchRelation = relationFilter === 'ทั้งหมด'
+        || (relationFilter === 'ลูกค้า' && c.relationType !== 'partner')
+        || (relationFilter === 'คู่ค้า' && c.relationType === 'partner');
+      return matchSearch && matchTag && matchSource && matchRelation;
     });
-  }, [customers, search, tagFilter, sourceFilter]);
+  }, [customers, search, tagFilter, sourceFilter, relationFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -508,15 +533,15 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">ลูกค้าทั้งหมด</h1>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">ลูกค้า / คู่ค้า</h1>
           <p className="text-slate-500 mt-2 flex items-center gap-2">
-            จัดการและดูข้อมูลลูกค้าของคุณ <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span> {customers.length} รายการ
+            จัดการและดูข้อมูลลูกค้าและคู่ค้าของคุณ <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span> {customers.length} รายการ
           </p>
         </div>
         <div className="flex gap-3">
           <button onClick={() => setModal('add')} className="inline-flex items-center gap-2 px-3 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-700 transition-all shadow-sm">
             <Plus size={16} />
-            เพิ่มลูกค้า
+            เพิ่มลูกค้า/คู่ค้า
           </button>
           <button className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
             <Download size={16} />
@@ -573,6 +598,16 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
             />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg bg-white shadow-sm w-full md:w-auto">
+              <Filter size={14} className="text-slate-400" />
+              <select
+                value={relationFilter}
+                onChange={e => { setRelationFilter(e.target.value); setPage(1); }}
+                className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer"
+              >
+                {['ทั้งหมด', 'ลูกค้า', 'คู่ค้า'].map(t => <option key={t} value={t}>ประเภท: {t}</option>)}
+              </select>
+            </div>
             <div className="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg bg-white shadow-sm w-full md:w-auto">
               <Filter size={14} className="text-slate-400" />
               <select
@@ -642,6 +677,11 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
                         )}
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">#{(page - 1) * PAGE_SIZE + i + 1}</p>
+                          {c.relationType === 'partner' && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-100">
+                              <Handshake size={9} /> คู่ค้า
+                            </span>
+                          )}
                           {c.vehicles.length > 0 && (
                             <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-100">
                               <Car size={9} /> {c.vehicles.length} คัน

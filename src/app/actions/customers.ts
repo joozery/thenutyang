@@ -18,6 +18,7 @@ type ActionResult = { error?: string; ok?: boolean; customer?: SavedCustomer };
 
 export type CustomerFormInput = {
   customerType: 'individual' | 'corporate';
+  relationType: 'customer' | 'partner';
   firstName: string;
   lastName: string;
   companyName: string;

@@ -84,6 +84,7 @@ export function CustomerDetailClient({ data, carBrands = [], carModels = [] }: {
   const editableCustomer: UnifiedCustomerRow & { id: string } = {
     id: customer.id,
     customerType: customer.customerType,
+    relationType: customer.relationType,
     name: customer.displayName,
     firstName: customer.firstName,
     lastName: customer.lastName,
@@ -126,6 +127,11 @@ export function CustomerDetailClient({ data, carBrands = [], carModels = [] }: {
               {customer.customerType === 'corporate' && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 border border-purple-200">
                   <Building2 size={10} /> นิติบุคคล
+                </span>
+              )}
+              {customer.relationType === 'partner' && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200">
+                  คู่ค้า
                 </span>
               )}
             </div>

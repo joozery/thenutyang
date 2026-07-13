@@ -7,6 +7,7 @@ import type { VehicleEntry } from '@/models/Customer';
 export type CustomerDetailData = {
   id: string;
   customerType: 'individual' | 'corporate';
+  relationType: 'customer' | 'partner';
   firstName: string;
   lastName: string;
   companyName: string;
@@ -86,6 +87,7 @@ export async function getCustomerDetail(id: string): Promise<CustomerDetailResul
   const customer: CustomerDetailData = {
     id:           String(d._id),
     customerType: (d.customerType as 'individual' | 'corporate') ?? 'individual',
+    relationType: (d.relationType as 'customer' | 'partner') ?? 'customer',
     firstName,
     lastName,
     companyName,

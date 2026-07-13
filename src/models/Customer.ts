@@ -12,6 +12,8 @@ export type VehicleEntry = {
 export interface ICustomer {
   lineUserId?: string;
   customerType: 'individual' | 'corporate';
+  // ความสัมพันธ์ทางธุรกิจ — ลูกค้า (customer) หรือคู่ค้า (partner)
+  relationType: 'customer' | 'partner';
   firstName: string;
   lastName: string;
   companyName: string;
@@ -40,6 +42,7 @@ const vehicleSchema = new Schema<VehicleEntry>({
 const CustomerSchema = new Schema<ICustomer>({
   lineUserId:   { type: String },
   customerType: { type: String, enum: ['individual', 'corporate'], default: 'individual' },
+  relationType: { type: String, enum: ['customer', 'partner'], default: 'customer' },
   firstName:    { type: String, default: '' },
   lastName:     { type: String, default: '' },
   companyName:  { type: String, default: '' },

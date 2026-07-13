@@ -20,6 +20,7 @@ export type CustomerRow = {
 export type UnifiedCustomerRow = {
   id: string | null;        // Customer directory _id, null = booking-only (no directory record)
   customerType: 'individual' | 'corporate';
+  relationType: 'customer' | 'partner';
   name: string;
   firstName: string;
   lastName: string;
@@ -54,6 +55,7 @@ export function mergeCustomerSources(
     byPhone.set(phoneKey(b.phone), {
       id: null,
       customerType: 'individual',
+      relationType: 'customer',
       name: b.name,
       firstName: '', lastName: '', companyName: '',
       phone: b.phone,
@@ -75,6 +77,7 @@ export function mergeCustomerSources(
     const merged: UnifiedCustomerRow = {
       id: d.id,
       customerType: d.customerType,
+      relationType: d.relationType,
       name: d.displayName,
       firstName: d.firstName,
       lastName: d.lastName,

@@ -5,6 +5,7 @@ import type { VehicleEntry } from '@/models/Customer';
 export type CustomerDirectoryRow = {
   id: string;
   customerType: 'individual' | 'corporate';
+  relationType: 'customer' | 'partner';
   displayName: string;
   firstName: string;
   lastName: string;
@@ -34,6 +35,7 @@ export async function getCustomerDirectory(): Promise<CustomerDirectoryRow[]> {
   return docs.map((d) => ({
     id: String(d._id),
     customerType: (d.customerType as 'individual' | 'corporate') ?? 'individual',
+    relationType: (d.relationType as 'customer' | 'partner') ?? 'customer',
     displayName: getDisplayName(d),
     firstName: d.firstName ?? '',
     lastName: d.lastName ?? '',
