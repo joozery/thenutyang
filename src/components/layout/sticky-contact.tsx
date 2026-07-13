@@ -21,8 +21,8 @@ export function StickyContact({
     {
       key: 'phone1',
       href: `tel:${phoneMain.replace(/[-\s]/g, '')}`,
-      bg: 'bg-slate-900',
-      icon: <PhoneIcon className="text-yellow-400" />,
+      bg: 'bg-pink-500',
+      icon: <PhoneIcon className="text-white" />,
       label: phoneMainLabel || 'โทร',
       value: phoneMain,
     },
