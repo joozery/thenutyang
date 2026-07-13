@@ -44,6 +44,7 @@ export async function updateSupplier(
     await connectDB();
     await Supplier.findByIdAndUpdate(id, input);
     revalidatePath('/admin/purchasing');
+    revalidatePath('/admin/customers');
     return {};
   } catch (e) {
     console.error('[updateSupplier]', e);

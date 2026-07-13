@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { UnifiedCustomerRow } from '@/lib/customers';
 import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput, type VehicleEntry } from '@/app/actions/customers';
+import { updateSupplier } from '@/app/actions/suppliers';
 import { createCarBrand, createCarModel } from '@/app/actions/car-data';
 import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
@@ -470,6 +471,92 @@ export function CustomerModal({
   );
 }
 
+// ── Supplier (คู่ค้าจากหน้าจัดซื้อ) Edit Modal ────────────────────────────────
+// แก้ที่ข้อมูลซัพพลายเออร์ตัวจริง — หน้าจัดซื้อ/ใบ PO ใหม่จะใช้ข้อมูลที่แก้นี้ทันที
+
+function SupplierEditModal({ row, onClose, onSaved }: {
+  row: UnifiedCustomerRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    name:    row.name,
+    phone:   row.phone,
+    email:   row.email,
+    taxId:   row.taxId,
+    address: row.address,
+    contact: row.supplierContact ?? '',
+  });
+  const [error, setError] = useState('');
+  const [isPending, startTransition] = useTransition();
+
+  const inputCls = 'w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-500/10 transition-colors placeholder:text-slate-300';
+
+  const handleSave = () => {
+    if (!form.name.trim()) { setError('กรุณากรอกชื่อคู่ค้า'); return; }
+    startTransition(async () => {
+      const res = await updateSupplier(row.supplierId!, form);
+      if (res.error) { setError(res.error); return; }
+      onSaved();
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Handshake size={16} className="text-indigo-500" />
+            <h2 className="font-bold text-slate-900">แก้ไขคู่ค้า (ซัพพลายเออร์)</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={16} /></button>
+        </div>
+        <div className="p-5 space-y-3.5">
+          {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">ชื่อบริษัท / คู่ค้า <span className="text-green-500">*</span></label>
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">เบอร์โทร</label>
+              <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">ผู้ติดต่อ</label>
+              <input value={form.contact} onChange={e => setForm(f => ({ ...f, contact: e.target.value }))} className={inputCls} placeholder="ชื่อเซลล์/ผู้ประสานงาน" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">อีเมล</label>
+              <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">เลขผู้เสียภาษี</label>
+              <input value={form.taxId} onChange={e => setForm(f => ({ ...f, taxId: e.target.value }))} className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">ที่อยู่</label>
+            <textarea value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} rows={2} className={inputCls} />
+          </div>
+          <p className="text-[11px] text-slate-400">
+            ข้อมูลนี้เป็นตัวเดียวกับซัพพลายเออร์ในหน้าจัดซื้อ — ใบ PO ที่เปิดใหม่จะใช้ข้อมูลล่าสุด ส่วนใบ PO เดิมยังเก็บข้อมูล ณ วันที่เปิดใบไว้ตามหลักเอกสาร
+          </p>
+        </div>
+        <div className="p-5 border-t border-slate-100 flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">ยกเลิก</button>
+          <button onClick={handleSave} disabled={isPending} className="px-5 py-2 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50">
+            {isPending ? 'กำลังบันทึก...' : 'บันทึก'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CustomersClient({ customers, carBrands = [], carModels = [] }: { customers: UnifiedCustomerRow[]; carBrands?: CarBrandRow[]; carModels?: CarModelRow[] }) {
   const [search, setSearch]       = useState('');
   const [tagFilter, setTagFilter] = useState('ทั้งหมด');
@@ -480,6 +567,8 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
   const [deleteTarget, setDeleteTarget] = useState<EditableCustomer | null>(null);
   // popup รายการใบสั่งซื้อ (PO) ของคู่ค้า
   const [poTarget, setPoTarget]   = useState<UnifiedCustomerRow | null>(null);
+  // แก้ไขคู่ค้าที่มาจากหน้าจัดซื้อ (ข้อมูล Supplier ตัวจริง)
+  const [supplierEditTarget, setSupplierEditTarget] = useState<UnifiedCustomerRow | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -753,12 +842,16 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {c.id && (
+                    {c.id ? (
                       <div className="flex items-center gap-1 justify-end">
                         <button onClick={() => setModal(c as EditableCustomer)} className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"><Pencil size={14} /></button>
                         <button onClick={() => setDeleteTarget(c as EditableCustomer)} className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"><Trash2 size={14} /></button>
                       </div>
-                    )}
+                    ) : c.supplierId ? (
+                      <div className="flex items-center gap-1 justify-end">
+                        <button onClick={() => setSupplierEditTarget(c)} title="แก้ไขข้อมูลคู่ค้า (ซัพพลายเออร์)" className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100"><Pencil size={14} /></button>
+                      </div>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -800,6 +893,14 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
           carModels={carModels}
           onClose={() => setModal(null)}
           onSaved={() => setModal(null)}
+        />
+      )}
+
+      {supplierEditTarget && (
+        <SupplierEditModal
+          row={supplierEditTarget}
+          onClose={() => setSupplierEditTarget(null)}
+          onSaved={() => { setSupplierEditTarget(null); router.refresh(); }}
         />
       )}
 
