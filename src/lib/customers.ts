@@ -42,9 +42,63 @@ export type UnifiedCustomerRow = {
   source: 'online' | 'walkin';
 };
 
+// ซัพพลายเออร์จากหน้าจัดซื้อ → แถว "คู่ค้า" ในหน้าลูกค้า (อ่านอย่างเดียว — แก้ข้อมูลที่หน้าจัดซื้อ)
+// จำนวนบิล/ยอดรวม = ใบสั่งซื้อที่ไม่ถูกยกเลิกของซัพพลายเออร์รายนั้น
+export async function getSupplierPartners(): Promise<UnifiedCustomerRow[]> {
+  await connectDB();
+  const { Supplier } = await import('@/models/Supplier');
+  const { PurchaseOrder } = await import('@/models/PurchaseOrder');
+
+  const [suppliers, poStats] = await Promise.all([
+    Supplier.find({}).sort({ name: 1 }).lean(),
+    PurchaseOrder.aggregate([
+      { $match: { status: { $ne: 'cancelled' } } },
+      {
+        $group: {
+          _id: '$supplierId',
+          bills: { $sum: 1 },
+          spent: { $sum: '$grandTotal' },
+          lastOrder: { $max: '$createdAt' },
+        },
+      },
+    ]),
+  ]);
+
+  const statsById = new Map(poStats.filter(s => s._id).map(s => [String(s._id), s]));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return suppliers.map((s: any) => {
+    const stat = statsById.get(String(s._id));
+    return {
+      id: null,
+      customerType: 'corporate' as const,
+      relationType: 'partner' as const,
+      name: s.name ?? '',
+      firstName: '', lastName: '',
+      companyName: s.name ?? '',
+      phone: s.phone ?? '',
+      email: s.email ?? '',
+      address: s.address ?? '',
+      taxId: s.taxId ?? '',
+      branch: '',
+      carInfo: '',
+      vehicles: [],
+      note: s.contact ? `ผู้ติดต่อ: ${s.contact}` : '',
+      lineUserId: undefined,
+      cars: [],
+      totalBills: stat?.bills ?? 0,
+      totalSpent: stat?.spent ?? 0,
+      lastVisit: stat?.lastOrder instanceof Date ? stat.lastOrder.toISOString() : '',
+      tag: 'ปกติ' as const,
+      source: 'walkin' as const,
+    };
+  });
+}
+
 export function mergeCustomerSources(
   bookingRows: CustomerRow[],
-  directoryRows: CustomerDirectoryRow[]
+  directoryRows: CustomerDirectoryRow[],
+  supplierRows: UnifiedCustomerRow[] = []
 ): UnifiedCustomerRow[] {
   const byPhone = new Map<string, UnifiedCustomerRow>();
   const noPhone: UnifiedCustomerRow[] = [];
@@ -102,6 +156,20 @@ export function mergeCustomerSources(
     };
     if (d.phone) byPhone.set(phoneKey(d.phone), merged);
     else noPhone.push(merged);
+  }
+
+  // ซัพพลายเออร์จากหน้าจัดซื้อ — กันซ้ำกับรายชื่อที่มีอยู่แล้ว ทั้งจากเบอร์โทรและชื่อ
+  // (เช่น เคยกดเพิ่มเป็นคู่ค้าเองในหน้าลูกค้า หรือเบอร์ตรงกับลูกค้าเดิม)
+  const nameKey = (n: string) => n.trim().toLowerCase().replace(/\s+/g, '');
+  const existingNames = new Set(
+    [...byPhone.values(), ...noPhone].flatMap(r => [nameKey(r.name), nameKey(r.companyName)]).filter(Boolean)
+  );
+  for (const s of supplierRows) {
+    const pk = phoneKey(s.phone);
+    if (s.phone && byPhone.has(pk)) continue;
+    if (existingNames.has(nameKey(s.name))) continue;
+    if (s.phone) byPhone.set(pk, s);
+    else noPhone.push(s);
   }
 
   return [...byPhone.values(), ...noPhone].sort((a, b) => b.totalSpent - a.totalSpent);
