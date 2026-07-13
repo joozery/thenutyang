@@ -17,6 +17,15 @@ export type CustomerRow = {
   tag: 'VIP' | 'ปกติ' | 'ใหม่';
 };
 
+// ใบสั่งซื้อของคู่ค้า (ซัพพลายเออร์) — แสดงใน popup ที่หน้าลูกค้า
+export type PartnerPO = {
+  id:         string;
+  poNumber:   string;
+  orderDate:  string;
+  status:     string; // draft | pending | received
+  grandTotal: number;
+};
+
 export type UnifiedCustomerRow = {
   id: string | null;        // Customer directory _id, null = booking-only (no directory record)
   customerType: 'individual' | 'corporate';
@@ -40,6 +49,7 @@ export type UnifiedCustomerRow = {
   lastVisit: string;
   tag: 'VIP' | 'ปกติ' | 'ใหม่';
   source: 'online' | 'walkin';
+  partnerPos?: PartnerPO[];
 };
 
 // ซัพพลายเออร์จากหน้าจัดซื้อ → แถว "คู่ค้า" ในหน้าลูกค้า (อ่านอย่างเดียว — แก้ข้อมูลที่หน้าจัดซื้อ)
@@ -49,26 +59,37 @@ export async function getSupplierPartners(): Promise<UnifiedCustomerRow[]> {
   const { Supplier } = await import('@/models/Supplier');
   const { PurchaseOrder } = await import('@/models/PurchaseOrder');
 
-  const [suppliers, poStats] = await Promise.all([
+  const [suppliers, poDocs] = await Promise.all([
     Supplier.find({}).sort({ name: 1 }).lean(),
-    PurchaseOrder.aggregate([
-      { $match: { status: { $ne: 'cancelled' } } },
-      {
-        $group: {
-          _id: '$supplierId',
-          bills: { $sum: 1 },
-          spent: { $sum: '$grandTotal' },
-          lastOrder: { $max: '$createdAt' },
-        },
-      },
-    ]),
+    PurchaseOrder.find({ status: { $ne: 'cancelled' } })
+      .select('supplierId poNumber status grandTotal createdAt')
+      .sort({ createdAt: -1 })
+      .lean(),
   ]);
 
-  const statsById = new Map(poStats.filter(s => s._id).map(s => [String(s._id), s]));
+  // จัดกลุ่ม PO ตามซัพพลายเออร์ — ใช้ทั้งนับยอดรวมและแสดงรายการใน popup
+  const posBySupplier = new Map<string, PartnerPO[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const p of poDocs as any[]) {
+    if (!p.supplierId) continue;
+    const key = String(p.supplierId);
+    const list = posBySupplier.get(key) ?? [];
+    list.push({
+      id:         String(p._id),
+      poNumber:   p.poNumber ?? '',
+      orderDate:  p.createdAt instanceof Date ? p.createdAt.toISOString() : '',
+      status:     p.status ?? 'pending',
+      grandTotal: p.grandTotal ?? 0,
+    });
+    posBySupplier.set(key, list);
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return suppliers.map((s: any) => {
-    const stat = statsById.get(String(s._id));
+    const pos = posBySupplier.get(String(s._id)) ?? [];
+    const stat = pos.length
+      ? { bills: pos.length, spent: pos.reduce((sum, p) => sum + p.grandTotal, 0), lastOrder: new Date(pos[0].orderDate) }
+      : undefined;
     return {
       id: null,
       customerType: 'corporate' as const,
@@ -91,6 +112,7 @@ export async function getSupplierPartners(): Promise<UnifiedCustomerRow[]> {
       lastVisit: stat?.lastOrder instanceof Date ? stat.lastOrder.toISOString() : '',
       tag: 'ปกติ' as const,
       source: 'walkin' as const,
+      partnerPos: pos,
     };
   });
 }
@@ -161,13 +183,20 @@ export function mergeCustomerSources(
   // ซัพพลายเออร์จากหน้าจัดซื้อ — กันซ้ำกับรายชื่อที่มีอยู่แล้ว ทั้งจากเบอร์โทรและชื่อ
   // (เช่น เคยกดเพิ่มเป็นคู่ค้าเองในหน้าลูกค้า หรือเบอร์ตรงกับลูกค้าเดิม)
   const nameKey = (n: string) => n.trim().toLowerCase().replace(/\s+/g, '');
-  const existingNames = new Set(
-    [...byPhone.values(), ...noPhone].flatMap(r => [nameKey(r.name), nameKey(r.companyName)]).filter(Boolean)
-  );
+  const allRows = [...byPhone.values(), ...noPhone];
+  const byName = new Map<string, UnifiedCustomerRow>();
+  for (const r of allRows) {
+    if (nameKey(r.name)) byName.set(nameKey(r.name), r);
+    if (nameKey(r.companyName)) byName.set(nameKey(r.companyName), r);
+  }
   for (const s of supplierRows) {
     const pk = phoneKey(s.phone);
-    if (s.phone && byPhone.has(pk)) continue;
-    if (existingNames.has(nameKey(s.name))) continue;
+    const existing = (s.phone && byPhone.get(pk)) || byName.get(nameKey(s.name));
+    if (existing) {
+      // ซ้ำกับรายชื่อเดิม — ไม่เพิ่มแถวใหม่ แต่แนบรายการ PO ให้แถวเดิมกดดูได้
+      if (s.partnerPos?.length) existing.partnerPos = [...(existing.partnerPos ?? []), ...s.partnerPos];
+      continue;
+    }
     if (s.phone) byPhone.set(pk, s);
     else noPhone.push(s);
   }

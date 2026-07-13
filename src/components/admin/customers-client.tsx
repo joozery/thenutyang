@@ -478,6 +478,8 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
   const [page, setPage]           = useState(1);
   const [modal, setModal]         = useState<'add' | EditableCustomer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EditableCustomer | null>(null);
+  // popup รายการใบสั่งซื้อ (PO) ของคู่ค้า
+  const [poTarget, setPoTarget]   = useState<UnifiedCustomerRow | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -682,6 +684,16 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
                               <Handshake size={9} /> คู่ค้า
                             </span>
                           )}
+                          {(c.partnerPos?.length ?? 0) > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setPoTarget(c)}
+                              title="ดูใบสั่งซื้อทั้งหมดของคู่ค้ารายนี้"
+                              className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                            >
+                              <FileText size={9} /> {c.partnerPos!.length} ใบ PO
+                            </button>
+                          )}
                           {c.vehicles.length > 0 && (
                             <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full border border-blue-100">
                               <Car size={9} /> {c.vehicles.length} คัน
@@ -776,6 +788,50 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
           onClose={() => setModal(null)}
           onSaved={() => setModal(null)}
         />
+      )}
+
+      {poTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setPoTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <div>
+                <h2 className="font-black text-slate-900">{poTarget.name}</h2>
+                <p className="text-xs text-slate-400 mt-0.5">ใบสั่งซื้อทั้งหมด {poTarget.partnerPos?.length ?? 0} ใบ · รวม ฿{(poTarget.partnerPos ?? []).reduce((s, p) => s + p.grandTotal, 0).toLocaleString()}</p>
+              </div>
+              <button onClick={() => setPoTarget(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><X size={18} /></button>
+            </div>
+            <div className="overflow-y-auto flex-1 divide-y divide-slate-50">
+              {(poTarget.partnerPos ?? []).map(po => (
+                <Link
+                  key={po.id}
+                  href={`/admin/purchasing/${po.id}/edit`}
+                  className="flex items-center justify-between px-5 py-3.5 hover:bg-green-50/50 transition-colors group"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 group-hover:text-green-700 transition-colors">{po.poNumber}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {po.orderDate ? new Date(po.orderDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      po.status === 'received' ? 'bg-emerald-50 text-emerald-600'
+                      : po.status === 'pending' ? 'bg-amber-50 text-amber-600'
+                      : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {po.status === 'received' ? 'รับสินค้าแล้ว' : po.status === 'pending' ? 'รอรับสินค้า' : 'ร่าง'}
+                    </span>
+                    <span className="text-sm font-bold text-slate-800">฿{po.grandTotal.toLocaleString()}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="p-4 border-t border-slate-100 flex justify-end">
+              <button onClick={() => setPoTarget(null)} className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50">ปิด</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {deleteTarget && (
