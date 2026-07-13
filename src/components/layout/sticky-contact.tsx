@@ -21,7 +21,7 @@ export function StickyContact({
     {
       key: 'phone1',
       href: `tel:${phoneMain.replace(/[-\s]/g, '')}`,
-      bg: 'bg-pink-500',
+      color: '#ec4899', // ชมพู
       icon: <PhoneIcon className="text-white" />,
       label: phoneMainLabel || 'โทร',
       value: phoneMain,
@@ -29,7 +29,7 @@ export function StickyContact({
     {
       key: 'line',
       href: lineUrl,
-      bg: 'bg-[#06C755]',
+      color: '#06C755',
       icon: <LineIcon />,
       label: 'LINE',
       value: lineLabel || lineId,
@@ -45,7 +45,8 @@ export function StickyContact({
           href={c.href}
           target={c.external ? '_blank' : undefined}
           rel={c.external ? 'noopener noreferrer' : undefined}
-          className={`flex items-center gap-3 ${c.bg} text-white rounded-2xl px-4 h-12 shadow-xl hover:scale-105 active:scale-95 transition-transform duration-200`}
+          style={{ backgroundColor: c.color }}
+          className="flex items-center gap-3 text-white rounded-2xl px-4 h-12 shadow-xl hover:scale-105 active:scale-95 transition-transform duration-200"
         >
           <div className="w-6 h-6 flex items-center justify-center shrink-0">{c.icon}</div>
           <div className="flex flex-col leading-tight">
