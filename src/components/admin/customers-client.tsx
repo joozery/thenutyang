@@ -519,7 +519,11 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
 
   const vipCount   = customers.filter(c => c.tag === 'VIP').length;
   const newCount   = customers.filter(c => c.tag === 'ใหม่').length;
-  const totalSpent = customers.reduce((s, c) => s + c.totalSpent, 0);
+  // แยกยอดลูกค้า (เงินเข้า — ยอดขาย) ออกจากคู่ค้า (เงินออก — ยอดสั่งซื้อ) ไม่เอามาบวกรวมกัน
+  const customerRows  = customers.filter(c => c.relationType !== 'partner');
+  const partnerRows   = customers.filter(c => c.relationType === 'partner');
+  const customerSpent = customerRows.reduce((s, c) => s + c.totalSpent, 0);
+  const partnerSpent  = partnerRows.reduce((s, c) => s + c.totalSpent, 0);
 
   function handleDelete() {
     if (!deleteTarget) return;
@@ -557,16 +561,21 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
         <div className="bg-gradient-to-br from-[#00B900] to-green-700 p-5 rounded-lg shadow-md text-white relative overflow-hidden">
           <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
           <div className="relative z-10">
-            <p className="text-green-100 font-medium text-xs mb-1">ยอดใช้จ่ายรวมทั้งหมด</p>
-            <p className="text-2xl font-black drop-shadow-sm tracking-tight">฿{totalSpent.toLocaleString()}</p>
-            <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
-              <span>จากทุก booking</span>
+            <p className="text-green-100 font-medium text-xs mb-1">ยอดขายจากลูกค้า</p>
+            <p className="text-2xl font-black drop-shadow-sm tracking-tight">฿{customerSpent.toLocaleString()}</p>
+            <div className="mt-3 flex items-center justify-between gap-2 text-[10px]">
+              <span className="inline-flex items-center gap-1.5 bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                ลูกค้า {customerRows.length.toLocaleString()} ราย
+              </span>
+              <span className="inline-flex items-center gap-1 bg-black/15 px-2 py-0.5 rounded-full backdrop-blur-sm" title="ยอดสั่งซื้อจากซัพพลายเออร์ — เงินออก ไม่ถูกนำมารวมกับยอดขาย">
+                <Handshake size={9} /> ยอดซื้อคู่ค้า ฿{partnerSpent.toLocaleString()}
+              </span>
             </div>
           </div>
         </div>
 
         {[
-          { label: 'ลูกค้าทั้งหมด', value: customers.length.toString(), sub: 'ในระบบ', icon: <UserCheck className="w-5 h-5 text-blue-500" />, bg: 'bg-blue-50' },
+          { label: 'ลูกค้าทั้งหมด', value: customerRows.length.toString(), sub: `คู่ค้า ${partnerRows.length} ราย`, icon: <UserCheck className="w-5 h-5 text-blue-500" />, bg: 'bg-blue-50' },
           { label: 'ลูกค้า VIP',    value: vipCount.toString(),         sub: 'ยอดซื้อ ≥ 50,000', icon: <Crown className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50' },
           { label: 'ลูกค้าใหม่ (เดือนนี้)', value: newCount.toString(),  sub: 'จองครั้งแรก', icon: <Sparkles className="w-5 h-5 text-green-500" />, bg: 'bg-green-50' },
         ].map(s => (
