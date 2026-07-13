@@ -202,50 +202,6 @@ export async function receivePO(id: string): Promise<{
   }
 }
 
-// ดึงรายการสินค้าจากใบ INV/เอกสารการเงิน มาเป็นบรรทัดใน PO (เคสขายก่อน–ของหมด–เปิด PO ตาม)
-// ได้เฉพาะบรรทัดที่ผูก ID สินค้าไว้ตอนออกใบ — ราคาใช้ราคาทุนของสินค้า ไม่ใช่ราคาขายในใบ
-export async function lookupInvoiceItems(refNo: string): Promise<{
-  error?: string;
-  docNumber?: string;
-  customerName?: string;
-  items?: { productId: string; productName: string; qty: number; unitPrice: number; year: string }[];
-  skipped?: string[];
-}> {
-  try {
-    await connectDB();
-    const { FinancialDocument } = await import('@/models/FinancialDocument');
-    const { Product } = await import('@/models/Product');
-    const doc = await FinancialDocument.findOne({ docNumber: new RegExp(`^${refNo.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') })
-      .select('docNumber customerName status items').lean() as {
-        docNumber: string; customerName: string; status: string;
-        items: { productId?: unknown; description: string; qty: number }[];
-      } | null;
-    if (!doc) return { error: 'ไม่พบเอกสารเลขนี้' };
-    if (doc.status === 'cancelled') return { error: `เอกสาร ${doc.docNumber} ถูกยกเลิกแล้ว` };
-
-    const linked = doc.items.filter(i => i.productId);
-    const skipped = doc.items.filter(i => !i.productId).map(i => i.description);
-    if (linked.length === 0) return { error: 'ใบนี้ไม่มีรายการที่ผูกสินค้าในคลังไว้ — ต้องเลือกสินค้าเอง' };
-
-    const items: { productId: string; productName: string; qty: number; unitPrice: number; year: string }[] = [];
-    for (const it of linked) {
-      const p = await Product.findById(it.productId).lean() as { brand?: string; model?: string; size?: string; costPrice?: number; year?: string } | null;
-      items.push({
-        productId:   String(it.productId),
-        productName: p ? `${p.brand ?? ''} ${p.model ?? ''} ${p.size ?? ''}`.trim() : it.description,
-        qty:         it.qty ?? 1,
-        unitPrice:   p?.costPrice ?? 0,
-        year:        p?.year ?? '',
-      });
-    }
-
-    return { docNumber: doc.docNumber, customerName: doc.customerName ?? '', items, skipped: skipped.length ? skipped : undefined };
-  } catch (err) {
-    console.error('[lookupInvoiceItems]', err);
-    return { error: 'ค้นหาเอกสารไม่สำเร็จ' };
-  }
-}
-
 // เบิกสินค้าออกให้บิลที่ PO อ้างอิงถึง (เคสขายก่อน–ของหมด–สั่ง PO ทีหลัง)
 // เรียกหลังรับสินค้าแล้ว: ตัดสต๊อกตามรายการใน PO และลงประวัติอ้างอิงเลขใบ INV
 export async function disbursePOToInvoice(id: string): Promise<{ error?: string; warnings?: string[] }> {

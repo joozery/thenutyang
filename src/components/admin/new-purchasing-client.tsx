@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { SupplierRow } from '@/lib/purchasing';
 import type { ProductRow } from '@/lib/products';
-import { createPO, saveDraftPO, updatePO, lookupInvoiceItems } from '@/app/actions/purchasing';
+import { createPO, saveDraftPO, updatePO } from '@/app/actions/purchasing';
 import type { POFormPayload } from '@/app/actions/purchasing';
 import type { PORow } from '@/lib/purchasing';
 import { createSupplier, type SupplierFormInput } from '@/app/actions/suppliers';
@@ -214,31 +214,6 @@ export function NewPurchasingClient({
 
   // terms
   const [reference,       setReference]       = useState(initialData?.reference ?? '');
-  const [refLookupPending, setRefLookupPending] = useState(false);
-  const [refMsg, setRefMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  // ดึงรายการสินค้าจากใบ INV ที่พิมพ์ในช่องอ้างอิง มาเติมเป็นบรรทัดสั่งซื้อ
-  async function handlePullFromInvoice() {
-    if (!reference.trim()) return;
-    setRefLookupPending(true);
-    setRefMsg(null);
-    const res = await lookupInvoiceItems(reference);
-    setRefLookupPending(false);
-    if (res.error || !res.items) { setRefMsg({ ok: false, text: res.error ?? 'ดึงรายการไม่สำเร็จ' }); return; }
-    setReference(res.docNumber ?? reference);
-    const pulled: LineItem[] = res.items.map((it, i) => ({
-      key: Date.now() + i,
-      productId: it.productId, productName: it.productName,
-      unit: 'เส้น', qty: it.qty, unitPrice: it.unitPrice,
-      discount: 0, discountType: 'pct' as const, year: it.year,
-    }));
-    // แทนที่บรรทัดว่าง เก็บบรรทัดที่กรอกไว้แล้ว
-    setLines(prev => [...prev.filter(l => l.productName.trim()), ...pulled]);
-    setRefMsg({
-      ok: true,
-      text: `ดึง ${pulled.length} รายการจาก ${res.docNumber}${res.customerName ? ` (ลูกค้า: ${res.customerName})` : ''} — ราคาใช้ราคาทุนของสินค้า${res.skipped?.length ? ` · ข้าม ${res.skipped.length} รายการที่ไม่ได้ผูกสินค้า: ${res.skipped.join(', ')}` : ''}`,
-    });
-  }
   const [paymentTerm,     setPaymentTerm]     = useState(initialData?.paymentTerm ?? '30');
   const [paymentDate,     setPaymentDate]     = useState('');
   const [paymentMethod,   setPaymentMethod]   = useState(initialData?.paymentMethod ?? 'transfer');
@@ -479,26 +454,12 @@ export function NewPurchasingClient({
               </div>
               <div>
                 <Label>เลขที่อ้างอิง</Label>
-                <div className="flex gap-2">
-                  <input
-                    value={reference}
-                    onChange={e => { setReference(e.target.value); setRefMsg(null); }}
-                    placeholder="เช่น INV-2025-001, QT-0045"
-                    className={inputCls}
-                  />
-                  <button
-                    type="button"
-                    onClick={handlePullFromInvoice}
-                    disabled={!reference.trim() || refLookupPending}
-                    title="ดึงรายการสินค้าจากใบ INV เลขนี้มาเป็นบรรทัดสั่งซื้อ"
-                    className="shrink-0 px-3 py-2 rounded-xl border border-green-600 text-xs font-bold text-green-700 hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
-                  >
-                    {refLookupPending ? 'กำลังค้นหา...' : 'ดึงจาก INV'}
-                  </button>
-                </div>
-                {refMsg && (
-                  <p className={`text-xs mt-1.5 ${refMsg.ok ? 'text-emerald-600' : 'text-amber-600'}`}>{refMsg.text}</p>
-                )}
+                <input
+                  value={reference}
+                  onChange={e => setReference(e.target.value)}
+                  placeholder="เช่น INV-2025-001, QT-0045"
+                  className={inputCls}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
