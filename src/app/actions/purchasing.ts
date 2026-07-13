@@ -202,6 +202,42 @@ export async function receivePO(id: string): Promise<{
   }
 }
 
+// ลบใบสั่งซื้อถาวร — ได้ทุกสถานะ: ถอนผลกระทบสต๊อกและประวัติคลังของใบนี้ + ลบรายจ่ายที่ผูกอยู่
+export async function deletePO(id: string): Promise<{ error?: string }> {
+  try {
+    await connectDB();
+    const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; expenseId?: unknown } | null;
+    if (!po) return { error: 'ไม่พบใบสั่งซื้อ' };
+
+    // มีใบคืนสินค้าผูกอยู่ — ลบแล้วข้อมูลคืนของจะลอย ให้ใช้ยกเลิกแทน
+    const { StockReturn } = await import('@/models/StockReturn');
+    const hasReturn = await StockReturn.findOne({ poId: id }).lean();
+    if (hasReturn) return { error: `${po.poNumber} มีใบคืนสินค้าผูกอยู่ — ลบไม่ได้ ให้ใช้ "ยกเลิก" แทน` };
+
+    // ถอนผลสต๊อกจากประวัติของใบนี้ (รับเข้า → หักคืน, คืนจากยกเลิก → บวกคืน) แล้วลบประวัติทิ้ง
+    // ประวัติเบิกออกให้บิลขาย (refNo เป็นเลข INV) ไม่ถูกแตะ — การขายยังเกิดขึ้นจริง
+    const { Product } = await import('@/models/Product');
+    const { StockMovement } = await import('@/models/StockMovement');
+    const moves = await StockMovement.find({ refNo: po.poNumber }).lean() as { _id: unknown; productId?: unknown; type: string; qty: number }[];
+    for (const m of moves) {
+      const delta = m.type === 'in' ? -m.qty : m.type === 'out' ? m.qty : 0;
+      if (delta && m.productId) await Product.findByIdAndUpdate(m.productId, { $inc: { stock: delta } });
+      await StockMovement.findByIdAndDelete(m._id);
+    }
+
+    // ลบรายจ่ายที่บันทึกไว้ตอนชำระเงินใบนี้
+    if (po.expenseId) await Expense.findByIdAndDelete(po.expenseId);
+
+    await PurchaseOrder.findByIdAndDelete(id);
+    revalidatePath('/admin/purchasing');
+    revalidatePath('/admin/warehouse');
+    return {};
+  } catch (err) {
+    console.error('[deletePO]', err);
+    return { error: 'ไม่สามารถลบใบสั่งซื้อได้' };
+  }
+}
+
 // เบิกสินค้าออกให้บิลที่ PO อ้างอิงถึง (เคสขายก่อน–ของหมด–สั่ง PO ทีหลัง)
 // เรียกหลังรับสินค้าแล้ว: ตัดสต๊อกตามรายการใน PO และลงประวัติอ้างอิงเลขใบ INV
 export async function disbursePOToInvoice(id: string): Promise<{ error?: string; warnings?: string[] }> {

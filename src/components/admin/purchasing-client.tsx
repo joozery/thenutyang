@@ -7,11 +7,11 @@ import {
   Search, Plus, ShoppingBag, Clock, CheckCircle, XCircle,
   MoreHorizontal, ChevronLeft, ChevronRight, X,
   Eye, Ban, Truck, Printer, FileEdit, Pencil, AlertCircle,
-  RotateCcw, Banknote, History,
+  RotateCcw, Banknote, History, Trash2,
 } from 'lucide-react';
 import type { PORow, POStatusThai } from '@/lib/purchasing';
 import type { StockReturnRow } from '@/lib/stock-return';
-import { receivePO, cancelPO, updatePOPayment, disbursePOToInvoice } from '@/app/actions/purchasing';
+import { receivePO, cancelPO, deletePO, updatePOPayment, disbursePOToInvoice } from '@/app/actions/purchasing';
 import { createStockReturn, markRefundReceived } from '@/app/actions/stock-return';
 
 function fmtDate(iso: string) {
@@ -374,13 +374,14 @@ function ConfirmCancelModal({ orderId, onConfirm, onClose }: {
 
 // ── Row Action Menu ───────────────────────────────────────────────────────────
 
-function ActionMenu({ order, onView, onReceive, onCancelRequest, onPayRequest, onReturnRequest }: {
+function ActionMenu({ order, onView, onReceive, onCancelRequest, onPayRequest, onReturnRequest, onDeleteRequest }: {
   order: PORow;
   onView: () => void;
   onReceive: () => void;
   onCancelRequest: () => void;
   onPayRequest: () => void;
   onReturnRequest: () => void;
+  onDeleteRequest: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -418,6 +419,9 @@ function ActionMenu({ order, onView, onReceive, onCancelRequest, onPayRequest, o
                 <RotateCcw size={14} /> คืนสินค้า
               </button>
             )}
+            <button onClick={() => { setOpen(false); onDeleteRequest(); }} className="flex items-center gap-2.5 w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 font-medium border-t border-slate-100">
+              <Trash2 size={14} /> ลบใบสั่งซื้อ
+            </button>
           </div>
         </>
       )}
@@ -603,6 +607,7 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
   const [page, setPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<PORow | null>(null);
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PORow | null>(null);
   const [payTarget, setPayTarget] = useState<PORow | null>(null);
   const [returnTarget, setReturnTarget] = useState<PORow | null>(null);
   const [refundTarget, setRefundTarget] = useState<StockReturnRow | null>(null);
@@ -672,6 +677,16 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
     startTransition(async () => {
       const res = await cancelPO(id);
       if (res.warnings?.length) setStockWarnings(res.warnings);
+      router.refresh();
+    });
+  };
+
+  const handleDeletePO = (id: string) => {
+    setDeleteTarget(null);
+    startTransition(async () => {
+      const res = await deletePO(id);
+      if (res.error) { setStockWarnings([res.error]); return; }
+      setOrders(prev => prev.filter(o => o.id !== id));
       router.refresh();
     });
   };
@@ -849,6 +864,7 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
                           onCancelRequest={() => setCancelTarget(o.id)}
                           onPayRequest={() => setPayTarget(o)}
                           onReturnRequest={() => setReturnTarget(o)}
+                          onDeleteRequest={() => setDeleteTarget(o)}
                         />
                       </td>
                     </tr>
@@ -944,6 +960,40 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
             >
               รับทราบ
             </button>
+          </div>
+        </div>
+      )}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Trash2 size={18} className="text-red-500" />
+              <h3 className="text-base font-black text-slate-900">ลบใบสั่งซื้อนี้?</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-2">
+              <span className="font-bold">{deleteTarget.poNumber}</span> · {deleteTarget.supplier} · ฿{deleteTarget.grandTotal.toLocaleString()}
+            </p>
+            <p className="text-xs text-slate-400 mb-5">
+              ลบแล้วกู้คืนไม่ได้ — สต๊อกและประวัติคลังที่เกิดจากใบนี้จะถูกถอนออก
+              {deleteTarget.status === 'รับสินค้าแล้ว' && ' (ใบนี้รับสินค้าแล้ว สต๊อกจะถูกหักคืนตามจำนวนที่รับเข้า)'}
+              {deleteTarget.paymentStatus !== 'unpaid' && ' รวมถึงรายจ่ายที่บันทึกไว้ด้วย'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => handleDeletePO(deleteTarget.id)}
+                disabled={isPending}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 disabled:opacity-50"
+              >
+                {isPending ? 'กำลังลบ...' : 'ลบถาวร'}
+              </button>
+            </div>
           </div>
         </div>
       )}
