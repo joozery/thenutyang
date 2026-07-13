@@ -2,7 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getProductById } from '@/lib/products';
-import { BRAND_LOGOS, CATEGORIES } from '@/lib/tires';
+import { getCategories } from '@/app/actions/categories';
+import { BRAND_LOGOS } from '@/lib/tires';
 import { ArrowLeft, CheckCircle, XCircle, Zap, Shield, Star } from 'lucide-react';
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 import { TireGallery } from '@/components/tires/tire-gallery';
@@ -16,8 +17,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function TireDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const tire = await getProductById(id);
+  const [tire, categories] = await Promise.all([getProductById(id), getCategories('tires')]);
   if (!tire) notFound();
+
+  // ชื่อหมวดหมู่จาก DB — รองรับหมวดที่แอดมินเพิ่มเองจากหลังบ้าน
+  const categoryLabel = categories.find(c => c.key === tire.category)?.label ?? tire.category ?? '';
 
   const discount = tire.oldPrice
     ? Math.round(((tire.oldPrice - tire.priceCash) / tire.oldPrice) * 100)
@@ -58,7 +62,7 @@ export default async function TireDetailPage({ params }: { params: Promise<{ id:
                 </div>
               )}
               <h1 className="text-2xl md:text-3xl font-black text-slate-900 mt-4">{tire.model}</h1>
-              <p className="text-slate-500 text-sm mt-1">{tire.size} · {CATEGORIES[tire.category]}</p>
+              <p className="text-slate-500 text-sm mt-1">{tire.size}{categoryLabel && ` · ${categoryLabel}`}</p>
             </div>
 
             {/* Price */}
@@ -96,9 +100,11 @@ export default async function TireDetailPage({ params }: { params: Promise<{ id:
                 {[
                   { label: 'ขนาด',          value: tire.size },
                   { label: 'ขอบล้อ',         value: `${tire.rimSize} นิ้ว` },
-                  { label: 'ดัชนีโหลด',      value: tire.specs?.load ?? '-' },
-                  { label: 'ดัชนีความเร็ว',  value: tire.specs?.speed ?? '-' },
-                  { label: 'ประเภท',          value: tire.specs?.type ?? CATEGORIES[tire.category] },
+                  // แสดงเฉพาะสเปคที่กรอกข้อมูลจริงไว้ในหลังบ้าน
+                  ...(tire.specs?.load  ? [{ label: 'ดัชนีโหลด',     value: tire.specs.load }] : []),
+                  ...(tire.specs?.speed ? [{ label: 'ดัชนีความเร็ว', value: tire.specs.speed }] : []),
+                  ...(tire.type ? [{ label: 'ประเภทยาง', value: tire.type }] : []),
+                  ...(categoryLabel ? [{ label: 'หมวดหมู่', value: categoryLabel }] : []),
                   ...(tire.note ? [{ label: 'โปรโมชั่น', value: tire.note }] : []),
                 ].map(row => (
                   <div key={row.label} className="flex px-4 py-2.5 text-sm">

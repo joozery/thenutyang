@@ -51,6 +51,7 @@ function calcDerivedPrices(cash: number) {
 
 const EMPTY_FORM = {
   brand: '', model: '', size: '', type: '', note: '',
+  specLoad: '', specSpeed: '',
   priceCash: 0, priceCredit: 0, priceInstallment: 0, costPrice: 0,
   oldPrice: undefined as number | undefined,
   badge: '', image: '/yang.png',
@@ -169,6 +170,7 @@ export function ProductsClient({
     setForm({
       brand: p.brand, model: p.model, size: p.size ?? '',
       type: p.type, note: p.note,
+      specLoad: p.specs?.load ?? '', specSpeed: p.specs?.speed ?? '',
       priceCash: p.priceCash, priceCredit: p.priceCredit,
       priceInstallment: p.priceInstallment, costPrice: p.costPrice ?? 0,
       oldPrice: p.oldPrice, badge: p.badge ?? '',
@@ -225,11 +227,13 @@ export function ProductsClient({
   function handleSave() {
     if (!form.brand || !form.model) return;
     if (isTire && !form.size) return;
+    const { specLoad, specSpeed, ...rest } = form;
     const data = {
-      ...form,
+      ...rest,
       productType: activeType,
       oldPrice: form.oldPrice || undefined,
       badge: form.badge || undefined,
+      specs: { load: specLoad.trim(), speed: specSpeed.trim() },
     };
     startTransition(async () => {
       const res = modal === 'add'
@@ -662,6 +666,17 @@ export function ProductsClient({
                 {isTire && (
                   <Field label="ประเภทยาง">
                     <input value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className={inputCls} placeholder="EV, Non EV..." />
+                  </Field>
+                )}
+
+                {isTire && (
+                  <Field label="ดัชนีโหลด (ไม่บังคับ)">
+                    <input value={form.specLoad} onChange={e => setForm(f => ({ ...f, specLoad: e.target.value }))} className={inputCls} placeholder="เช่น 91, 95XL" />
+                  </Field>
+                )}
+                {isTire && (
+                  <Field label="ดัชนีความเร็ว (ไม่บังคับ)">
+                    <input value={form.specSpeed} onChange={e => setForm(f => ({ ...f, specSpeed: e.target.value }))} className={inputCls} placeholder="เช่น V, W, H" />
                   </Field>
                 )}
 

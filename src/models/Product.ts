@@ -44,9 +44,9 @@ const ProductSchema = new Schema<IProduct>({
   images:           { type: [String], default: [] },
   category:         { type: String, default: 'touring' },
   specs: {
-    load:  { type: String, default: '91' },
-    speed: { type: String, default: 'V' },
-    type:  { type: String, default: 'ยางทั่วไป' },
+    load:  { type: String, default: '' },
+    speed: { type: String, default: '' },
+    type:  { type: String, default: '' },
   },
   stock:     { type: Number, required: true, default: 0 },
   year:      { type: String, default: '26' },

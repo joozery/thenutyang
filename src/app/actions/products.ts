@@ -23,6 +23,7 @@ type ProductInput = {
   image?: string;
   images?: string[];
   category: string;
+  specs?: { load: string; speed: string };
   stock: number;
   year: string;
   published?: boolean;
