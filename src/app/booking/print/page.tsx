@@ -13,6 +13,7 @@ const DOC_TYPE_PRINT_LABEL: Record<string, string> = {
   credit_note:  'ใบลดหนี้',
   billing_note: 'ใบแจ้งหนี้',
   payment_note: 'ใบรับชำระ',
+  booking_note: 'ใบจอง',
 };
 
 const PAYMENT_LABEL: Record<string, string> = {

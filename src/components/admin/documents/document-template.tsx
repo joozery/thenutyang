@@ -226,7 +226,7 @@ export function DocumentTemplate({
               </tr>
               {depositAmount > 0 && (
                 <>
-                  <tr><td className="py-1 pt-2 text-slate-800">มัดจำที่ได้รับแล้ว</td><td className="py-1 pt-2 text-right tabular-nums text-amber-700 font-semibold">-{fmt(depositAmount)} บาท</td></tr>
+                  <tr><td className="py-1 pt-2 text-slate-800">มัดจำที่ได้รับแล้ว{reference ? <span className="text-slate-500 text-[11px]"> (ตามใบ {reference})</span> : ''}</td><td className="py-1 pt-2 text-right tabular-nums text-amber-700 font-semibold">-{fmt(depositAmount)} บาท</td></tr>
                   <tr className="bg-amber-50">
                     <td className="py-2 px-2 font-bold text-slate-900 rounded-l-lg">ยอดที่ต้องชำระเพิ่ม</td>
                     <td className="py-2 px-2 text-right font-black text-amber-700 text-sm tabular-nums rounded-r-lg">{fmt(remainingBalance)}</td>

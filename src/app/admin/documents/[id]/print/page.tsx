@@ -14,6 +14,7 @@ const DOC_TYPE_PRINT_LABEL: Record<string, string> = {
   credit_note:  'ใบลดหนี้',
   billing_note: 'ใบแจ้งหนี้',
   payment_note: 'ใบรับชำระ',
+  booking_note: 'ใบจอง',
 };
 
 // ใบเสร็จที่ไม่มี VAT ใช้ชื่อ "ใบเสร็จรับเงิน" เฉยๆ — มี VAT ถึงจะนับเป็นใบกำกับภาษีได้ด้วย
