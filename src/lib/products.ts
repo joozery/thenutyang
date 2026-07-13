@@ -17,9 +17,19 @@ export async function getProducts(filters?: {
   series?: string;
   rim?: string;
   productType?: string;
+  q?: string;
 }): Promise<ProductRow[]> {
   await connectDB();
   const query: Record<string, unknown> = { published: true };
+
+  // ค้นหาอิสระ — แต่ละคำต้องเจอใน ยี่ห้อ/รุ่น/ขนาด (พิมพ์ '265/60R18' หรือ '265-60-18' ก็เจอ)
+  if (filters?.q?.trim()) {
+    query.$and = filters.q.trim().split(/\s+/).slice(0, 5).map((token) => {
+      const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const rx = new RegExp(escaped.replace(/[/-]/g, '[/\\-R ]?'), 'i');
+      return { $or: [{ brand: rx }, { model: rx }, { size: rx }] };
+    });
+  }
   if (filters?.brand)       query.brand   = new RegExp(`^${filters.brand}$`, 'i');
   if (filters?.rimSize)     query.rimSize = filters.rimSize;
   if (filters?.category)    query.category = filters.category;

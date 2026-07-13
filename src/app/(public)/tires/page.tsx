@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getProducts } from '@/lib/products';
 import { getBrands } from '@/app/actions/brands';
 import { CATEGORIES } from '@/lib/tires';
-import { TiresTableClient } from '@/components/tires/tires-table-client';
+import { TiresGridClient } from '@/components/tires/tires-grid-client';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'ยางรถยนต์ | THENUTTIRE' };
@@ -11,9 +11,9 @@ export const metadata = { title: 'ยางรถยนต์ | THENUTTIRE' };
 export default async function TiresPage({
   searchParams,
 }: {
-  searchParams: Promise<{ brand?: string; rim?: string; category?: string; width?: string; series?: string }>;
+  searchParams: Promise<{ brand?: string; rim?: string; category?: string; width?: string; series?: string; q?: string }>;
 }) {
-  const { brand, rim, category, width, series } = await searchParams;
+  const { brand, rim, category, width, series, q } = await searchParams;
   
   let exactSize: string | undefined;
   if (width && series && rim) {
@@ -28,7 +28,8 @@ export default async function TiresPage({
       size: exactSize,
       width,
       series,
-      rim
+      rim,
+      q
     }),
     getBrands()
   ]);
@@ -39,7 +40,8 @@ export default async function TiresPage({
         <div className="container mx-auto px-4 md:px-8 py-6">
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900">ยางรถยนต์</h1>
           <p className="text-slate-500 text-sm mt-1">
-            {brand || category || rim || exactSize ? `พบ ${results.length} รายการ` : `สินค้าทั้งหมด ${results.length} รายการ`}
+            {brand || category || rim || exactSize || q ? `พบ ${results.length} รายการ` : `สินค้าทั้งหมด ${results.length} รายการ`}
+            {q         && <span className="ml-2 text-green-600 font-medium">· &ldquo;{q}&rdquo;</span>}
             {brand     && <span className="ml-2 text-green-600 font-medium">· {brand}</span>}
             {exactSize && <span className="ml-2 text-green-600 font-medium">· {exactSize}</span>}
             {!exactSize && rim && <span className="ml-2 text-green-600 font-medium">· ขอบ {rim}"</span>}
@@ -56,7 +58,7 @@ export default async function TiresPage({
           </div>
         ) : (
           <Suspense fallback={<div className="h-96 animate-pulse bg-slate-200 rounded-xl" />}>
-            <TiresTableClient initialProducts={results} initialBrands={brands} />
+            <TiresGridClient initialProducts={results} initialBrands={brands} />
           </Suspense>
         )}
       </div>

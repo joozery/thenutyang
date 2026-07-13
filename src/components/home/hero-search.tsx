@@ -107,6 +107,12 @@ export function HeroSearch() {
 
   const [searchBrand, setSearchBrand] = useState('');
   const [searchCategory, setSearchCategory] = useState('');
+  const [q, setQ] = useState('');
+
+  const handleTextSearch = () => {
+    if (!q.trim()) return;
+    router.push(`/tires?q=${encodeURIComponent(q.trim())}`);
+  };
 
   useEffect(() => {
     fetch('/api/tire-sizes')
@@ -160,6 +166,31 @@ export function HeroSearch() {
       <div className="p-5 md:p-6">
         {/* Title (Desktop Only) */}
         <h3 className="hidden md:block text-xl font-bold text-slate-800 mb-4">ค้นหายางสำหรับคุณ</h3>
+
+        {/* Free-text search */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <input
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleTextSearch(); }}
+            placeholder="พิมพ์ค้นหา เช่น 265/60R18 หรือ Michelin"
+            className="w-full h-11 md:h-12 pl-10 pr-[4.75rem] rounded-lg md:rounded-xl border border-slate-200 text-[13px] md:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all"
+          />
+          <button
+            type="button"
+            onClick={handleTextSearch}
+            disabled={!q.trim()}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 md:h-9 px-3.5 bg-[#0a5c15] hover:bg-green-800 text-white rounded-md md:rounded-lg text-[13px] font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            ค้นหา
+          </button>
+        </div>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px bg-slate-100" />
+          <span className="text-[11px] text-slate-400 shrink-0">หรือเลือกจากตัวเลือกด้านล่าง</span>
+          <div className="flex-1 h-px bg-slate-100" />
+        </div>
 
         {/* Tab Switcher - Desktop */}
         <div className="hidden md:flex bg-slate-100 p-1 rounded-xl mb-5 gap-1">
