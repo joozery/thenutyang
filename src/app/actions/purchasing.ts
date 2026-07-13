@@ -129,10 +129,15 @@ export async function updatePO(
   }
 }
 
-export async function receivePO(id: string): Promise<{ error?: string; warnings?: string[] }> {
+export async function receivePO(id: string): Promise<{
+  error?: string;
+  warnings?: string[];
+  // ถ้า PO อ้างอิงใบ INV (ขายก่อน–สั่งของทีหลัง) ส่งข้อมูลกลับไปให้หน้าจอถามว่าเบิกออกให้บิลเลยไหม
+  invoice?: { docNumber: string; customerName: string };
+}> {
   try {
     await connectDB();
-    const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; items: { productId?: string; productName: string; qty: number }[] } | null;
+    const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; reference?: string; items: { productId?: string; productName: string; qty: number }[] } | null;
     if (!po) return { error: 'ไม่พบใบสั่งซื้อ' };
 
     await PurchaseOrder.findByIdAndUpdate(id, { status: 'received' });
@@ -164,10 +169,75 @@ export async function receivePO(id: string): Promise<{ error?: string; warnings?
 
     revalidatePath('/admin/purchasing');
     revalidatePath('/admin/warehouse');
-    return warnings.length ? { warnings } : {};
+
+    // เช็คว่าเลขอ้างอิงของ PO เป็นใบ INV ในระบบไหม — ถ้าใช่ ให้หน้าจอถามต่อว่าเบิกออกให้บิลเลยไหม
+    let invoice: { docNumber: string; customerName: string } | undefined;
+    if (po.reference) {
+      const { FinancialDocument } = await import('@/models/FinancialDocument');
+      const refDoc = await FinancialDocument.findOne({ docNumber: po.reference })
+        .select('docNumber customerName').lean() as { docNumber: string; customerName: string } | null;
+      if (refDoc) invoice = { docNumber: refDoc.docNumber, customerName: refDoc.customerName ?? '' };
+    }
+
+    return { ...(warnings.length ? { warnings } : {}), ...(invoice ? { invoice } : {}) };
   } catch (err) {
     console.error('[receivePO]', err);
     return { error: 'ไม่สามารถอัปเดตสถานะได้' };
+  }
+}
+
+// เบิกสินค้าออกให้บิลที่ PO อ้างอิงถึง (เคสขายก่อน–ของหมด–สั่ง PO ทีหลัง)
+// เรียกหลังรับสินค้าแล้ว: ตัดสต๊อกตามรายการใน PO และลงประวัติอ้างอิงเลขใบ INV
+export async function disbursePOToInvoice(id: string): Promise<{ error?: string; warnings?: string[] }> {
+  try {
+    await connectDB();
+    const po = await PurchaseOrder.findById(id).lean() as {
+      poNumber: string; reference?: string; status: string;
+      items: { productId?: string; productName: string; qty: number }[];
+    } | null;
+    if (!po) return { error: 'ไม่พบใบสั่งซื้อ' };
+    if (po.status !== 'received') return { error: 'ต้องรับสินค้าก่อนจึงจะเบิกออกได้' };
+    if (!po.reference) return { error: 'ใบสั่งซื้อนี้ไม่มีเลขอ้างอิงบิล' };
+
+    const { Product } = await import('@/models/Product');
+    const { StockMovement } = await import('@/models/StockMovement');
+
+    // กันเบิกซ้ำ — ถ้าเคยเบิกออกให้บิลนี้จาก PO ใบนี้แล้ว ไม่ทำซ้ำ
+    const disburseNote = `เบิกออกให้ ${po.reference} (จาก ${po.poNumber})`;
+    const already = await StockMovement.findOne({ note: disburseNote }).lean();
+    if (already) return { error: `เคยเบิกออกให้ ${po.reference} ไปแล้ว` };
+
+    const warnings: string[] = [];
+    for (const item of po.items) {
+      if (!item.productId) {
+        warnings.push(`"${item.productName}" ไม่ได้ผูก ID สินค้า — กรุณาเบิกออกเองใน Warehouse`);
+        continue;
+      }
+      const product = await Product.findById(item.productId).lean() as { stock?: number; brand?: string; model?: string; size?: string } | null;
+      if (!product) {
+        warnings.push(`ไม่พบสินค้า "${item.productName}" ใน DB`);
+        continue;
+      }
+      const stockBefore = product.stock ?? 0;
+      const outQty = Math.min(item.qty, stockBefore);
+      if (outQty < item.qty) warnings.push(`"${item.productName}" สต๊อกไม่พอ เบิกได้ ${outQty}/${item.qty}`);
+      if (outQty === 0) continue;
+      const stockAfter  = stockBefore - outQty;
+      const productName = `${product.brand ?? ''} ${product.model ?? ''} ${product.size ?? ''}`.trim();
+      await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -outQty } });
+      await StockMovement.create({
+        productId: item.productId, productName, type: 'out',
+        qty: outQty, stockBefore, stockAfter,
+        refNo: po.reference, note: disburseNote,
+      });
+    }
+
+    revalidatePath('/admin/purchasing');
+    revalidatePath('/admin/warehouse');
+    return warnings.length ? { warnings } : {};
+  } catch (err) {
+    console.error('[disbursePOToInvoice]', err);
+    return { error: 'ไม่สามารถเบิกสินค้าออกได้' };
   }
 }
 

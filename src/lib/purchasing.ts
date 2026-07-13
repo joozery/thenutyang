@@ -1,6 +1,7 @@
 import connectDB from './mongodb';
 import { PurchaseOrder } from '@/models/PurchaseOrder';
 import { Supplier } from '@/models/Supplier';
+import { FinancialDocument } from '@/models/FinancialDocument';
 
 export type POStatusThai = 'ร่าง' | 'รอรับสินค้า' | 'รับสินค้าแล้ว' | 'ยกเลิก';
 
@@ -47,6 +48,9 @@ export type PORow = {
   paymentStatus: 'unpaid' | 'partial' | 'paid';
   amountPaid:   number;
   paymentDate?: string;
+  reference:    string;
+  // ถ้าเลขอ้างอิงตรงกับเอกสารการเงิน (เช่นใบ INV ที่ขายไปก่อนแล้วค่อยสั่งของ) จะแนบข้อมูลใบนั้นมาด้วย
+  refDoc?:      { id: string; docNumber: string; customerName: string };
 };
 
 export type SupplierRow = {
@@ -101,20 +105,37 @@ function normalizeDoc(d: any): PORow {
     paymentStatus: d.paymentStatus ?? 'unpaid',
     amountPaid:    d.amountPaid    ?? 0,
     paymentDate:   d.paymentDate instanceof Date ? d.paymentDate.toISOString() : (d.paymentDate ? String(d.paymentDate) : undefined),
+    reference:     d.reference ?? '',
   };
+}
+
+// จับคู่เลขอ้างอิงของ PO กับเอกสารการเงิน (INV/BN ฯลฯ) เพื่อให้กดเปิดใบและเห็นชื่อลูกค้าได้
+async function attachRefDocs(rows: PORow[]): Promise<PORow[]> {
+  const refs = [...new Set(rows.map(r => r.reference).filter(Boolean))];
+  if (refs.length === 0) return rows;
+  const docs = await FinancialDocument.find({ docNumber: { $in: refs } })
+    .select('docNumber customerName').lean() as { _id: unknown; docNumber: string; customerName: string }[];
+  const byNumber = new Map(docs.map(d => [d.docNumber, { id: String(d._id), docNumber: d.docNumber, customerName: d.customerName ?? '' }]));
+  for (const r of rows) {
+    const refDoc = r.reference ? byNumber.get(r.reference) : undefined;
+    if (refDoc) r.refDoc = refDoc;
+  }
+  return rows;
 }
 
 export async function getPurchaseOrders(): Promise<PORow[]> {
   await connectDB();
   const docs = await PurchaseOrder.find().sort({ createdAt: -1 }).lean();
-  return docs.map(normalizeDoc);
+  return attachRefDocs(docs.map(normalizeDoc));
 }
 
 export async function getPurchaseOrderById(id: string): Promise<PORow | null> {
   await connectDB();
   try {
     const doc = await PurchaseOrder.findById(id).lean();
-    return doc ? normalizeDoc(doc) : null;
+    if (!doc) return null;
+    const [row] = await attachRefDocs([normalizeDoc(doc)]);
+    return row;
   } catch {
     return null;
   }

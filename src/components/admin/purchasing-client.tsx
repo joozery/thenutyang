@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { PORow, POStatusThai } from '@/lib/purchasing';
 import type { StockReturnRow } from '@/lib/stock-return';
-import { receivePO, cancelPO, updatePOPayment } from '@/app/actions/purchasing';
+import { receivePO, cancelPO, updatePOPayment, disbursePOToInvoice } from '@/app/actions/purchasing';
 import { createStockReturn, markRefundReceived } from '@/app/actions/stock-return';
 
 function fmtDate(iso: string) {
@@ -81,6 +81,21 @@ function PODetailModal({
                 <p className="font-semibold text-slate-800">{fmtDate(order.dueDate)}</p>
               </div>
             </div>
+            {order.reference && (
+              <div className="bg-green-50 border border-green-100 rounded-xl p-3">
+                <p className="text-xs text-green-600 font-semibold mb-0.5">อ้างอิงบิลขาย</p>
+                {order.refDoc ? (
+                  <p className="text-sm">
+                    <Link href={`/admin/documents/${order.refDoc.id}/edit`} className="font-bold text-green-700 hover:underline underline-offset-2">
+                      {order.refDoc.docNumber}
+                    </Link>
+                    {order.refDoc.customerName && <span className="text-slate-600"> · ลูกค้า: {order.refDoc.customerName}</span>}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-700">{order.reference} <span className="text-xs text-slate-400">(ไม่พบเอกสารเลขนี้ในระบบ)</span></p>
+                )}
+              </div>
+            )}
             {order.notes && (
               <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
                 <p className="text-xs text-amber-600 font-semibold mb-0.5">หมายเหตุ</p>
@@ -592,6 +607,8 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
   const [returnTarget, setReturnTarget] = useState<PORow | null>(null);
   const [refundTarget, setRefundTarget] = useState<StockReturnRow | null>(null);
   const [stockWarnings, setStockWarnings] = useState<string[]>([]);
+  // ถามเบิกออกให้บิลขาย หลังรับสินค้าจาก PO ที่อ้างอิงใบ INV
+  const [disbursePrompt, setDisbursePrompt] = useState<{ poId: string; docNumber: string; customerName: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'orders' | 'returns'>('orders');
 
   useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
@@ -604,7 +621,10 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
     const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
     const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
     return orders.filter(o => {
-      const matchSearch = o.poNumber.toLowerCase().includes(q) || o.supplier.toLowerCase().includes(q);
+      const matchSearch = o.poNumber.toLowerCase().includes(q)
+        || o.supplier.toLowerCase().includes(q)
+        || o.reference.toLowerCase().includes(q)
+        || (o.refDoc?.customerName ?? '').toLowerCase().includes(q);
       const orderTime = new Date(o.orderDate).getTime();
       const matchDate = (!fromTime || orderTime >= fromTime) && (!toTime || orderTime <= toTime);
       return matchSearch && matchDate;
@@ -631,6 +651,17 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
     startTransition(async () => {
       const res = await receivePO(id);
       if (res.warnings?.length) setStockWarnings(res.warnings);
+      if (res.invoice) setDisbursePrompt({ poId: id, docNumber: res.invoice.docNumber, customerName: res.invoice.customerName });
+      router.refresh();
+    });
+  };
+
+  const handleDisburseToInvoice = (poId: string) => {
+    setDisbursePrompt(null);
+    startTransition(async () => {
+      const res = await disbursePOToInvoice(poId);
+      if (res.error) setStockWarnings([res.error]);
+      else if (res.warnings?.length) setStockWarnings(res.warnings);
       router.refresh();
     });
   };
@@ -913,6 +944,40 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
             >
               รับทราบ
             </button>
+          </div>
+        </div>
+      )}
+      {disbursePrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDisbursePrompt(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Truck size={18} className="text-green-600" />
+              <h3 className="text-base font-black text-slate-900">เบิกออกให้บิลขายเลยไหม?</h3>
+            </div>
+            <p className="text-sm text-slate-600 mb-1">
+              ใบสั่งซื้อนี้อ้างอิงบิล <span className="font-bold text-green-700">{disbursePrompt.docNumber}</span>
+            </p>
+            {disbursePrompt.customerName && (
+              <p className="text-sm text-slate-600 mb-3">ลูกค้า: <span className="font-semibold">{disbursePrompt.customerName}</span></p>
+            )}
+            <p className="text-xs text-slate-400 mb-5">
+              ระบบจะตัดสต๊อกตามรายการในใบสั่งซื้อ และลงประวัติเบิกออกอ้างอิงเลขบิลนี้ให้อัตโนมัติ
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDisbursePrompt(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50"
+              >
+                ไว้ทีหลัง
+              </button>
+              <button
+                onClick={() => handleDisburseToInvoice(disbursePrompt.poId)}
+                className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700"
+              >
+                เบิกออกเลย
+              </button>
+            </div>
           </div>
         </div>
       )}
