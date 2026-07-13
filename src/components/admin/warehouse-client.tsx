@@ -341,7 +341,27 @@ function ProductHistoryModal({
   movements: MovementRow[];
   onClose: () => void;
 }) {
-  const rows = movements.filter(m => m.productId === product.id);
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const rows = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+    return movements.filter(m => {
+      if (m.productId !== product.id) return false;
+      if (q && !(
+        m.refNo.toLowerCase().includes(q) ||
+        (m.refParty ?? '').toLowerCase().includes(q) ||
+        m.note.toLowerCase().includes(q)
+      )) return false;
+      const t = new Date(m.date).getTime();
+      if (fromTime && t < fromTime) return false;
+      if (toTime && t > toTime) return false;
+      return true;
+    });
+  }, [movements, product.id, search, dateFrom, dateTo]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -360,6 +380,45 @@ function ProductHistoryModal({
           <button onClick={onClose} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400"><X size={18} /></button>
         </div>
 
+        {/* ค้นหา + ช่วงวันที่ */}
+        <div className="px-5 py-3 border-b border-slate-100 flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="ค้นหาเลข INV/PO, ชื่อลูกค้า/ผู้ขาย, หมายเหตุ..."
+              className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-200 text-sm focus:outline-none focus:border-[#008a44]"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              title="ตั้งแต่วันที่"
+              className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]"
+            />
+            <span className="text-slate-300 text-xs">—</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              title="ถึงวันที่"
+              className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]"
+            />
+            {(search || dateFrom || dateTo) && (
+              <button
+                onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); }}
+                title="ล้างตัวกรอง"
+                className="p-2 rounded-md border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="overflow-y-auto flex-1">
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-slate-50 z-10">
@@ -376,7 +435,7 @@ function ProductHistoryModal({
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-400">
-                    ยังไม่มีประวัติการเคลื่อนไหวของสินค้านี้
+                    {search || dateFrom || dateTo ? 'ไม่พบรายการตามเงื่อนไขที่ค้นหา' : 'ยังไม่มีประวัติการเคลื่อนไหวของสินค้านี้'}
                   </td>
                 </tr>
               ) : rows.map(m => (
