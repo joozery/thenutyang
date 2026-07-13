@@ -2,6 +2,9 @@ import connectDB from './mongodb';
 import { Product } from '@/models/Product';
 import { StockMovement } from '@/models/StockMovement';
 import { Brand } from '@/models/Brand';
+import { PurchaseOrder } from '@/models/PurchaseOrder';
+import { FinancialDocument } from '@/models/FinancialDocument';
+import { StockReturn } from '@/models/StockReturn';
 
 export const MIN_STOCK = 8;
 
@@ -23,10 +26,13 @@ export type MovementRow = {
   id:          string;
   date:        string;
   type:        'in' | 'out' | 'adjust';
+  productId:   string;
   productName: string;
   qty:         number;
   stockAfter:  number;
   refNo:       string;
+  refHref?:    string;
+  refParty?:   string; // ชื่อลูกค้า (จาก INV) หรือผู้ขาย (จาก PO)
   note:        string;
 };
 
@@ -62,6 +68,7 @@ function normalizeMovement(d: any): MovementRow {
     id:          String(d._id),
     date:        d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt ?? ''),
     type:        d.type        ?? 'in',
+    productId:   String(d.productId ?? ''),
     productName: d.productName ?? '',
     qty:         d.qty         ?? 0,
     stockAfter:  d.stockAfter  ?? 0,
@@ -93,7 +100,43 @@ export async function getStockItems(): Promise<StockItem[]> {
 export async function getStockMovements(limit = 50): Promise<MovementRow[]> {
   await connectDB();
   const docs = await StockMovement.find({}).sort({ createdAt: -1 }).limit(limit).lean();
-  return docs.map(normalizeMovement);
+
+  // resolve refNo → link ไปยังเอกสารต้นทาง (PO / เอกสารการเงิน / ใบคืนสินค้า)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const refNos = [...new Set(docs.map((d: any) => d.refNo).filter(Boolean))] as string[];
+  const refHref = new Map<string, string>();
+  const refParty = new Map<string, string>();
+  if (refNos.length > 0) {
+    const [pos, finDocs, returns] = await Promise.all([
+      PurchaseOrder.find({ poNumber: { $in: refNos } }).select('poNumber supplierSnapshot.name').lean(),
+      FinancialDocument.find({ docNumber: { $in: refNos } }).select('docNumber customerName').lean(),
+      StockReturn.find({ returnNumber: { $in: refNos } }).select('returnNumber poId supplier').lean(),
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const p of pos as any[]) {
+      refHref.set(p.poNumber, `/admin/purchasing/${p._id}/edit`);
+      if (p.supplierSnapshot?.name) refParty.set(p.poNumber, p.supplierSnapshot.name);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const f of finDocs as any[]) {
+      refHref.set(f.docNumber, `/admin/documents/${f._id}/edit`);
+      if (f.customerName) refParty.set(f.docNumber, f.customerName);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const r of returns as any[]) {
+      if (r.poId && !refHref.has(r.returnNumber)) refHref.set(r.returnNumber, `/admin/purchasing/${r.poId}/edit`);
+      if (r.supplier && !refParty.has(r.returnNumber)) refParty.set(r.returnNumber, r.supplier);
+    }
+  }
+
+  return docs.map(d => {
+    const row = normalizeMovement(d);
+    const href = refHref.get(row.refNo);
+    if (href) row.refHref = href;
+    const party = refParty.get(row.refNo);
+    if (party) row.refParty = party;
+    return row;
+  });
 }
 
 export async function getWarehouseStats(): Promise<WarehouseStats> {

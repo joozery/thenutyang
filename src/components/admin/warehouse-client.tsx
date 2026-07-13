@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Search, ArrowDownCircle, ArrowUpCircle, AlertTriangle,
@@ -234,9 +235,102 @@ function MoveModal({
   );
 }
 
+// ── Product History Modal (ประวัติ ซื้อ-ขาย ของสินค้า) ────────────────────────
+
+function ProductHistoryModal({
+  product,
+  movements,
+  onClose,
+}: {
+  product: StockItem;
+  movements: MovementRow[];
+  onClose: () => void;
+}) {
+  const rows = movements.filter(m => m.productId === product.id);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-md shadow-2xl w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <img src={product.image} alt={product.label} className="w-10 h-10 object-contain rounded-md shrink-0" />
+            <div>
+              <h2 className="text-base font-black text-slate-900">{product.label}</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                ประวัติการเคลื่อนไหว · สต๊อกปัจจุบัน <span className="font-bold text-slate-600">{product.stock} เส้น</span>
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400"><X size={18} /></button>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-slate-50 z-10">
+              <tr className="text-xs text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                <th className="text-left px-5 py-3">เวลา</th>
+                <th className="text-left px-4 py-3">ประเภท</th>
+                <th className="text-center px-4 py-3">จำนวน</th>
+                <th className="text-center px-4 py-3">คงเหลือ</th>
+                <th className="text-left px-4 py-3">ใบ INV / PO</th>
+                <th className="text-left px-5 py-3">ลูกค้า / ผู้ขาย</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-slate-400">
+                    ยังไม่มีประวัติการเคลื่อนไหวของสินค้านี้
+                  </td>
+                </tr>
+              ) : rows.map(m => (
+                <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap text-xs">{fmtDate(m.date)}</td>
+                  <td className="px-4 py-3.5">
+                    {m.type === 'in'
+                      ? <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full"><ArrowDownCircle size={11} />รับเข้า</span>
+                      : m.type === 'out'
+                      ? <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full"><ArrowUpCircle size={11} />เบิกออก</span>
+                      : <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-full"><SlidersHorizontal size={11} />ปรับสต๊อก</span>
+                    }
+                  </td>
+                  <td className="px-4 py-3.5 text-center">
+                    <span className={`font-black text-sm ${m.type === 'in' ? 'text-emerald-600' : m.type === 'out' ? 'text-green-700' : 'text-slate-600'}`}>
+                      {m.type === 'in' ? '+' : m.type === 'out' ? '-' : '→'}{m.qty}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-center text-slate-500 font-semibold">{m.stockAfter}</td>
+                  <td className="px-4 py-3.5 text-xs font-medium">
+                    {m.refHref ? (
+                      <Link href={m.refHref} className="text-green-600 hover:text-green-700 hover:underline underline-offset-2" title="เปิดดูเอกสาร">
+                        {m.refNo}
+                      </Link>
+                    ) : (
+                      <span className="text-green-600">{m.refNo || '—'}</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5 text-xs text-slate-600 font-medium">
+                    {m.refParty || <span className="text-slate-300">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="p-4 border-t border-slate-100 flex items-center justify-between">
+          <p className="text-xs text-slate-400">{rows.length} รายการ</p>
+          <button onClick={onClose} className="px-5 py-2 rounded-md text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50">ปิด</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Stock Table ───────────────────────────────────────────────────────────────
 
-function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: string) => void }) {
+function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdjust: (id: string) => void; onHistory: (id: string) => void }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'low' | 'ok'>('all');
 
@@ -316,19 +410,24 @@ function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: st
             ) : paginated.map(p => (
               <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                 <td className="px-5 py-4">
-                  <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => onHistory(p.id)}
+                    title="ดูประวัติ ซื้อ-ขาย (INV/PO)"
+                    className="flex items-center gap-4 text-left w-full group/name"
+                  >
                     <img src={p.image} alt={p.label} className="w-10 h-10 object-contain rounded-md shrink-0" />
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
                         {p.brandLogo && (
                           <img src={p.brandLogo} alt={p.brand} className="h-3.5 w-auto object-contain" title={p.brand} />
                         )}
-                        <span className="font-bold text-slate-800 text-[13px] uppercase">{p.brand}</span>
-                        <span className="font-bold text-slate-700 text-[13px] uppercase">{p.model}</span>
+                        <span className="font-bold text-slate-800 text-[13px] uppercase group-hover/name:text-[#008a44] group-hover/name:underline underline-offset-2 transition-colors">{p.brand}</span>
+                        <span className="font-bold text-slate-700 text-[13px] uppercase group-hover/name:text-[#008a44] group-hover/name:underline underline-offset-2 transition-colors">{p.model}</span>
                       </div>
                       <p className="text-[12px] text-[#008a44] font-medium">{p.size}</p>
                     </div>
-                  </div>
+                  </button>
                 </td>
                 <td className="px-5 py-4 text-center">
                   <span className={`text-[13px] font-bold ${p.stock === 0 ? 'text-red-500' : p.isLow ? 'text-amber-500' : 'text-slate-800'}`}>
@@ -388,7 +487,7 @@ function StockTable({ items, onAdjust }: { items: StockItem[]; onAdjust: (id: st
 
 // ── Movement Log ──────────────────────────────────────────────────────────────
 
-function MovementLog({ movements }: { movements: MovementRow[] }) {
+function MovementLog({ movements, onHistory }: { movements: MovementRow[]; onHistory: (id: string) => void }) {
   const [search, setSearch] = useState('');
 
   const [page, setPage] = useState(1);
@@ -398,7 +497,9 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
     const q = search.toLowerCase();
     if (!q) return movements;
     return movements.filter(m =>
-      m.productName.toLowerCase().includes(q) || m.refNo.toLowerCase().includes(q)
+      m.productName.toLowerCase().includes(q) ||
+      m.refNo.toLowerCase().includes(q) ||
+      (m.refParty ?? '').toLowerCase().includes(q)
     );
   }, [movements, search]);
 
@@ -413,7 +514,7 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
           <input
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="ค้นหาสินค้า, เลขอ้างอิง..."
+            placeholder="ค้นหาสินค้า, เลขอ้างอิง, ชื่อลูกค้า..."
             className="w-full pl-8 pr-4 py-2.5 rounded-md border border-slate-200 text-sm focus:outline-none focus:border-[#008a44]"
           />
         </div>
@@ -449,7 +550,14 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
                   }
                 </td>
                 <td className="px-4 py-3.5">
-                  <p className="font-medium text-slate-800 text-xs leading-snug">{m.productName}</p>
+                  <button
+                    type="button"
+                    onClick={() => onHistory(m.productId)}
+                    title="ดูประวัติ ซื้อ-ขาย (INV/PO)"
+                    className="font-medium text-slate-800 text-xs leading-snug text-left hover:text-[#008a44] hover:underline underline-offset-2 transition-colors"
+                  >
+                    {m.productName}
+                  </button>
                   {m.note && <p className="text-xs text-slate-400">{m.note}</p>}
                 </td>
                 <td className="px-4 py-3.5 text-center">
@@ -458,7 +566,20 @@ function MovementLog({ movements }: { movements: MovementRow[] }) {
                   </span>
                 </td>
                 <td className="px-4 py-3.5 text-center text-slate-500 font-semibold">{m.stockAfter}</td>
-                <td className="px-4 py-3.5 text-xs text-green-600 font-medium">{m.refNo || '—'}</td>
+                <td className="px-4 py-3.5 text-xs font-medium">
+                  {m.refHref ? (
+                    <Link
+                      href={m.refHref}
+                      className="text-green-600 hover:text-green-700 hover:underline underline-offset-2"
+                      title="เปิดดูเอกสาร"
+                    >
+                      {m.refNo}
+                    </Link>
+                  ) : (
+                    <span className="text-green-600">{m.refNo || '—'}</span>
+                  )}
+                  {m.refParty && <p className="text-slate-400 mt-0.5">{m.refParty}</p>}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -505,6 +626,7 @@ export function WarehouseClient({
   const router = useRouter();
   const [modal, setModal] = useState<'in' | 'out' | 'adjust' | null>(null);
   const [adjustProductId, setAdjustProductId] = useState<string | null>(null);
+  const [historyProductId, setHistoryProductId] = useState<string | null>(null);
   const [tab, setTab] = useState<'stock' | 'movements'>('stock');
   const [toast, setToast] = useState('');
 
@@ -598,8 +720,8 @@ export function WarehouseClient({
             </div>
 
             {tab === 'stock'
-              ? <StockTable items={stockItems} onAdjust={handleAdjust} />
-              : <MovementLog movements={movements} />
+              ? <StockTable items={stockItems} onAdjust={handleAdjust} onHistory={setHistoryProductId} />
+              : <MovementLog movements={movements} onHistory={setHistoryProductId} />
             }
           </div>
 
@@ -690,6 +812,16 @@ export function WarehouseClient({
           onDone={handleDone}
         />
       )}
+      {historyProductId && (() => {
+        const product = stockItems.find(p => p.id === historyProductId);
+        return product ? (
+          <ProductHistoryModal
+            product={product}
+            movements={movements}
+            onClose={() => setHistoryProductId(null)}
+          />
+        ) : null;
+      })()}
     </>
   );
 }

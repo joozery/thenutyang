@@ -7,7 +7,7 @@ export const metadata = { title: 'คลังสินค้า | Admin' };
 export default async function WarehousePage() {
   const [stockItems, movements, stats] = await Promise.all([
     getStockItems(),
-    getStockMovements(100),
+    getStockMovements(300),
     getWarehouseStats(),
   ]);
 
