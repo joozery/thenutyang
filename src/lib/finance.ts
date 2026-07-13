@@ -14,6 +14,7 @@ export type FinanceTransaction = {
   amount: number;
   deletable: boolean;
   href?:  string; // ลิงก์ไปดูเอกสารต้นทาง (PO/อินวอย) ถ้ามี
+  category?: string; // หมวดหมู่ (เฉพาะฝั่งรายจ่าย) — ใช้กรองรายการ
 };
 
 export type CategoryBreakdown = { label: string; amount: number; pct: number };
@@ -131,22 +132,76 @@ export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promi
     ...creditNotes.map((d) => ({
       id: String(d._id), date: new Date(d.issuedAt).toISOString(),
       desc: `ใบลดหนี้ให้ ${d.customerName}`, ref: d.docNumber, type: 'out' as const, amount: Math.abs(d.grandTotal), deletable: false,
-      href: `/admin/documents/${String(d._id)}/print`,
+      href: `/admin/documents/${String(d._id)}/print`, category: 'ใบลดหนี้',
     })),
     ...purchaseOrders.map((d) => ({
       id: String(d._id), date: new Date(d.paymentDate ?? d.createdAt).toISOString(),
       desc: `จ่ายค่าสินค้า ${d.supplierSnapshot?.name ?? ''}`, ref: d.poNumber, type: 'out' as const, amount: d.amountPaid ?? 0, deletable: false,
-      href: `/admin/purchasing/${String(d._id)}/print`,
+      href: `/admin/purchasing/${String(d._id)}/print`, category: 'ต้นทุนสินค้า (จัดซื้อ)',
     })),
     ...payslips.map((d) => ({
       id: String(d._id), date: new Date(d.paidAt ?? d.createdAt).toISOString(),
       desc: `จ่ายเงินเดือน ${d.employeeName}`, ref: `PS-${d.period}`, type: 'out' as const, amount: d.netPay, deletable: false,
+      category: 'เงินเดือน/ค่าแรง',
     })),
     ...expenses.map((d) => ({
       id: String(d._id), date: new Date(d.expenseDate).toISOString(),
       desc: d.description || d.category, ref: d.category, type: 'out' as const, amount: d.amount, deletable: true,
+      category: d.category,
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return { totalIncome, totalExpense, netProfit, incomeByCategory, expenseByCategory, transactions };
+}
+
+// ── สรุปรายจ่ายรายวัน — รวม PO ที่ชำระแล้ว + บันทึกค่าใช้จ่าย + เงินเดือน ──────
+
+export type DailyExpenseItem = {
+  id:       string;
+  date:     string; // ISO
+  desc:     string;
+  ref:      string;
+  source:   'po' | 'expense' | 'payroll';
+  category: string;
+  amount:   number;
+  href?:    string;
+};
+
+export async function getDailyExpenses(start: Date, end: Date): Promise<DailyExpenseItem[]> {
+  await connectDB();
+
+  const [purchaseOrders, payslips, expenses] = await Promise.all([
+    // เฉพาะ PO ที่จ่ายเงินแล้ว นับตามยอดจ่ายจริง/วันชำระ — เกณฑ์เดียวกับ getFinanceSummary
+    PurchaseOrder.find({ status: 'received', paymentStatus: { $in: ['partial', 'paid'] }, paymentDate: { $gte: start, $lte: end } }).lean() as Promise<POLean[]>,
+    Payslip.find({ status: 'paid', paidAt: { $gte: start, $lte: end } }).lean() as Promise<PayslipLean[]>,
+    Expense.find({ category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: start, $lte: end } }).lean() as Promise<ExpenseLean[]>,
+  ]);
+
+  const items: DailyExpenseItem[] = [
+    ...purchaseOrders.map((d) => ({
+      id: String(d._id), date: new Date(d.paymentDate ?? d.createdAt).toISOString(),
+      desc: `จ่ายค่าสินค้า ${d.supplierSnapshot?.name ?? ''}`.trim(), ref: d.poNumber,
+      source: 'po' as const, category: 'ต้นทุนสินค้า (จัดซื้อ)', amount: d.amountPaid ?? 0,
+      href: `/admin/purchasing/${String(d._id)}/print`,
+    })),
+    ...payslips.map((d) => ({
+      id: String(d._id), date: new Date(d.paidAt ?? d.createdAt).toISOString(),
+      desc: `เงินเดือน ${d.employeeName}`, ref: `PS-${d.period}`,
+      source: 'payroll' as const, category: 'เงินเดือน/ค่าแรง', amount: d.netPay,
+    })),
+    ...expenses.map((d) => ({
+      id: String(d._id), date: new Date(d.expenseDate).toISOString(),
+      desc: d.description || d.category, ref: d.category,
+      source: 'expense' as const, category: d.category, amount: d.amount,
+    })),
+  ];
+
+  return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+}
+
+// หมวดหมู่รายจ่ายที่เคยบันทึกไว้ทั้งหมด — ใช้เติม dropdown ให้หมวดที่ผู้ใช้เพิ่มเองโผล่ในครั้งถัดไป
+export async function getExpenseCategories(): Promise<string[]> {
+  await connectDB();
+  const cats = await Expense.distinct('category', { category: { $ne: 'PurchaseOrder' } }) as string[];
+  return cats.filter(Boolean).sort((a, b) => a.localeCompare(b, 'th'));
 }

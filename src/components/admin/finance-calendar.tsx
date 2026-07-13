@@ -7,8 +7,8 @@ import type { FinanceTransaction } from '@/lib/finance';
 
 const WEEKDAYS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
-// ตัวเลขย่อในช่องปฏิทิน เช่น 5.2K / 1.3M — พื้นที่ต่อช่องมีจำกัด
-const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+// ตัวเลขเต็มในช่องปฏิทิน (มี comma) — ผู้ใช้ต้องการเห็นจำนวนจริง ไม่เอาแบบย่อ K/M
+const compact = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 });
 
 function dayKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

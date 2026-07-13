@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   TrendingUp, TrendingDown, DollarSign, ArrowUpRight, ArrowDownRight,
-  Plus, X, Trash2,
+  Plus, X, Trash2, ClipboardList,
 } from 'lucide-react';
 import { createExpense, deleteExpense } from '@/app/actions/expenses';
 import { FinanceCalendar } from '@/components/admin/finance-calendar';
@@ -20,10 +21,12 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
 }
 
-const EXPENSE_CATEGORIES = ['ค่าน้ำ', 'ค่าไฟ', 'ค่าเช่าที่', 'ค่าซ่อมบำรุง', 'ค่าใช้จ่ายอื่นๆ'];
+const DEFAULT_EXPENSE_CATEGORIES = ['ค่าน้ำ', 'ค่าไฟ', 'ค่าเช่าที่', 'ค่าซ่อมบำรุง', 'ค่าใช้จ่ายอื่นๆ'];
+const NEW_CATEGORY = '__new__';
 
 export function FinanceClient({
   summary,
+  expenseCategories = [],
   activeRange,
   activeDateFrom,
   activeDateTo,
@@ -31,6 +34,7 @@ export function FinanceClient({
   periodStartIso,
 }: {
   summary: FinanceSummary;
+  expenseCategories?: string[];
   activeRange: string;
   activeDateFrom?: string;
   activeDateTo?: string;
@@ -42,25 +46,47 @@ export function FinanceClient({
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState('');
 
-  const [category,    setCategory]    = useState(EXPENSE_CATEGORIES[0]);
+  // หมวดพื้นฐาน + หมวดที่ผู้ใช้เคยเพิ่มเอง (จาก DB)
+  const allCategories = useMemo(
+    () => [...new Set([...DEFAULT_EXPENSE_CATEGORIES, ...expenseCategories])],
+    [expenseCategories],
+  );
+
+  const [category,       setCategory]       = useState(DEFAULT_EXPENSE_CATEGORIES[0]);
+  const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
   const [amount,      setAmount]      = useState(0);
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
   const [note,        setNote]        = useState('');
 
+  // ฟิลเตอร์หมวดหมู่ของตารางรายการ
+  const [catFilter, setCatFilter] = useState('ทั้งหมด');
+  const filterOptions = useMemo(() => {
+    const cats = [...new Set(summary.transactions.filter(t => t.category).map(t => t.category!))];
+    return ['ทั้งหมด', 'รายรับ', ...cats];
+  }, [summary.transactions]);
+  const filteredTransactions = useMemo(() => {
+    if (catFilter === 'ทั้งหมด') return summary.transactions;
+    if (catFilter === 'รายรับ')  return summary.transactions.filter(t => t.type === 'in');
+    return summary.transactions.filter(t => t.category === catFilter);
+  }, [summary.transactions, catFilter]);
+
   function closeModal() {
     setModalOpen(false);
     setError('');
-    setCategory(EXPENSE_CATEGORIES[0]);
+    setCategory(DEFAULT_EXPENSE_CATEGORIES[0]);
+    setCustomCategory('');
     setDescription('');
     setAmount(0);
     setExpenseDate(new Date().toISOString().split('T')[0]);
     setNote('');
   }
 
+  const finalCategory = category === NEW_CATEGORY ? customCategory.trim() : category;
+
   function handleSave() {
     startTransition(async () => {
-      const res = await createExpense({ category, description, amount, expenseDate, note });
+      const res = await createExpense({ category: finalCategory, description, amount, expenseDate, note });
       if (res.error) { setError(res.error); return; }
       closeModal();
       router.refresh();
@@ -124,6 +150,12 @@ export function FinanceClient({
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
+          <Link
+            href="/admin/finance/expenses"
+            className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 hover:border-slate-300 transition-colors w-fit bg-white"
+          >
+            <ClipboardList size={16} /> สรุปรายจ่ายรายวัน
+          </Link>
           <button
             onClick={() => setModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-colors w-fit"
@@ -169,12 +201,21 @@ export function FinanceClient({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Transaction Table */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-bold text-slate-900">รายการ — {periodLabel}</h2>
-            <span className="text-xs text-slate-400">{summary.transactions.length} รายการ</span>
+            <div className="flex items-center gap-3">
+              <select
+                value={catFilter}
+                onChange={e => setCatFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 focus:outline-none focus:border-green-400 bg-white"
+              >
+                {filterOptions.map(c => <option key={c} value={c}>หมวด: {c}</option>)}
+              </select>
+              <span className="text-xs text-slate-400">{filteredTransactions.length} รายการ</span>
+            </div>
           </div>
           <div className="overflow-x-auto max-h-[32rem] overflow-y-auto">
-            {summary.transactions.length === 0 ? (
+            {filteredTransactions.length === 0 ? (
               <p className="text-center text-slate-400 text-sm py-12">ไม่มีรายการในช่วงนี้</p>
             ) : (
               <table className="w-full text-sm">
@@ -187,7 +228,7 @@ export function FinanceClient({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {summary.transactions.map((t) => (
+                  {filteredTransactions.map((t) => (
                     <tr key={t.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3.5 text-slate-400 text-xs whitespace-nowrap">{fmtDate(t.date)}</td>
                       <td className="px-4 py-3.5">
@@ -297,8 +338,17 @@ export function FinanceClient({
                   value={category} onChange={e => setCategory(e.target.value)}
                   className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-green-400 bg-white"
                 >
-                  {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value={NEW_CATEGORY}>+ เพิ่มหมวดหมู่ใหม่...</option>
                 </select>
+                {category === NEW_CATEGORY && (
+                  <input
+                    autoFocus
+                    value={customCategory} onChange={e => setCustomCategory(e.target.value)}
+                    placeholder="พิมพ์ชื่อหมวดหมู่ใหม่ เช่น ค่าอินเทอร์เน็ต"
+                    className="mt-2 w-full px-3 py-2.5 text-sm border border-green-300 rounded-xl focus:outline-none focus:border-green-500"
+                  />
+                )}
               </div>
               <div>
                 <label className="text-xs font-semibold text-slate-600 block mb-1.5">รายละเอียด</label>
@@ -335,7 +385,7 @@ export function FinanceClient({
             <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
               <button onClick={closeModal} className="px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50">ยกเลิก</button>
               <button
-                onClick={handleSave} disabled={isPending || !amount}
+                onClick={handleSave} disabled={isPending || !amount || !finalCategory}
                 className="px-5 py-2.5 text-sm font-bold bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-40"
               >
                 {isPending ? 'กำลังบันทึก...' : 'บันทึก'}

@@ -1,4 +1,4 @@
-import { getFinanceSummary } from '@/lib/finance';
+import { getFinanceSummary, getExpenseCategories } from '@/lib/finance';
 import { FinanceClient } from '@/components/admin/finance-client';
 
 export const dynamic = 'force-dynamic';
@@ -46,11 +46,15 @@ export default async function FinancePage({
   const { range, dateFrom, dateTo } = await searchParams;
   const activeRange: Range = RANGE_OPTIONS.includes(range as Range) ? (range as Range) : 'this_month';
   const { start, end, label } = getRange(activeRange, dateFrom, dateTo);
-  const summary = await getFinanceSummary(start, end);
+  const [summary, expenseCategories] = await Promise.all([
+    getFinanceSummary(start, end),
+    getExpenseCategories(),
+  ]);
 
   return (
     <FinanceClient
       summary={summary}
+      expenseCategories={expenseCategories}
       activeRange={activeRange}
       activeDateFrom={dateFrom || ''}
       activeDateTo={dateTo || ''}
