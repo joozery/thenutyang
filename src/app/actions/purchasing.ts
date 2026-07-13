@@ -100,6 +100,15 @@ export async function updatePO(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await connectDB();
+
+    // ใบที่รับสินค้าแล้ว/ยกเลิกแล้ว ต้องคงสถานะเดิมไว้ — ห้ามรีเซ็ตกลับเป็น "รอรับสินค้า"
+    // (เดิมการกดแก้ไขใบที่รับแล้ว ทำให้ปุ่มรับสินค้าโผล่มาอีกและกดรับซ้ำ สต๊อกบวกสองรอบ)
+    const existing = await PurchaseOrder.findById(id).select('status').lean() as { status?: string } | null;
+    if (!existing) return { success: false, error: 'ไม่พบใบสั่งซื้อ' };
+    if (existing.status === 'received' || existing.status === 'cancelled') {
+      status = existing.status as typeof status;
+    }
+
     await PurchaseOrder.findByIdAndUpdate(id, {
       poType: data.poType,
       supplierId: data.supplierId || undefined,
@@ -137,8 +146,11 @@ export async function receivePO(id: string): Promise<{
 }> {
   try {
     await connectDB();
-    const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; reference?: string; items: { productId?: string; productName: string; qty: number }[] } | null;
+    const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; status?: string; reference?: string; items: { productId?: string; productName: string; qty: number }[] } | null;
     if (!po) return { error: 'ไม่พบใบสั่งซื้อ' };
+    // กันรับซ้ำ — รับได้ครั้งเดียว (กดรัว/แก้ไขแล้วกดรับใหม่ จะไม่บวกสต๊อกซ้ำ)
+    if (po.status === 'received') return { error: `${po.poNumber} รับสินค้าไปแล้ว` };
+    if (po.status === 'cancelled') return { error: `${po.poNumber} ถูกยกเลิกแล้ว` };
 
     await PurchaseOrder.findByIdAndUpdate(id, { status: 'received' });
 
