@@ -72,6 +72,7 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
         { icon: <Settings size={20} />, label: "ตั้งค่าทั่วไป", href: "/admin/settings", active: pathname === "/admin/settings" },
         { icon: <Settings2 size={20} />, label: "ตั้งค่าหน้าติดต่อ", href: "/admin/settings/contact", active: pathname === "/admin/settings/contact" },
         { icon: <Settings2 size={20} />, label: "ตั้งค่าหน้าหลัก", href: "/admin/settings/homepage", active: pathname === "/admin/settings/homepage" },
+        { icon: <Settings2 size={20} />, label: "นโยบายและเงื่อนไข", href: "/admin/settings/legal", active: pathname === "/admin/settings/legal" },
         { icon: <ShieldCheck size={20} />, label: "จัดการ Admin", href: "/admin/users", active: pathname.startsWith("/admin/users") },
         { icon: <UserCircle2 size={20} />, label: "โปรไฟล์ของฉัน", href: "/admin/profile", active: pathname.startsWith("/admin/profile") },
       ]

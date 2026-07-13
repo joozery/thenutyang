@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Clock, ArrowLeft } from 'lucide-react';
+import { Clock, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { getLegalPage } from '@/app/actions/legal';
 import { getProducts, getProductById } from '@/lib/products';
 import { getBrands } from '@/app/actions/brands';
 import { ProductGridClient } from '@/components/products/product-grid-client';
@@ -89,6 +90,44 @@ export default async function SlugPage({
             categoryLabel={cat.label}
             categoryKey={key}
           />
+        </div>
+      </div>
+    );
+  }
+
+  // หน้านโยบายความเป็นส่วนตัว / เงื่อนไขการใช้บริการ — เนื้อหาแก้ไขได้จากหลังบ้าน
+  if (key === 'privacy' || key === 'terms') {
+    const page = await getLegalPage(key);
+    return (
+      <div className="bg-slate-50 min-h-screen">
+        <div className="bg-white border-b border-slate-100">
+          <div className="container mx-auto px-4 md:px-8 py-8 max-w-3xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-black text-slate-900">{page.title}</h1>
+                {page.updatedAt && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    อัปเดตล่าสุด {new Date(page.updatedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-4 md:px-8 py-8 max-w-3xl">
+          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 md:p-8">
+            <div className="text-[15px] text-slate-700 leading-relaxed whitespace-pre-line">
+              {page.content}
+            </div>
+          </div>
+          <div className="mt-6 text-center">
+            <Link href="/contact" className="text-sm font-semibold text-green-600 hover:text-green-700 hover:underline underline-offset-2">
+              มีข้อสงสัย? ติดต่อเราได้ที่นี่ →
+            </Link>
+          </div>
         </div>
       </div>
     );
