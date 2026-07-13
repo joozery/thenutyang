@@ -54,6 +54,7 @@ const EMPTY_FORM = {
   priceCash: 0, priceCredit: 0, priceInstallment: 0, costPrice: 0,
   oldPrice: undefined as number | undefined,
   badge: '', image: '/yang.png',
+  images: [] as string[],
   category: 'touring',
   stock: 0, year: '26',
 };
@@ -85,6 +86,7 @@ export function ProductsClient({
   const [isUploading, setIsUploading] = useState(false);
   const [brandOpen, setBrandOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch]               = useState('');
   const [sizeTab, setSizeTab]             = useState('all');
@@ -171,6 +173,7 @@ export function ProductsClient({
       priceInstallment: p.priceInstallment, costPrice: p.costPrice ?? 0,
       oldPrice: p.oldPrice, badge: p.badge ?? '',
       image: p.image || '/yang.png',
+      images: p.images ?? [],
       category: p.category ?? 'touring',
       stock: p.stock, year: p.year,
     });
@@ -194,6 +197,29 @@ export function ProductsClient({
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  }
+
+  async function handleGalleryUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setIsUploading(true);
+    try {
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append('file', file);
+        const { url } = await uploadImage(fd, 'products');
+        setForm(f => ({ ...f, images: [...f.images, url] }));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'อัปโหลดรูปไม่สำเร็จ');
+    } finally {
+      setIsUploading(false);
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+    }
+  }
+
+  function removeGalleryImage(idx: number) {
+    setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }));
   }
 
   function handleSave() {
@@ -712,6 +738,29 @@ export function ProductsClient({
                     </button>
                     <input value={form.image} onChange={e => setForm(f => ({ ...f, image: e.target.value }))} className={inputCls} placeholder="หรือวาง URL รูปภาพ" />
                   </div>
+                </div>
+              </Field>
+
+              {/* Gallery images */}
+              <Field label={`รูปเพิ่มเติม (แกลเลอรี) — ${form.images.length} รูป`}>
+                <div className="flex flex-wrap gap-2">
+                  {form.images.map((url, idx) => (
+                    <div key={`${url}-${idx}`} className="relative w-16 h-16 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden group/img">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`รูปที่ ${idx + 2}`} className="w-full h-full object-contain" />
+                      <button type="button" onClick={() => removeGalleryImage(idx)}
+                        title="ลบรูปนี้"
+                        className="absolute top-0.5 right-0.5 w-4.5 h-4.5 rounded-full bg-slate-900/60 text-white flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                  <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleGalleryUpload} />
+                  <button type="button" onClick={() => galleryInputRef.current?.click()} disabled={isUploading}
+                    className="w-16 h-16 rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-green-400 hover:text-green-600 flex flex-col items-center justify-center gap-0.5 text-[9px] font-semibold disabled:opacity-50 transition-colors">
+                    <Upload size={14} />
+                    {isUploading ? 'กำลังอัป...' : 'เพิ่มรูป'}
+                  </button>
                 </div>
               </Field>
             </div>

@@ -17,6 +17,7 @@ export interface IProduct {
   oldPrice?: number;
   badge?: string;
   image: string;
+  images: string[]; // รูปเพิ่มเติม (แกลเลอรี) — image คือรูปหลัก
   category: string;
   specs: { load: string; speed: string; type: string };
   stock: number;
@@ -40,6 +41,7 @@ const ProductSchema = new Schema<IProduct>({
   oldPrice:         { type: Number },
   badge:            { type: String },
   image:            { type: String, default: '/yang.png' },
+  images:           { type: [String], default: [] },
   category:         { type: String, default: 'touring' },
   specs: {
     load:  { type: String, default: '91' },

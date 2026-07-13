@@ -1,8 +1,10 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { Clock, ArrowLeft } from 'lucide-react';
-import { getProducts } from '@/lib/products';
+import { getProducts, getProductById } from '@/lib/products';
 import { getBrands } from '@/app/actions/brands';
 import { ProductGridClient } from '@/components/products/product-grid-client';
+import { ProductDetail } from '@/components/products/product-detail';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -34,6 +36,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const key = slug[0] ?? '';
   const cat = PRODUCT_CATEGORIES[key];
+  if (cat && slug[1]) {
+    const product = await getProductById(slug[1]);
+    if (product) return { title: `${product.brand} ${product.model} | THENUTTIRE` };
+  }
   if (cat) return { title: `${cat.label} | THENUTTIRE` };
   return { title: `${OTHER_LABELS[key] ?? key} | THENUTTIRE` };
 }
@@ -50,6 +56,13 @@ export default async function SlugPage({
   const key = slug[0] ?? '';
 
   const cat = PRODUCT_CATEGORIES[key];
+
+  // หน้ารายละเอียดสินค้า เช่น /wheels/<id>
+  if (cat && slug.length === 2) {
+    const product = await getProductById(slug[1]);
+    if (!product) notFound();
+    return <ProductDetail product={product} categoryKey={key} categoryLabel={cat.label} />;
+  }
 
   // หน้าหมวดหมู่สินค้าจริง
   if (cat) {
@@ -74,6 +87,7 @@ export default async function SlugPage({
             initialProducts={products}
             initialBrands={brands}
             categoryLabel={cat.label}
+            categoryKey={key}
           />
         </div>
       </div>

@@ -21,6 +21,7 @@ type ProductInput = {
   oldPrice?: number;
   badge?: string;
   image?: string;
+  images?: string[];
   category: string;
   stock: number;
   year: string;

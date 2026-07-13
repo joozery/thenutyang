@@ -5,6 +5,7 @@ import { getProductById } from '@/lib/products';
 import { BRAND_LOGOS, CATEGORIES } from '@/lib/tires';
 import { ArrowLeft, CheckCircle, XCircle, Zap, Shield, Star } from 'lucide-react';
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
+import { TireGallery } from '@/components/tires/tire-gallery';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,6 +23,9 @@ export default async function TireDetailPage({ params }: { params: Promise<{ id:
     ? Math.round(((tire.oldPrice - tire.priceCash) / tire.oldPrice) * 100)
     : 0;
 
+  // รูปหลัก + รูปแกลเลอรี (ตัดซ้ำ/ค่าว่างออก)
+  const galleryImages = [...new Set([tire.image || '/yang.png', ...(tire.images ?? [])])].filter(Boolean);
+
   return (
     <div className="bg-slate-50 min-h-screen">
       <div className="container mx-auto px-4 md:px-8 py-8">
@@ -34,15 +38,14 @@ export default async function TireDetailPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Image */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 flex items-center justify-center min-h-[360px] relative">
-            {tire.badge && (
-              <span className="absolute top-4 left-4 bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full">{tire.badge}</span>
-            )}
-            {discount > 0 && (
-              <span className="absolute top-4 right-4 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full">ลด {discount}%</span>
-            )}
-            <img src={tire.image || '/yang.png'} alt={`${tire.brand} ${tire.model}`} className="max-h-72 w-auto object-contain" />
+          {/* Image gallery — คลิกรูปเพื่อเปิด popup ดูขนาดใหญ่ */}
+          <div>
+            <TireGallery
+              images={galleryImages}
+              alt={`${tire.brand} ${tire.model}`}
+              badge={tire.badge}
+              discount={discount}
+            />
           </div>
 
           {/* Info */}
