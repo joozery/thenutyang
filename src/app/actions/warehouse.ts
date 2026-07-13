@@ -83,6 +83,59 @@ export async function disburseStock(
   }
 }
 
+// ดึงรายการสินค้าจากใบ PO ตามเลขที่พิมพ์ในช่องอ้างอิง — เฉพาะบรรทัดที่ผูก ID สินค้าไว้
+export async function lookupPOItems(refNo: string): Promise<{
+  error?: string;
+  poNumber?: string;
+  items?: { productId: string; productName: string; qty: number }[];
+  skipped?: string[]; // บรรทัดที่ไม่ได้ผูก ID สินค้า
+}> {
+  try {
+    await connectDB();
+    const { PurchaseOrder } = await import('@/models/PurchaseOrder');
+    const po = await PurchaseOrder.findOne({ poNumber: new RegExp(`^${refNo.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') })
+      .select('poNumber status items').lean() as {
+        poNumber: string; status: string;
+        items: { productId?: unknown; productName: string; qty: number }[];
+      } | null;
+    if (!po) return { error: 'ไม่พบใบสั่งซื้อเลขนี้' };
+    if (po.status === 'cancelled') return { error: `ใบสั่งซื้อ ${po.poNumber} ถูกยกเลิกแล้ว` };
+
+    const items = po.items
+      .filter(i => i.productId)
+      .map(i => ({ productId: String(i.productId), productName: i.productName ?? '', qty: i.qty ?? 0 }));
+    const skipped = po.items.filter(i => !i.productId).map(i => i.productName);
+    if (items.length === 0) return { error: 'ใบนี้ไม่มีรายการที่ผูก ID สินค้าไว้ — ต้องเลือกสินค้าเอง' };
+
+    return { poNumber: po.poNumber, items, skipped: skipped.length ? skipped : undefined };
+  } catch (err) {
+    console.error('[lookupPOItems]', err);
+    return { error: 'ค้นหาใบสั่งซื้อไม่สำเร็จ' };
+  }
+}
+
+// รับเข้า/เบิกออกหลายรายการในครั้งเดียว (ใช้กับรายการที่ดึงมาจาก PO)
+export async function moveStockBulk(
+  type: 'in' | 'out',
+  items: { productId: string; productName?: string; qty: number }[],
+  refNo: string,
+  note: string,
+): Promise<{ error?: string; warnings?: string[] }> {
+  try {
+    if (items.length === 0) return { error: 'ไม่มีรายการ' };
+    const warnings: string[] = [];
+    for (const item of items) {
+      if (item.qty <= 0) continue;
+      const res = await createMovement(item.productId, type, item.qty, refNo, note);
+      if (res.error) warnings.push(item.productName ? `${item.productName}: ${res.error}` : res.error);
+    }
+    return warnings.length ? { warnings } : {};
+  } catch (err) {
+    console.error('[moveStockBulk]', err);
+    return { error: 'บันทึกรายการไม่สำเร็จ' };
+  }
+}
+
 export async function adjustStock(
   productId: string,
   newQty: number,

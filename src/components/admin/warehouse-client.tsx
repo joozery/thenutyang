@@ -9,7 +9,7 @@ import {
   Tag, Download, Upload, TrendingUp
 } from 'lucide-react';
 import type { StockItem, MovementRow, WarehouseStats } from '@/lib/warehouse';
-import { receiveStock, disburseStock, adjustStock } from '@/app/actions/warehouse';
+import { receiveStock, disburseStock, adjustStock, lookupPOItems, moveStockBulk } from '@/app/actions/warehouse';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -52,6 +52,25 @@ function MoveModal({
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
   const [search, setSearch] = useState(initialProduct ? initialProduct.label : '');
+  // รายการที่ดึงมาจากใบ PO ตามเลขในช่องอ้างอิง — ถ้ามี จะบันทึกทั้งชุดแทนการเลือกทีละตัว
+  const [poItems, setPoItems] = useState<{ productId: string; productName: string; qty: number }[] | null>(null);
+  const [poLookupPending, setPoLookupPending] = useState(false);
+  const [poMsg, setPoMsg] = useState('');
+
+  const stockById = useMemo(() => new Map(products.map(p => [p.id, p.stock])), [products]);
+
+  const handlePullFromPO = async () => {
+    if (!refNo.trim()) return;
+    setPoLookupPending(true);
+    setPoMsg('');
+    setError('');
+    const res = await lookupPOItems(refNo);
+    setPoLookupPending(false);
+    if (res.error) { setPoMsg(res.error); setPoItems(null); return; }
+    setPoItems(res.items ?? []);
+    setRefNo(res.poNumber ?? refNo);
+    setPoMsg(res.skipped?.length ? `ข้าม ${res.skipped.length} รายการที่ไม่ได้ผูกสินค้า: ${res.skipped.join(', ')}` : '');
+  };
 
   const selected = products.find(p => p.id === productId);
 
@@ -72,12 +91,26 @@ function MoveModal({
     adjust: 'ปรับสต๊อก (ตรวจนับ)',
   };
 
-  const isValid = !!productId && qty > 0;
+  const usingPO = poItems !== null && type !== 'adjust';
+  const isValid = usingPO ? poItems!.some(i => i.qty > 0) : (!!productId && qty > 0);
 
   const handleSubmit = () => {
     if (!isValid) return;
     setError('');
     startTransition(async () => {
+      if (usingPO) {
+        const res = await moveStockBulk(
+          type as 'in' | 'out',
+          poItems!.filter(i => i.qty > 0),
+          refNo,
+          note || `ตามใบ ${refNo}`,
+        );
+        if (res.error) { setError(res.error); return; }
+        if (res.warnings?.length) { setError(`บันทึกบางส่วนไม่สำเร็จ — ${res.warnings.join(' · ')}`); onDone(); return; }
+        onDone(); onClose();
+        return;
+      }
+
       let res: { error?: string };
       if (type === 'in')     res = await receiveStock(productId, qty, refNo, note);
       else if (type === 'out') res = await disburseStock(productId, qty, refNo, note);
@@ -103,6 +136,7 @@ function MoveModal({
         </div>
 
         <div className="p-5 space-y-4">
+          {!usingPO && (<>
           {/* Product Combobox */}
           <div className="relative">
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">สินค้า <span className="text-green-500">*</span></label>
@@ -189,6 +223,7 @@ function MoveModal({
               </p>
             )}
           </div>
+          </>)}
 
           {/* Ref No (not for adjust) */}
           {type !== 'adjust' && (
@@ -196,12 +231,72 @@ function MoveModal({
               <label className="block text-xs font-semibold text-slate-500 mb-1.5">
                 {type === 'in' ? 'เลขที่ PO / อ้างอิง' : 'เลขที่บิล / อ้างอิง'}
               </label>
-              <input
-                value={refNo}
-                onChange={e => setRefNo(e.target.value)}
-                placeholder={type === 'in' ? 'PO-2026-001' : 'INV-2026-001'}
-                className={inputCls}
-              />
+              <div className="flex gap-2">
+                <input
+                  value={refNo}
+                  onChange={e => { setRefNo(e.target.value); setPoMsg(''); }}
+                  placeholder={type === 'in' ? 'PO-2026-001' : 'INV-2026-001'}
+                  className={inputCls}
+                  disabled={usingPO}
+                />
+                {!usingPO ? (
+                  <button
+                    type="button"
+                    onClick={handlePullFromPO}
+                    disabled={!refNo.trim() || poLookupPending}
+                    title="ดึงรายการสินค้าจากใบสั่งซื้อเลขนี้"
+                    className="shrink-0 px-3 py-2 rounded-md border border-[#008a44] text-xs font-bold text-[#008a44] hover:bg-green-50 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
+                  >
+                    {poLookupPending ? 'กำลังค้นหา...' : 'ดึงจาก PO'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { setPoItems(null); setPoMsg(''); }}
+                    className="shrink-0 px-3 py-2 rounded-md border border-slate-200 text-xs font-bold text-slate-500 hover:bg-slate-50 whitespace-nowrap transition-colors"
+                  >
+                    ยกเลิกรายการ PO
+                  </button>
+                )}
+              </div>
+              {poMsg && <p className="text-xs text-amber-600 mt-1.5">{poMsg}</p>}
+
+              {/* รายการจากใบ PO — แก้จำนวน/ลบทีละบรรทัดได้ */}
+              {usingPO && (
+                <div className="mt-3 border border-slate-200 rounded-md divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                  {poItems!.map((item, idx) => {
+                    const stock = stockById.get(item.productId);
+                    const insufficient = type === 'out' && stock !== undefined && stock < item.qty;
+                    return (
+                      <div key={`${item.productId}-${idx}`} className="flex items-center gap-2 px-3 py-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-slate-700 truncate">{item.productName}</p>
+                          {stock !== undefined && (
+                            <p className={`text-[10px] ${insufficient ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
+                              สต๊อกปัจจุบัน {stock}{insufficient ? ' — ไม่พอเบิก' : ''}
+                            </p>
+                          )}
+                        </div>
+                        <input
+                          type="number"
+                          min={0}
+                          value={item.qty}
+                          onChange={e => setPoItems(list => list!.map((it, i) => i === idx ? { ...it, qty: Math.max(0, Number(e.target.value)) } : it))}
+                          className="w-16 px-2 py-1.5 rounded-md border border-slate-200 text-sm text-right focus:outline-none focus:border-green-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPoItems(list => list!.filter((_, i) => i !== idx))}
+                          title="เอาบรรทัดนี้ออก"
+                          className="p-1 text-slate-300 hover:text-red-500 transition-colors"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
