@@ -719,7 +719,7 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
           {[
             { label: 'รอรับสินค้า',              value: String(stats.pending) },
             { label: 'รับแล้วทั้งหมด',            value: String(stats.received) },
-            { label: 'มูลค่ารวม (ไม่รวมยกเลิก)', value: `฿${(stats.totalValue / 1000).toFixed(0)}K` },
+            { label: 'มูลค่ารวม (ไม่รวมยกเลิก)', value: `฿${stats.totalValue.toLocaleString()}` },
             { label: 'ซัพพลายเออร์',              value: String(stats.suppliers) },
           ].map(s => (
             <div key={s.label} className="bg-white border border-slate-100 rounded-xl p-4">

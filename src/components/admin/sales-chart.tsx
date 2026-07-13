@@ -35,7 +35,7 @@ export function SalesChart() {
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(value) => `${value/1000}K`} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(value) => value.toLocaleString()} />
             <Tooltip contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 12 }} />
             <Area type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={2.5} fill="url(#colorValue)" dot={{ fill: '#fff', stroke: '#4f46e5', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: '#4f46e5', stroke: '#fff', strokeWidth: 2 }} />
           </AreaChart>

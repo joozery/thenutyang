@@ -771,7 +771,7 @@ export function WarehouseClient({
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           {[
-            { label: 'มูลค่าสต๊อกรวม', value: `฿${(stats.totalValue / 1000).toFixed(0)}K`, sub: `${stats.totalItems.toLocaleString()} ชิ้น`, color: 'text-slate-800', icon: <Package size={18} className="text-emerald-600" />, bg: 'bg-emerald-50' },
+            { label: 'มูลค่าสต๊อกรวม', value: `฿${stats.totalValue.toLocaleString()}`, sub: `${stats.totalItems.toLocaleString()} ชิ้น`, color: 'text-slate-800', icon: <Package size={18} className="text-emerald-600" />, bg: 'bg-emerald-50' },
             { label: 'สินค้าทั้งหมด',   value: String(stats.totalItems), sub: `< 8 เส้น`, color: 'text-slate-800', icon: <Tag size={18} className="text-blue-600" />, bg: 'bg-blue-50' },
             { label: 'รับเข้าวันนี้',   value: `+${stats.todayIn}`,  sub: '0 ชิ้น', color: 'text-emerald-600', icon: <Download size={18} className="text-emerald-600" />, bg: 'bg-emerald-50' },
             { label: 'เบิกออกวันนี้',   value: `-${stats.todayOut}`, sub: '0 ชิ้น', color: 'text-rose-600', icon: <Upload size={18} className="text-rose-600" />, bg: 'bg-rose-50' },
