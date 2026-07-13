@@ -65,6 +65,17 @@ export default async function ContactPage() {
 
   const lineHref = settings?.lineUrl || `https://line.me/R/ti/p/${settings?.lineId?.replace('@', '%40') || ''}`;
 
+  // ช่องทางที่แอดมินเพิ่มเองจากหลังบ้าน — ต่อท้ายช่องทางหลัก
+  const customSocials = ((settings?.customSocials ?? []) as { name: string; url: string; icon: string }[])
+    .filter(c => c.name && c.url)
+    .map(c => ({
+      name: c.name,
+      url: c.url,
+      customIcon: c.icon,
+      icon: <ExternalLink size={18} strokeWidth={2} />,
+      bg: 'bg-slate-700',
+    }));
+
   // customIcon = โลโก้ที่แอดมินอัปโหลดเอง — ถ้ามีให้ใช้แทนไอคอนมาตรฐาน
   const socials = [
     { name: 'LINE',      url: lineHref,                customIcon: settings?.lineIcon,      icon: <LineIcon className="w-5 h-5" />,               bg: 'bg-[#00B900]' },
@@ -73,6 +84,7 @@ export default async function ContactPage() {
     { name: 'TikTok',    url: settings?.tiktokUrl,     customIcon: settings?.tiktokIcon,    icon: <TikTokIcon className="w-[18px] h-[18px]" />,    bg: 'bg-black' },
     { name: 'Shopee',    url: settings?.shopeeUrl,     customIcon: settings?.shopeeIcon,    icon: <ShopeeIcon className="w-[18px] h-[18px]" />,    bg: 'bg-[#EE4D2D]' },
     { name: 'ไทยมาร์ท',  url: settings?.thaimartUrl,   customIcon: settings?.thaimartIcon,  icon: <Store size={18} strokeWidth={2} />,             bg: 'bg-emerald-600' },
+    ...customSocials,
   ].filter(s => !!s.url);
 
   const addressLines = settings?.address ? settings.address.split('\\n').map((line: string) => line.trim()) : [

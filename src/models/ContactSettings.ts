@@ -21,6 +21,8 @@ export interface IContactSettings extends Document {
   tiktokIcon: string;
   shopeeIcon: string;
   thaimartIcon: string;
+  // ช่องทางที่แอดมินเพิ่มเอง — ตั้งชื่อ/ลิงก์/โลโก้ได้อิสระ
+  customSocials: { name: string; url: string; icon: string }[];
   email: string;
   workingHours: string;
   workingDays: string;
@@ -54,6 +56,14 @@ const ContactSettingsSchema: Schema = new Schema({
   tiktokIcon: { type: String, default: '' },
   shopeeIcon: { type: String, default: '' },
   thaimartIcon: { type: String, default: '' },
+  customSocials: {
+    type: [{
+      name: { type: String, default: '' },
+      url:  { type: String, default: '' },
+      icon: { type: String, default: '' },
+    }],
+    default: [],
+  },
   email: { type: String, required: true, default: 'contact@thenuttire.com' },
   workingHours: { type: String, required: true, default: '08:00 - 18:00 น.' },
   workingDays: { type: String, required: true, default: 'จันทร์ - อาทิตย์' },

@@ -22,6 +22,8 @@ export default function ContactSettingsPage() {
   // อัปโหลดโลโก้โซเชียลรายช่องทาง — จำว่ากำลังอัปช่องไหนอยู่
   const iconInputRef = useRef<HTMLInputElement>(null);
   const [uploadingIconField, setUploadingIconField] = useState<string | null>(null);
+  // ช่องทางโซเชียลที่เพิ่มเอง (ชื่อ + ลิงก์ + โลโก้)
+  const [customSocials, setCustomSocials] = useState<{ name: string; url: string; icon: string }[]>([]);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [formData, setFormData] = useState({
     address: '',
@@ -100,6 +102,7 @@ export default function ContactSettingsPage() {
           heroDesc: data.heroDesc || 'สอบถามข้อมูลเพิ่มเติม จองคิวเปลี่ยนยาง\\nหรือปรึกษาปัญหาเรื่องรถยนต์ เราพร้อมดูแลคุณ',
           heroImage: data.heroImage || '/yang.png'
         });
+        setCustomSocials(Array.isArray(data.customSocials) ? data.customSocials : []);
       }
     } catch (error) {
       console.error('Error fetching contact settings:', error);
@@ -137,7 +140,12 @@ export default function ContactSettingsPage() {
     fd.append('file', file);
     try {
       const res = await uploadImage(fd, 'settings');
-      setFormData(prev => ({ ...prev, [field]: res.url }));
+      if (field.startsWith('custom:')) {
+        const idx = Number(field.split(':')[1]);
+        setCustomSocials(prev => prev.map((c, i) => i === idx ? { ...c, icon: res.url } : c));
+      } else {
+        setFormData(prev => ({ ...prev, [field]: res.url }));
+      }
       showToast('อัปโหลดโลโก้สำเร็จ', 'success');
     } catch (err: any) {
       showToast(err.message || 'อัปโหลดล้มเหลว', 'error');
@@ -173,7 +181,7 @@ export default function ContactSettingsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, customSocials: customSocials.filter(c => c.name.trim() && c.url.trim()) }),
       });
 
       if (res.ok) {
@@ -472,6 +480,69 @@ export default function ContactSettingsPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* ช่องทางเพิ่มเติมที่กำหนดเอง */}
+          <div className="mt-6 pt-5 border-t border-dashed border-slate-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm font-bold text-slate-700">ช่องทางเพิ่มเติม (กำหนดเอง)</p>
+                <p className="text-xs text-slate-400 mt-0.5">เพิ่มช่องทางอื่นๆ ได้เอง เช่น Lazada, YouTube, X — ตั้งชื่อ วางลิงก์ และอัปโหลดโลโก้</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomSocials(prev => [...prev, { name: '', url: '', icon: '' }])}
+                className="shrink-0 px-4 py-2 rounded-xl border border-green-600 text-xs font-bold text-green-700 hover:bg-green-50 transition-colors"
+              >
+                + เพิ่มช่องทาง
+              </button>
+            </div>
+
+            {customSocials.length === 0 ? (
+              <p className="text-xs text-slate-300 text-center py-3">ยังไม่มีช่องทางเพิ่มเติม — กด "+ เพิ่มช่องทาง" เพื่อเริ่ม</p>
+            ) : (
+              <div className="space-y-3">
+                {customSocials.map((c, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <button
+                      type="button"
+                      disabled={isUploading}
+                      onClick={() => { setUploadingIconField(`custom:${idx}`); iconInputRef.current?.click(); }}
+                      title={c.icon ? 'เปลี่ยนโลโก้' : 'อัปโหลดโลโก้'}
+                      className="shrink-0 w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:border-green-300 hover:bg-green-50 flex items-center justify-center overflow-hidden transition-colors disabled:opacity-50"
+                    >
+                      {c.icon ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.icon} alt={c.name} className="w-7 h-7 object-contain" />
+                      ) : (
+                        <UploadCloud size={15} className="text-slate-400" />
+                      )}
+                    </button>
+                    <input
+                      value={c.name}
+                      onChange={e => setCustomSocials(prev => prev.map((x, i) => i === idx ? { ...x, name: e.target.value } : x))}
+                      placeholder="ชื่อช่องทาง เช่น Lazada"
+                      className="w-1/3 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
+                    />
+                    <input
+                      type="url"
+                      value={c.url}
+                      onChange={e => setCustomSocials(prev => prev.map((x, i) => i === idx ? { ...x, url: e.target.value } : x))}
+                      placeholder="https://..."
+                      className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCustomSocials(prev => prev.filter((_, i) => i !== idx))}
+                      title="ลบช่องทางนี้"
+                      className="shrink-0 w-11 h-11 rounded-xl border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 flex items-center justify-center transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
