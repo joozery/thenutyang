@@ -674,6 +674,10 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
                           <Link href={`/admin/customers/${c.id}`} className="font-bold text-slate-800 text-sm hover:text-green-700 transition-colors">
                             {c.name || <span className="text-slate-400 italic text-xs">ไม่มีชื่อ</span>}
                           </Link>
+                        ) : c.supplierId ? (
+                          <Link href={`/admin/customers/supplier/${c.supplierId}`} className="font-bold text-slate-800 text-sm hover:text-green-700 transition-colors">
+                            {c.name || <span className="text-slate-400 italic text-xs">ไม่มีชื่อ</span>}
+                          </Link>
                         ) : (
                           <p className="font-bold text-slate-800 text-sm">{c.name || <span className="text-slate-400 italic text-xs">ไม่มีชื่อ</span>}</p>
                         )}

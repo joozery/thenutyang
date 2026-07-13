@@ -50,6 +50,7 @@ export type UnifiedCustomerRow = {
   tag: 'VIP' | 'ปกติ' | 'ใหม่';
   source: 'online' | 'walkin';
   partnerPos?: PartnerPO[];
+  supplierId?: string; // คู่ค้าที่มาจากหน้าจัดซื้อ — ลิงก์ไปหน้ารายละเอียดซัพพลายเออร์
 };
 
 // ซัพพลายเออร์จากหน้าจัดซื้อ → แถว "คู่ค้า" ในหน้าลูกค้า (อ่านอย่างเดียว — แก้ข้อมูลที่หน้าจัดซื้อ)
@@ -113,6 +114,7 @@ export async function getSupplierPartners(): Promise<UnifiedCustomerRow[]> {
       tag: 'ปกติ' as const,
       source: 'walkin' as const,
       partnerPos: pos,
+      supplierId: String(s._id),
     };
   });
 }
