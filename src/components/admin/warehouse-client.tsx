@@ -266,14 +266,14 @@ function MoveModal({
                 <div className="mt-3 border border-slate-200 rounded-md divide-y divide-slate-100 max-h-56 overflow-y-auto">
                   {poItems!.map((item, idx) => {
                     const stock = stockById.get(item.productId);
-                    const insufficient = type === 'out' && stock !== undefined && stock < item.qty;
+                    const willBeNegative = type === 'out' && stock !== undefined && stock < item.qty;
                     return (
                       <div key={`${item.productId}-${idx}`} className="flex items-center gap-2 px-3 py-2">
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-slate-700 truncate">{item.productName}</p>
                           {stock !== undefined && (
-                            <p className={`text-[10px] ${insufficient ? 'text-red-500 font-bold' : 'text-slate-400'}`}>
-                              สต๊อกปัจจุบัน {stock}{insufficient ? ' — ไม่พอเบิก' : ''}
+                            <p className={`text-[10px] ${willBeNegative ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
+                              สต๊อกปัจจุบัน {stock}{willBeNegative ? ` — เบิกแล้วติดลบ ${stock - item.qty}` : ''}
                             </p>
                           )}
                         </div>
@@ -525,7 +525,7 @@ function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdju
                   </button>
                 </td>
                 <td className="px-5 py-4 text-center">
-                  <span className={`text-[13px] font-bold ${p.stock === 0 ? 'text-red-500' : p.isLow ? 'text-amber-500' : 'text-slate-800'}`}>
+                  <span className={`text-[13px] font-bold ${p.stock <= 0 ? 'text-red-500' : p.isLow ? 'text-amber-500' : 'text-slate-800'}`}>
                     {p.stock}
                   </span>
                   <span className="text-[12px] text-slate-400 ml-1.5 font-medium">เส้น</span>
@@ -533,7 +533,9 @@ function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdju
                 <td className="px-5 py-4 text-right text-slate-500 font-semibold text-[13px]">฿{p.priceCash.toLocaleString()}</td>
                 <td className="px-5 py-4 text-center font-bold text-slate-700 text-[13px]">฿{p.stockValue.toLocaleString()}</td>
                 <td className="px-5 py-4 text-center">
-                  {p.stock === 0
+                  {p.stock < 0
+                    ? <span className="inline-flex items-center justify-center min-w-[70px] text-[11px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-600">ติดลบ (รอของ)</span>
+                    : p.stock === 0
                     ? <span className="inline-flex items-center justify-center min-w-[70px] text-[11px] font-bold px-2 py-1 rounded-full bg-red-50 text-red-500">หมด</span>
                     : p.isLow
                     ? <span className="inline-flex items-center justify-center gap-1 min-w-[70px] text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-600"><AlertTriangle size={10}/> ใกล้หมด</span>
@@ -841,17 +843,17 @@ export function WarehouseClient({
                     <div className="flex justify-between items-start mb-2.5">
                       <p className="text-[13px] font-bold text-slate-700 leading-relaxed pr-4">{item.label}</p>
                       <div className="text-right shrink-0">
-                        <p className={`text-[14px] font-black ${item.stock === 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                        <p className={`text-[14px] font-black ${item.stock <= 0 ? 'text-red-500' : 'text-amber-500'}`}>
                           {item.stock} <span className="text-[12px] font-bold text-slate-400">เส้น</span>
                         </p>
                         <p className="text-[11px] text-slate-400 mt-0.5 font-medium">ขั้นต่ำ 8</p>
                       </div>
                     </div>
                     {/* Progress bar */}
-                    <div className={`h-1.5 w-full rounded-full ${item.stock === 0 ? 'bg-red-50' : 'bg-amber-50'}`}>
+                    <div className={`h-1.5 w-full rounded-full ${item.stock <= 0 ? 'bg-red-50' : 'bg-amber-50'}`}>
                       <div
-                        className={`h-1.5 rounded-full ${item.stock === 0 ? 'bg-red-400' : 'bg-amber-400'}`}
-                        style={{ width: `${Math.min((item.stock / 8) * 100, 100)}%` }}
+                        className={`h-1.5 rounded-full ${item.stock <= 0 ? 'bg-red-400' : 'bg-amber-400'}`}
+                        style={{ width: `${Math.max(0, Math.min((item.stock / 8) * 100, 100))}%` }}
                       />
                     </div>
                   </div>

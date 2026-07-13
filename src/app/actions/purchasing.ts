@@ -279,15 +279,14 @@ export async function disbursePOToInvoice(id: string): Promise<{ error?: string;
         continue;
       }
       const stockBefore = product.stock ?? 0;
-      const outQty = Math.min(item.qty, stockBefore);
-      if (outQty < item.qty) warnings.push(`"${item.productName}" สต๊อกไม่พอ เบิกได้ ${outQty}/${item.qty}`);
-      if (outQty === 0) continue;
-      const stockAfter  = stockBefore - outQty;
+      // เบิกเต็มจำนวนเสมอ — สต๊อกติดลบได้ (นโยบายร้าน: ขายก่อน ของตามมากับ PO)
+      const stockAfter = stockBefore - item.qty;
+      if (stockAfter < 0) warnings.push(`"${item.productName}" สต๊อกติดลบ ${stockAfter}`);
       const productName = `${product.brand ?? ''} ${product.model ?? ''} ${product.size ?? ''}`.trim();
-      await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -outQty } });
+      await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.qty } });
       await StockMovement.create({
         productId: item.productId, productName, type: 'out',
-        qty: outQty, stockBefore, stockAfter,
+        qty: item.qty, stockBefore, stockAfter,
         refNo: po.reference, note: disburseNote,
       });
     }
@@ -326,13 +325,13 @@ export async function cancelPO(id: string): Promise<{ error?: string; warnings?:
           continue;
         }
         const stockBefore = product.stock ?? 0;
-        const returnQty   = Math.min(item.qty, stockBefore);
-        const stockAfter  = stockBefore - returnQty;
+        // คืนเต็มจำนวนที่เคยรับเข้า — สต๊อกติดลบได้ เพื่อให้บัญชีเข้า-ออกตรงกันเสมอ
+        const stockAfter  = stockBefore - item.qty;
         const productName = `${product.brand ?? ''} ${product.model ?? ''} ${product.size ?? ''}`.trim();
-        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -returnQty } });
+        await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.qty } });
         await StockMovement.create({
           productId: item.productId, productName, type: 'out',
-          qty: returnQty, stockBefore, stockAfter,
+          qty: item.qty, stockBefore, stockAfter,
           refNo: po.poNumber, note: `คืนสินค้าจากยกเลิก ${po.poNumber}`,
         });
       }

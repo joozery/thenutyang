@@ -72,14 +72,14 @@ async function deductStockForDoc(
     const product = await Product.findById(item.productId).lean() as { stock?: number; brand?: string; model?: string; size?: string } | null;
     if (!product) { warnings.push(`ไม่พบสินค้า "${item.description}" ในคลัง`); continue; }
     const stockBefore = product.stock ?? 0;
-    const outQty = Math.min(item.qty, stockBefore);
-    if (outQty < item.qty) warnings.push(`"${item.description}" สต๊อกไม่พอ ตัดได้ ${outQty}/${item.qty} เส้น — ส่วนที่เหลือให้เบิกเองหลังรับของเข้า`);
-    if (outQty === 0) continue;
+    // ขายตอนของหมดได้ — สต๊อกติดลบไว้ก่อน เดี๋ยวรับของจาก PO เข้ามาจะกลับมาบวกเอง
+    const stockAfter = stockBefore - item.qty;
+    if (stockAfter < 0) warnings.push(`"${item.description}" สต๊อกติดลบ ${stockAfter} — อย่าลืมเปิด PO สั่งของเข้า`);
     const productName = `${product.brand ?? ''} ${product.model ?? ''} ${product.size ?? ''}`.trim();
-    await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -outQty } });
+    await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.qty } });
     await StockMovement.create({
       productId: item.productId, productName, type: 'out',
-      qty: outQty, stockBefore, stockAfter: stockBefore - outQty,
+      qty: item.qty, stockBefore, stockAfter,
       refNo: docNumber, note: `ขายตามใบ ${docNumber}`,
     });
   }

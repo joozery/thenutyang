@@ -1094,10 +1094,10 @@ export function NewDocumentClient({
                       </div>
                       {line.productId && (() => {
                         const p = productById.get(line.productId);
-                        const insufficient = p !== undefined && p.stock < line.qty;
+                        const willBeNegative = p !== undefined && p.stock < line.qty;
                         return (
-                          <p className={`text-[10px] mt-1 font-semibold ${insufficient ? 'text-red-500' : 'text-emerald-600'}`}>
-                            ✓ ผูกกับคลัง — จะตัดสต๊อกอัตโนมัติ{p !== undefined && ` (มีอยู่ ${p.stock}${insufficient ? ' ไม่พอ' : ''})`}
+                          <p className={`text-[10px] mt-1 font-semibold ${willBeNegative ? 'text-amber-600' : 'text-emerald-600'}`}>
+                            ✓ ผูกกับคลัง — จะตัดสต๊อกอัตโนมัติ{p !== undefined && ` (มีอยู่ ${p.stock}${willBeNegative ? ` → ติดลบ ${p.stock - line.qty} รอของจาก PO` : ''})`}
                           </p>
                         );
                       })()}

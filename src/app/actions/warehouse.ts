@@ -27,7 +27,7 @@ async function createMovement(
     stockDelta = qty;
     stockAfter = stockBefore + qty;
   } else if (type === 'out') {
-    if (stockBefore < qty) return { error: `สต๊อกไม่พอ (มีอยู่ ${stockBefore} ชิ้น)` };
+    // เบิกเกินสต๊อกได้ — ติดลบไว้ก่อน (เคสขายก่อนของเข้า) สต๊อกจะกลับมาบวกเมื่อรับของจาก PO
     stockDelta = -qty;
     stockAfter = stockBefore - qty;
   } else {
