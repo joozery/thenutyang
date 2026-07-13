@@ -31,8 +31,8 @@ import { composeTaxBranch, parseTaxBranch, type TaxBranchType } from '@/lib/tax-
 
 // sel = สไตล์ตอนถูกเลือก — สีประจำชนิดเอกสาร (ตรงกับสีหัวใบตอนพิมพ์)
 const DOC_TYPES: { value: DocType; label: string; desc: string; icon: React.ReactNode; editOnly?: boolean; sel: { border: string; bg: string; text: string; icon: string } }[] = [
-  { value: 'invoice',      label: 'ใบเสร็จ / ใบกำกับภาษี', desc: 'บันทึกการขายที่ชำระแล้ว',         icon: <Receipt  size={18} />, sel: { border: 'border-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700', icon: 'text-emerald-600' } },
-  { value: 'quote',        label: 'ใบเสนอราคา',              desc: 'เสนอราคาให้ลูกค้าก่อนตัดสินใจ',   icon: <FileEdit size={18} />, sel: { border: 'border-blue-500', bg: 'bg-blue-50', text: 'text-blue-700', icon: 'text-blue-600' } },
+  { value: 'invoice',      label: 'ใบเสร็จ / ใบกำกับภาษี', desc: 'บันทึกการขายที่ชำระแล้ว',         icon: <Receipt  size={18} />, sel: { border: 'border-blue-500', bg: 'bg-blue-50', text: 'text-blue-700', icon: 'text-blue-600' } },
+  { value: 'quote',        label: 'ใบเสนอราคา',              desc: 'เสนอราคาให้ลูกค้าก่อนตัดสินใจ',   icon: <FileEdit size={18} />, sel: { border: 'border-green-500', bg: 'bg-green-50', text: 'text-green-700', icon: 'text-green-600' } },
   { value: 'billing_note', label: 'ใบแจ้งหนี้',              desc: 'บิลเครดิต ออกก่อนรับเงิน รอลูกค้าชำระ (จ่ายเป็นงวดได้)', icon: <FileClock size={18} />, sel: { border: 'border-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', icon: 'text-purple-600' } },
   { value: 'credit_note',  label: 'ใบลดหนี้',                desc: 'ลดยอดหนี้จากใบเสร็จที่ออกแล้ว',  icon: <FileMinus   size={18} />, sel: { border: 'border-rose-500', bg: 'bg-rose-50', text: 'text-rose-700', icon: 'text-rose-600' } },
   { value: 'booking_note', label: 'ใบจอง',                  desc: 'จองสินค้าล่วงหน้า รับมัดจำ นัดวันรับรถ', icon: <BookMarked size={18} />, sel: { border: 'border-amber-500', bg: 'bg-amber-50', text: 'text-amber-700', icon: 'text-amber-600' } },

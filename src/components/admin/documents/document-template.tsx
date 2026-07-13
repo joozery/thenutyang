@@ -93,6 +93,9 @@ export function DocumentTemplate({
 }: DocumentTemplateProps) {
   const paid = paidAmount ?? grandTotal;
   const remainingBalance = depositAmount > 0 ? Math.max(0, grandTotal - depositAmount) : 0;
+  // โทนสีอ่อนของสีประจำชนิดเอกสาร — ใช้กับพื้นกล่องและเส้นขอบทั้งใบ
+  const tintBg = `${accentColor}14`;     // ~8% opacity
+  const tintBorder = `${accentColor}2e`; // ~18% opacity
   const minRows = 4;
 
   return (
@@ -115,7 +118,7 @@ export function DocumentTemplate({
 
       {/* Seller + meta */}
       <div className="grid grid-cols-2 gap-2 mb-2">
-        <div className="bg-green-50 border border-green-100 rounded-lg p-2 space-y-0.5">
+        <div className="rounded-lg p-2 space-y-0.5 border" style={{ backgroundColor: tintBg, borderColor: tintBorder }}>
           <p className="text-[11px] text-slate-600">ผู้ขาย</p>
           <p className="text-[13px] font-bold text-slate-900">{seller.companyName || '—'}</p>
           {seller.address && <p className="text-[11px] text-slate-800">ที่อยู่: {seller.address}</p>}
@@ -128,7 +131,7 @@ export function DocumentTemplate({
           </div>
         </div>
 
-        <div className="bg-green-50 border border-green-100 rounded-lg p-2 space-y-0.5">
+        <div className="rounded-lg p-2 space-y-0.5 border" style={{ backgroundColor: tintBg, borderColor: tintBorder }}>
           <Row label="เลขที่เอกสาร" value={docNumber} />
           <Row label="วันที่ออก" value={issueDate} />
           <Row label="อ้างอิง" value={reference || '-'} />
@@ -176,7 +179,7 @@ export function DocumentTemplate({
       {/* Items */}
       <table className="w-full text-[13px] border-collapse mb-4">
         <thead>
-          <tr className="bg-green-700 text-white">
+          <tr className="text-white" style={{ backgroundColor: accentColor }}>
             <th className="text-left py-2 px-2 font-semibold">คำอธิบาย</th>
             <th className="text-center py-2 px-2 font-semibold w-16">จำนวน</th>
             <th className="text-right py-2 px-2 font-semibold w-20">ราคา</th>
@@ -217,9 +220,9 @@ export function DocumentTemplate({
             <tbody>
               <tr><td className="py-1 text-slate-800">มูลค่าที่คำนวณภาษี {vatRate}%</td><td className="py-1 text-right tabular-nums">{fmt(vatBase)} บาท</td></tr>
               <tr><td className="py-1 text-slate-800">ภาษีมูลค่าเพิ่ม {vatRate}%</td><td className="py-1 text-right tabular-nums">{fmt(vatAmount)} บาท</td></tr>
-              <tr className="bg-green-50">
+              <tr style={{ backgroundColor: tintBg }}>
                 <td className="py-2 px-2 font-bold text-slate-900 rounded-l-lg">จำนวนเงินทั้งสิ้น</td>
-                <td className="py-2 px-2 text-right font-black text-green-700 text-sm tabular-nums rounded-r-lg">{fmt(grandTotal)}</td>
+                <td className="py-2 px-2 text-right font-black text-sm tabular-nums rounded-r-lg" style={{ color: accentColor }}>{fmt(grandTotal)}</td>
               </tr>
               {depositAmount > 0 && (
                 <>

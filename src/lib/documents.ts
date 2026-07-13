@@ -6,8 +6,8 @@ export type PaymentMethod = 'cash' | 'transfer' | 'credit_card' | 'pending';
 
 // สีประจำชนิดเอกสาร — ใช้ทั้งหน้าเลือกประเภทและหัวใบตอนพิมพ์
 export const DOC_TYPE_COLOR: Record<string, string> = {
-  invoice:      '#059669', // เขียว — ใบเสร็จ/ใบกำกับภาษี
-  quote:        '#2563eb', // น้ำเงิน — ใบเสนอราคา
+  quote:        '#15803d', // เขียว (สีเดิมของเทมเพลต) — ใบเสนอราคา
+  invoice:      '#2563eb', // น้ำเงิน — ใบเสร็จ/ใบกำกับภาษี
   billing_note: '#9333ea', // ม่วง — ใบแจ้งหนี้
   credit_note:  '#e11d48', // แดงกุหลาบ — ใบลดหนี้
   booking_note: '#d97706', // ส้มอำพัน — ใบจอง

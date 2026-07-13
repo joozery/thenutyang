@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getDocumentByBookingRef } from '@/lib/documents';
+import { getDocumentByBookingRef, DOC_TYPE_COLOR } from '@/lib/documents';
 import { getDocumentSettings } from '@/lib/document-settings';
 import { PrintPageShell } from '@/components/admin/documents/print-page-shell';
 import { DocumentTemplate, type DocumentTemplateProps } from '@/components/admin/documents/document-template';
@@ -48,6 +48,7 @@ export default async function BookingPrintPage({
 
   const templateProps: DocumentTemplateProps = {
     docTypeLabel: DOC_TYPE_PRINT_LABEL[doc.type] ?? doc.type,
+    accentColor: DOC_TYPE_COLOR[doc.type],
     docNumber: doc.docNumber,
     issueDate: fmtDate(doc.issuedAt),
     reference: doc.bookingRef || undefined,
