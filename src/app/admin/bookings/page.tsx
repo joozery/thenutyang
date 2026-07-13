@@ -49,9 +49,15 @@ export default async function AdminBookingsPage({
 
   const docs = await FinancialDocument.find(
     { bookingId: { $in: raw.map(b => b._id) } },
-    { bookingId: 1, status: 1 },
+    { bookingId: 1, status: 1, type: 1 },
   ).lean();
-  const quoteDocByBookingId = new Map(docs.map(d => [String(d.bookingId), { id: String(d._id), status: d.status as string }]));
+  // แยกชนิดเอกสาร — ใบเสนอราคาใช้กับปุ่มอนุมัติ / ใบจอง (RES) ใช้ปุ่มพิมพ์ใบจอง
+  const quoteDocByBookingId = new Map(
+    docs.filter(d => d.type === 'quote').map(d => [String(d.bookingId), { id: String(d._id), status: d.status as string }]),
+  );
+  const resDocByBookingId = new Map(
+    docs.filter(d => d.type === 'booking_note').map(d => [String(d.bookingId), String(d._id)]),
+  );
 
   const bookings = raw.map(b => {
     const quoteDoc = quoteDocByBookingId.get(b._id.toString()) ?? null;
@@ -81,6 +87,7 @@ export default async function AdminBookingsPage({
       createdAt: (b.createdAt as Date).toISOString(),
       quoteDocId: quoteDoc?.id ?? null,
       quoteStatus: quoteDoc?.status ?? null,
+      resDocId: resDocByBookingId.get(b._id.toString()) ?? null,
       depositAmount: b.depositAmount ?? 1000,
       depositStatus: b.depositStatus ?? 'pending',
       depositSlipUrl: b.depositSlipUrl ?? '',

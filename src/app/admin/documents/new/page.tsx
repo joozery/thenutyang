@@ -83,7 +83,8 @@ export default async function NewDocumentPage({
         sourceDocId:        sourceDoc.id,
         sourceDocNumber:    sourceDoc.docNumber,
         sourceDocTypeLabel: TYPE_LABEL[sourceDoc.type],
-        depositAmount:      sourceDoc.type === 'booking_note' ? sourceDoc.depositAmount : 0,
+        // มัดจำติดไปกับเอกสารต่อยอดทุกชนิด (ใบจอง/ใบเสนอราคา → ใบเสร็จ ฯลฯ) — แม่แบบจะหักและแสดงยอดคงเหลือ
+        depositAmount:      sourceDoc.depositAmount ?? 0,
       };
     }
   }

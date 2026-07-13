@@ -284,6 +284,7 @@ type BookingForDoc = {
   address?: string; taxId?: string;
   tireName: string; tirePrice: number; quantity: number;
   status?: string; createdAt?: Date; note?: string;
+  depositAmount?: number; depositStatus?: string;
 };
 
 // รวมข้อมูลรถ (ยี่ห้อ/รุ่น/ปี/ทะเบียน/เลขไมล์) เป็นข้อความเดียว ใช้แสดงในช่อง customerCar ของเอกสาร
@@ -340,6 +341,8 @@ function buildDocFromBooking(b: BookingForDoc, type: DocType, docNumber: string)
     paidAt:        isInvoice ? (b.createdAt ?? new Date()) : null,
     issuedAt:      b.createdAt ?? new Date(),
     note:          b.note ?? '',
+    // มัดจำที่รับแล้วจริง (ยืนยันสลิปแล้ว) — แม่แบบเอกสารจะหักออกและแสดงยอดคงเหลือให้เอง
+    depositAmount: b.depositStatus === 'verified' ? (b.depositAmount ?? 0) : 0,
   };
 }
 

@@ -626,10 +626,15 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
     const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
     const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
     return orders.filter(o => {
+      // ค้นด้วยจำนวนเงินได้ — พิมพ์ '12500' หรือ '12,500' เจอใบที่ยอดรวมตรงหรือขึ้นต้นด้วยเลขนั้น
+      const qAmount = q.replace(/[,฿\s]/g, '');
+      const matchAmount = !!qAmount && /^\d+(\.\d+)?$/.test(qAmount)
+        && (String(o.grandTotal).startsWith(qAmount) || String(Math.round(o.grandTotal)) === qAmount);
       const matchSearch = o.poNumber.toLowerCase().includes(q)
         || o.supplier.toLowerCase().includes(q)
         || o.reference.toLowerCase().includes(q)
-        || (o.refDoc?.customerName ?? '').toLowerCase().includes(q);
+        || (o.refDoc?.customerName ?? '').toLowerCase().includes(q)
+        || matchAmount;
       const orderTime = new Date(o.orderDate).getTime();
       const matchDate = (!fromTime || orderTime >= fromTime) && (!toTime || orderTime <= toTime);
       return matchSearch && matchDate;

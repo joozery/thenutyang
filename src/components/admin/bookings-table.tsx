@@ -40,6 +40,7 @@ type Booking = {
   createdAt: string;
   quoteDocId?: string | null;
   quoteStatus?: string | null;
+  resDocId?: string | null;
   depositAmount?: number;
   depositStatus?: string;
   depositSlipUrl?: string;
@@ -431,6 +432,18 @@ export function BookingsTable({
                         >
                           <LineIcon className="w-4 h-4" />
                         </button>
+
+                        {/* ใบจอง (RES) — ออกอัตโนมัติเมื่อยืนยันมัดจำ */}
+                        {b.resDocId && (
+                          <Link
+                            href={`/admin/documents/${b.resDocId}/print`}
+                            target="_blank"
+                            title="พิมพ์ใบจอง (มัดจำรับแล้ว)"
+                            className="p-2 rounded-md bg-amber-50 text-amber-600 border border-amber-100/60 hover:bg-amber-500 hover:text-white hover:border-transparent transition-all duration-200 hover:shadow-lg hover:shadow-amber-500/20 hover:-translate-y-0.5 active:translate-y-0"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Link>
+                        )}
 
                         {/* ใบเสนอราคา */}
                         {b.quoteDocId ? (
