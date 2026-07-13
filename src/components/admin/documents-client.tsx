@@ -694,6 +694,7 @@ export function DocumentsClient({
   const [search,     setSearch]     = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [statFilter, setStatFilter] = useState('');
+  const [vatFilter,  setVatFilter]  = useState(''); // '' = ทั้งหมด | 'vat' = มี VAT | 'novat' = ไม่มี VAT
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo,   setDateTo]   = useState('');
   const [page,       setPage]       = useState(1);
@@ -726,13 +727,16 @@ export function DocumentsClient({
         || d.customerPhone.includes(q)
         || d.customerCar.toLowerCase().includes(q)
         || (!!qCompact && d.customerCar.toLowerCase().replace(/[\s-]+/g, '').includes(qCompact));
-      return matchSearch &&
+      const matchVat = !vatFilter
+        || (vatFilter === 'vat' && d.vatAmount > 0)
+        || (vatFilter === 'novat' && !(d.vatAmount > 0));
+      return matchSearch && matchVat &&
         (!typeFilter || d.type === typeFilter) &&
         (!statFilter || d.status === statFilter) &&
         (!fromTime || issuedTime >= fromTime) &&
         (!toTime || issuedTime <= toTime);
     });
-  }, [docs, search, typeFilter, statFilter, dateFrom, dateTo]);
+  }, [docs, search, typeFilter, statFilter, vatFilter, dateFrom, dateTo]);
 
   const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -1056,6 +1060,15 @@ export function DocumentsClient({
               <option value="cancelled">ยกเลิก</option>
               <option value="reserved">จองแล้ว</option>
               <option value="deposit_paid">รับมัดจำแล้ว</option>
+            </select>
+            <select
+              value={vatFilter}
+              onChange={e => { setVatFilter(e.target.value); setPage(1); }}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
+            >
+              <option value="">VAT: ทั้งหมด</option>
+              <option value="vat">มี VAT</option>
+              <option value="novat">ไม่มี VAT</option>
             </select>
           </div>
         </div>

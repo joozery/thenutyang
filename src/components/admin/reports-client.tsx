@@ -128,7 +128,7 @@ export function ReportsClient({
 
         <div className={`border rounded-2xl p-5 ${summary.netProfit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
           <div className="flex items-center justify-between mb-3">
-            <span className={`text-sm font-medium ${summary.netProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>กำไรสุทธิ</span>
+            <span className={`text-sm font-medium ${summary.netProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>คงเหลือ</span>
             <div className={`p-2 rounded-xl ${summary.netProfit >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
               <DollarSign size={18} />
             </div>
