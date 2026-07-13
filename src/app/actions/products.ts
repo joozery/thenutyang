@@ -14,6 +14,8 @@ type ProductInput = {
   size?: string;
   type: string;
   note: string;
+  description?: string;
+  warranty?: string;
   priceCash: number;
   priceCredit: number;
   priceInstallment: number;

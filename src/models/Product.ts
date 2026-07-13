@@ -10,6 +10,8 @@ export interface IProduct {
   rimSize: number;
   type: string;
   note: string;
+  description: string; // รายละเอียดสินค้า — แสดงบนหน้ารายละเอียด
+  warranty: string;    // เงื่อนไขประกัน เช่น "รับประกัน 2 ปี หรือ 50,000 กม."
   priceCash: number;
   priceCredit: number;
   priceInstallment: number;
@@ -34,6 +36,8 @@ const ProductSchema = new Schema<IProduct>({
   rimSize:          { type: Number, default: 0 },
   type:             { type: String, default: '' },
   note:             { type: String, default: '' },
+  description:      { type: String, default: '' },
+  warranty:         { type: String, default: '' },
   priceCash:        { type: Number, required: true },
   priceCredit:      { type: Number, required: true },
   priceInstallment: { type: Number, required: true },

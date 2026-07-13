@@ -51,6 +51,7 @@ function calcDerivedPrices(cash: number) {
 
 const EMPTY_FORM = {
   brand: '', model: '', size: '', type: '', note: '',
+  description: '', warranty: '',
   specLoad: '', specSpeed: '',
   priceCash: 0, priceCredit: 0, priceInstallment: 0, costPrice: 0,
   oldPrice: undefined as number | undefined,
@@ -170,6 +171,7 @@ export function ProductsClient({
     setForm({
       brand: p.brand, model: p.model, size: p.size ?? '',
       type: p.type, note: p.note,
+      description: p.description ?? '', warranty: p.warranty ?? '',
       specLoad: p.specs?.load ?? '', specSpeed: p.specs?.speed ?? '',
       priceCash: p.priceCash, priceCredit: p.priceCredit,
       priceInstallment: p.priceInstallment, costPrice: p.costPrice ?? 0,
@@ -735,6 +737,18 @@ export function ProductsClient({
                   <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} className={inputCls} placeholder="โปรโมชั่น, รายละเอียดเพิ่มเติม..." />
                 </Field>
               </div>
+
+              <Field label="การรับประกัน">
+                <input value={form.warranty} onChange={e => setForm(f => ({ ...f, warranty: e.target.value }))} className={inputCls}
+                  placeholder="เช่น รับประกัน 2 ปี หรือ 50,000 กม. / ประกันบวมแตก 1 ปี" />
+              </Field>
+
+              <Field label="รายละเอียดสินค้า">
+                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  rows={4}
+                  className={inputCls}
+                  placeholder={`จุดเด่นของสินค้า ขึ้นบรรทัดใหม่ได้ เช่น\n• เงียบ นุ่ม เกาะถนนเปียก\n• เหมาะกับรถเก๋งและ SUV`} />
+              </Field>
 
               {/* Image */}
               <Field label="รูปสินค้า">

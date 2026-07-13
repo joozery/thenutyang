@@ -106,6 +106,7 @@ export default async function TireDetailPage({ params }: { params: Promise<{ id:
                   ...(tire.type ? [{ label: 'ประเภทยาง', value: tire.type }] : []),
                   ...(categoryLabel ? [{ label: 'หมวดหมู่', value: categoryLabel }] : []),
                   ...(tire.note ? [{ label: 'โปรโมชั่น', value: tire.note }] : []),
+                  ...(tire.warranty ? [{ label: 'การรับประกัน', value: tire.warranty }] : []),
                 ].map(row => (
                   <div key={row.label} className="flex px-4 py-2.5 text-sm">
                     <span className="w-36 text-slate-500">{row.label}</span>
@@ -114,6 +115,27 @@ export default async function TireDetailPage({ params }: { params: Promise<{ id:
                 ))}
               </div>
             </div>
+
+            {/* รายละเอียดสินค้า */}
+            {tire.description && (
+              <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">รายละเอียดสินค้า</p>
+                </div>
+                <p className="px-4 py-3 text-sm text-slate-700 leading-relaxed whitespace-pre-line">{tire.description}</p>
+              </div>
+            )}
+
+            {/* การรับประกัน */}
+            {tire.warranty && (
+              <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                <Shield className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-emerald-800">การรับประกันยาง</p>
+                  <p className="text-sm text-emerald-700 mt-0.5 whitespace-pre-line">{tire.warranty}</p>
+                </div>
+              </div>
+            )}
 
             {/* Features */}
             <div className="grid grid-cols-3 gap-3">

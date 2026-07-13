@@ -91,6 +91,7 @@ export function ProductDetail({
                   ...(product.size ? [{ label: 'ขนาด/สเปค', value: product.size }] : []),
                   ...(product.type ? [{ label: 'ประเภท', value: product.type }] : []),
                   ...(product.note ? [{ label: 'หมายเหตุ', value: product.note }] : []),
+                  ...(product.warranty ? [{ label: 'การรับประกัน', value: product.warranty }] : []),
                 ].map(row => (
                   <div key={row.label} className="flex px-4 py-2.5 text-sm">
                     <span className="w-36 text-slate-500 shrink-0">{row.label}</span>
@@ -99,6 +100,27 @@ export function ProductDetail({
                 ))}
               </div>
             </div>
+
+            {/* รายละเอียดสินค้า */}
+            {product.description && (
+              <div className="bg-white border border-slate-100 rounded-xl overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">รายละเอียดสินค้า</p>
+                </div>
+                <p className="px-4 py-3 text-sm text-slate-700 leading-relaxed whitespace-pre-line">{product.description}</p>
+              </div>
+            )}
+
+            {/* การรับประกัน */}
+            {product.warranty && (
+              <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                <Shield className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-emerald-800">การรับประกันสินค้า</p>
+                  <p className="text-sm text-emerald-700 mt-0.5 whitespace-pre-line">{product.warranty}</p>
+                </div>
+              </div>
+            )}
 
             {/* Features */}
             <div className="grid grid-cols-3 gap-3">
