@@ -65,13 +65,14 @@ export default async function ContactPage() {
 
   const lineHref = settings?.lineUrl || `https://line.me/R/ti/p/${settings?.lineId?.replace('@', '%40') || ''}`;
 
+  // customIcon = โลโก้ที่แอดมินอัปโหลดเอง — ถ้ามีให้ใช้แทนไอคอนมาตรฐาน
   const socials = [
-    { name: 'LINE',      url: lineHref,                icon: <LineIcon className="w-5 h-5" />,               bg: 'bg-[#00B900]' },
-    { name: 'Facebook',  url: settings?.facebookUrl,   icon: <FacebookIcon className="w-[18px] h-[18px]" />,  bg: 'bg-[#1877F2]' },
-    { name: 'Instagram', url: settings?.instagramUrl,  icon: <InstagramIcon className="w-[18px] h-[18px]" />, bg: 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' },
-    { name: 'TikTok',    url: settings?.tiktokUrl,     icon: <TikTokIcon className="w-[18px] h-[18px]" />,    bg: 'bg-black' },
-    { name: 'Shopee',    url: settings?.shopeeUrl,     icon: <ShopeeIcon className="w-[18px] h-[18px]" />,    bg: 'bg-[#EE4D2D]' },
-    { name: 'ไทยมาร์ท',  url: settings?.thaimartUrl,   icon: <Store size={18} strokeWidth={2} />,             bg: 'bg-emerald-600' },
+    { name: 'LINE',      url: lineHref,                customIcon: settings?.lineIcon,      icon: <LineIcon className="w-5 h-5" />,               bg: 'bg-[#00B900]' },
+    { name: 'Facebook',  url: settings?.facebookUrl,   customIcon: settings?.facebookIcon,  icon: <FacebookIcon className="w-[18px] h-[18px]" />,  bg: 'bg-[#1877F2]' },
+    { name: 'Instagram', url: settings?.instagramUrl,  customIcon: settings?.instagramIcon, icon: <InstagramIcon className="w-[18px] h-[18px]" />, bg: 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' },
+    { name: 'TikTok',    url: settings?.tiktokUrl,     customIcon: settings?.tiktokIcon,    icon: <TikTokIcon className="w-[18px] h-[18px]" />,    bg: 'bg-black' },
+    { name: 'Shopee',    url: settings?.shopeeUrl,     customIcon: settings?.shopeeIcon,    icon: <ShopeeIcon className="w-[18px] h-[18px]" />,    bg: 'bg-[#EE4D2D]' },
+    { name: 'ไทยมาร์ท',  url: settings?.thaimartUrl,   customIcon: settings?.thaimartIcon,  icon: <Store size={18} strokeWidth={2} />,             bg: 'bg-emerald-600' },
   ].filter(s => !!s.url);
 
   const addressLines = settings?.address ? settings.address.split('\\n').map((line: string) => line.trim()) : [
@@ -223,9 +224,12 @@ export default async function ContactPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             title={s.name}
-                            className={`w-10 h-10 rounded-lg ${s.bg} text-white flex items-center justify-center shadow-sm hover:scale-110 hover:shadow-md transition-all`}
+                            className={`w-10 h-10 rounded-lg ${s.customIcon ? 'bg-white border border-slate-200' : `${s.bg} text-white`} flex items-center justify-center shadow-sm hover:scale-110 hover:shadow-md transition-all overflow-hidden`}
                           >
-                            {s.icon}
+                            {s.customIcon ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={s.customIcon} alt={s.name} className="w-7 h-7 object-contain" />
+                            ) : s.icon}
                           </a>
                         ))}
                       </div>

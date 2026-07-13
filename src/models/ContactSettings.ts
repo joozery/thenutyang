@@ -14,6 +14,13 @@ export interface IContactSettings extends Document {
   tiktokUrl: string;
   shopeeUrl: string;
   thaimartUrl: string;
+  // โลโก้ที่อัปโหลดเอง (ไม่บังคับ) — ว่าง = ใช้ไอคอนมาตรฐานของแต่ละช่องทาง
+  lineIcon: string;
+  facebookIcon: string;
+  instagramIcon: string;
+  tiktokIcon: string;
+  shopeeIcon: string;
+  thaimartIcon: string;
   email: string;
   workingHours: string;
   workingDays: string;
@@ -41,6 +48,12 @@ const ContactSettingsSchema: Schema = new Schema({
   tiktokUrl: { type: String, default: '' },
   shopeeUrl: { type: String, default: '' },
   thaimartUrl: { type: String, default: '' },
+  lineIcon: { type: String, default: '' },
+  facebookIcon: { type: String, default: '' },
+  instagramIcon: { type: String, default: '' },
+  tiktokIcon: { type: String, default: '' },
+  shopeeIcon: { type: String, default: '' },
+  thaimartIcon: { type: String, default: '' },
   email: { type: String, required: true, default: 'contact@thenuttire.com' },
   workingHours: { type: String, required: true, default: '08:00 - 18:00 น.' },
   workingDays: { type: String, required: true, default: 'จันทร์ - อาทิตย์' },

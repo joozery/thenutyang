@@ -19,6 +19,9 @@ export default function ContactSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // อัปโหลดโลโก้โซเชียลรายช่องทาง — จำว่ากำลังอัปช่องไหนอยู่
+  const iconInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingIconField, setUploadingIconField] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [formData, setFormData] = useState({
     address: '',
@@ -34,6 +37,12 @@ export default function ContactSettingsPage() {
     tiktokUrl: '',
     shopeeUrl: '',
     thaimartUrl: '',
+    lineIcon: '',
+    facebookIcon: '',
+    instagramIcon: '',
+    tiktokIcon: '',
+    shopeeIcon: '',
+    thaimartIcon: '',
     email: '',
     workingHours: '',
     workingDays: '',
@@ -74,6 +83,12 @@ export default function ContactSettingsPage() {
           tiktokUrl: data.tiktokUrl || '',
           shopeeUrl: data.shopeeUrl || '',
           thaimartUrl: data.thaimartUrl || '',
+          lineIcon: data.lineIcon || '',
+          facebookIcon: data.facebookIcon || '',
+          instagramIcon: data.instagramIcon || '',
+          tiktokIcon: data.tiktokIcon || '',
+          shopeeIcon: data.shopeeIcon || '',
+          thaimartIcon: data.thaimartIcon || '',
           email: data.email || '',
           workingHours: data.workingHours || '',
           workingDays: data.workingDays || '',
@@ -110,6 +125,26 @@ export default function ContactSettingsPage() {
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const field = uploadingIconField;
+    if (!file || !field) return;
+    setIsUploading(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await uploadImage(fd, 'settings');
+      setFormData(prev => ({ ...prev, [field]: res.url }));
+      showToast('อัปโหลดโลโก้สำเร็จ', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'อัปโหลดล้มเหลว', 'error');
+    } finally {
+      setIsUploading(false);
+      setUploadingIconField(null);
+      if (iconInputRef.current) iconInputRef.current.value = '';
     }
   };
 
@@ -387,27 +422,54 @@ export default function ContactSettingsPage() {
             </div>
             <h2 className="text-lg font-bold text-slate-900">ลิงก์โซเชียล / ช่องทางออนไลน์</h2>
           </div>
-          <p className="text-xs text-slate-400 mb-6">วางลิงก์เต็ม (ขึ้นต้นด้วย https://) ช่องไหนเว้นว่าง ปุ่มนั้นจะไม่แสดงบนหน้าติดต่อเรา</p>
+          <p className="text-xs text-slate-400 mb-6">วางลิงก์เต็ม (ขึ้นต้นด้วย https://) ช่องไหนเว้นว่าง ปุ่มนั้นจะไม่แสดงบนหน้าติดต่อเรา · กดปุ่มสี่เหลี่ยมหน้าช่องเพื่ออัปโหลดโลโก้เอง (ไม่อัปโหลด = ใช้ไอคอนมาตรฐาน)</p>
 
+          <input type="file" accept="image/*" ref={iconInputRef} onChange={handleIconUpload} className="hidden" />
           <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
             {([
-              { name: 'lineUrl',      label: 'ลิงก์ LINE',       placeholder: 'https://line.me/R/ti/p/%40thenuttire (เว้นว่าง = สร้างจาก LINE ID อัตโนมัติ)' },
-              { name: 'facebookUrl',  label: 'เพจ Facebook',     placeholder: 'https://www.facebook.com/thenuttire' },
-              { name: 'instagramUrl', label: 'Instagram (ไอจี)', placeholder: 'https://www.instagram.com/thenuttire' },
-              { name: 'tiktokUrl',    label: 'TikTok (ติ๊กต๊อก)', placeholder: 'https://www.tiktok.com/@thenuttire' },
-              { name: 'shopeeUrl',    label: 'Shopee (ช้อปปี้)',  placeholder: 'https://shopee.co.th/thenuttire' },
-              { name: 'thaimartUrl',  label: 'ไทยมาร์ท',          placeholder: 'https://... ลิงก์ร้านบนไทยมาร์ท' },
+              { name: 'lineUrl',      icon: 'lineIcon',      label: 'ลิงก์ LINE',       placeholder: 'https://line.me/R/ti/p/%40thenuttire (เว้นว่าง = สร้างจาก LINE ID อัตโนมัติ)' },
+              { name: 'facebookUrl',  icon: 'facebookIcon',  label: 'เพจ Facebook',     placeholder: 'https://www.facebook.com/thenuttire' },
+              { name: 'instagramUrl', icon: 'instagramIcon', label: 'Instagram (ไอจี)', placeholder: 'https://www.instagram.com/thenuttire' },
+              { name: 'tiktokUrl',    icon: 'tiktokIcon',    label: 'TikTok (ติ๊กต๊อก)', placeholder: 'https://www.tiktok.com/@thenuttire' },
+              { name: 'shopeeUrl',    icon: 'shopeeIcon',    label: 'Shopee (ช้อปปี้)',  placeholder: 'https://shopee.co.th/thenuttire' },
+              { name: 'thaimartUrl',  icon: 'thaimartIcon',  label: 'ไทยมาร์ท',          placeholder: 'https://... ลิงก์ร้านบนไทยมาร์ท' },
             ] as const).map(f => (
               <div key={f.name}>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">{f.label}</label>
-                <input
-                  type="url"
-                  name={f.name}
-                  value={formData[f.name]}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
-                  placeholder={f.placeholder}
-                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={() => { setUploadingIconField(f.icon); iconInputRef.current?.click(); }}
+                    title={formData[f.icon] ? 'เปลี่ยนโลโก้' : 'อัปโหลดโลโก้ (ไม่บังคับ)'}
+                    className="shrink-0 w-11 h-11 rounded-xl border border-slate-200 bg-slate-50 hover:border-green-300 hover:bg-green-50 flex items-center justify-center overflow-hidden transition-colors disabled:opacity-50"
+                  >
+                    {formData[f.icon] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={formData[f.icon]} alt={f.label} className="w-7 h-7 object-contain" />
+                    ) : (
+                      <UploadCloud size={15} className="text-slate-400" />
+                    )}
+                  </button>
+                  <input
+                    type="url"
+                    name={f.name}
+                    value={formData[f.name]}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
+                    placeholder={f.placeholder}
+                  />
+                  {formData[f.icon] && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, [f.icon]: '' }))}
+                      title="ลบโลโก้ กลับไปใช้ไอคอนมาตรฐาน"
+                      className="shrink-0 w-11 h-11 rounded-xl border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 flex items-center justify-center transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
