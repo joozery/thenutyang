@@ -14,7 +14,7 @@ import type { DocRow, DocStats, PaymentMethod } from '@/lib/documents';
 import { isDocEditable } from '@/lib/doc-editable';
 import type { OrderBooking } from '@/lib/payment-settings';
 import type { ProductRow } from '@/lib/products';
-import { updateDocStatus, importFromBookings, deleteDocument, recordPartialPayment } from '@/app/actions/documents';
+import { updateDocStatus, importFromBookings, deleteDocument, recordPartialPayment, updateDocCost } from '@/app/actions/documents';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -179,6 +179,7 @@ function ViewModal({
   onPrint,
   bookingStatusMap,
   costMap,
+  onSaveCost,
 }: {
   doc: DocRow;
   onClose: () => void;
@@ -190,7 +191,10 @@ function ViewModal({
   onPrint: (id: string) => void;
   bookingStatusMap: Record<string, OrderBooking>;
   costMap: Map<string, number>;
+  onSaveCost: (id: string, cost: number) => void;
 }) {
+  const [editingCost, setEditingCost] = useState(false);
+  const [costDraft,   setCostDraft]   = useState('');
   const payments = doc.type === 'billing_note' ? allDocs.filter(d => d.type === 'payment_note' && d.relatedDocId === doc.id) : [];
   const paidSoFar = payments.reduce((sum, p) => sum + p.grandTotal, 0);
   const remaining = Math.max(0, doc.grandTotal - paidSoFar);
@@ -317,8 +321,40 @@ function ViewModal({
           {doc.grandTotal > 0 && (
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white border border-slate-200/50 rounded-xl p-5 shadow-sm">
-                <p className="text-[11px] font-bold text-slate-400 tracking-wide mb-2">ต้นทุนรวม</p>
-                <p className="text-2xl font-black text-slate-800 tabular-nums">฿{fmtMoney(totalCost)}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[11px] font-bold text-slate-400 tracking-wide">ต้นทุนรวม</p>
+                  {!editingCost && (
+                    <button
+                      onClick={() => { setEditingCost(true); setCostDraft(totalCost > 0 ? String(totalCost) : ''); }}
+                      title="กรอกต้นทุนเอง"
+                      className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-blue-600"
+                    >
+                      <Pencil size={11} /> แก้ไข
+                    </button>
+                  )}
+                </div>
+                {editingCost ? (
+                  <input
+                    type="number" min={0} step="any" autoFocus
+                    value={costDraft}
+                    onChange={e => setCostDraft(e.target.value)}
+                    onBlur={() => {
+                      setEditingCost(false);
+                      const v = parseFloat(costDraft);
+                      if (Number.isFinite(v) && v >= 0 && v !== totalCost) onSaveCost(doc.id, v);
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') e.currentTarget.blur();
+                      if (e.key === 'Escape') { setCostDraft(String(totalCost)); setEditingCost(false); }
+                    }}
+                    className="w-full px-3 py-1.5 text-xl font-black text-slate-800 tabular-nums border border-blue-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                ) : (
+                  <p className="text-2xl font-black text-slate-800 tabular-nums">฿{fmtMoney(totalCost)}</p>
+                )}
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {doc.costPrice > 0 ? 'ต้นทุนที่กรอกเอง' : 'คำนวณจาก costPrice ของสินค้า'}
+                </p>
               </div>
               <div className={`rounded-xl p-5 shadow-sm border ${profit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
                 <p className="text-[11px] font-bold text-slate-400 tracking-wide mb-2">กำไรสุทธิ</p>
@@ -666,6 +702,10 @@ export function DocumentsClient({
   const [viewDoc, setViewDoc] = useState<DocRow | null>(null);
   const [toast,   setToast]   = useState<{ msg: string; ok: boolean } | null>(null);
 
+  // inline cost editing (ต้นทุนกรอกเองได้ — ราคายางเปลี่ยนได้)
+  const [editingCostId, setEditingCostId] = useState<string | null>(null);
+  const [costDraft,     setCostDraft]     = useState('');
+
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 4000);
@@ -763,6 +803,25 @@ export function DocumentsClient({
       router.refresh();
       showToast('ลบเอกสารแล้ว');
     });
+  };
+
+  const saveCost = (id: string, value: number) => {
+    if (!Number.isFinite(value) || value < 0) return;
+    startTransition(async () => {
+      const res = await updateDocCost(id, value);
+      if (!res.success) { showToast(res.error ?? 'บันทึกต้นทุนไม่สำเร็จ', false); return; }
+      setDocs(prev => prev.map(d => d.id === id ? { ...d, costPrice: value } : d));
+      if (viewDoc?.id === id) setViewDoc(prev => prev ? { ...prev, costPrice: value } : prev);
+      router.refresh();
+      showToast('บันทึกต้นทุนแล้ว');
+    });
+  };
+
+  const handleSaveCost = (id: string, currentCost: number) => {
+    const value = parseFloat(costDraft);
+    setEditingCostId(null);
+    if (!Number.isFinite(value) || value === currentCost) return;
+    saveCost(id, value);
   };
 
   const handleRecordPayment = (billingNoteId: string, amount: number, method: PaymentMethod, note: string) => {
@@ -922,7 +981,7 @@ export function DocumentsClient({
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
             <p className="text-[12px] font-bold text-slate-400 mb-1">ต้นทุนรวม</p>
             <p className="text-2xl font-black text-orange-700 tabular-nums">฿{fmtMoney(costProfitSummary.totalCost)}</p>
-            <p className="text-[11px] text-slate-400 mt-1">จากสินค้าที่มี costPrice ใน products</p>
+            <p className="text-[11px] text-slate-400 mt-1">จากต้นทุนที่กรอกเอง หรือ costPrice ของสินค้า</p>
           </div>
           <div className={`rounded-2xl p-5 border ${costProfitSummary.profit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
             <p className="text-[12px] font-bold text-slate-400 mb-1">กำไรรวม</p>
@@ -1090,9 +1149,32 @@ export function DocumentsClient({
                       {d.grandTotal < 0 ? `-฿${fmtMoney(Math.abs(d.grandTotal))}` : `฿${fmtMoney(d.grandTotal)}`}
                     </p>
                   </td>
-                  <td className="px-5 py-3 hidden md:table-cell text-right">
+                  <td className="px-5 py-3 hidden md:table-cell text-right" onClick={e => e.stopPropagation()}>
                     {rowCost !== null
-                      ? <p className="text-sm font-semibold tabular-nums text-slate-500">฿{fmtMoney(rowCost)}</p>
+                      ? editingCostId === d.id
+                        ? (
+                          <input
+                            type="number" min={0} step="any" autoFocus
+                            value={costDraft}
+                            onChange={e => setCostDraft(e.target.value)}
+                            onBlur={() => handleSaveCost(d.id, rowCost)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleSaveCost(d.id, rowCost);
+                              if (e.key === 'Escape') setEditingCostId(null);
+                            }}
+                            className="w-24 px-2 py-1 text-sm text-right font-semibold tabular-nums border border-blue-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
+                          />
+                        )
+                        : (
+                          <button
+                            onClick={() => { setEditingCostId(d.id); setCostDraft(rowCost > 0 ? String(rowCost) : ''); }}
+                            title="คลิกเพื่อกรอกต้นทุนเอง"
+                            className="inline-flex items-center gap-1.5 text-sm font-semibold tabular-nums text-slate-500 hover:text-blue-600 group/cost"
+                          >
+                            ฿{fmtMoney(rowCost)}
+                            <Pencil size={11} className="text-slate-300 group-hover/cost:text-blue-500" />
+                          </button>
+                        )
                       : <p className="text-sm text-slate-300">—</p>}
                   </td>
                   <td className="px-5 py-3 hidden md:table-cell text-right">
@@ -1245,6 +1327,7 @@ export function DocumentsClient({
           onPrint={handleDirectPrint}
           bookingStatusMap={bookingStatusMap}
           costMap={costMap}
+          onSaveCost={saveCost}
         />
       )}
 

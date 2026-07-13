@@ -511,6 +511,24 @@ export async function importFromBookings(): Promise<{
   }
 }
 
+export async function updateDocCost(
+  id: string,
+  costPrice: number,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!Number.isFinite(costPrice) || costPrice < 0) {
+      return { success: false, error: 'ต้นทุนต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป' };
+    }
+    await connectDB();
+    await FinancialDocument.findByIdAndUpdate(id, { costPrice });
+    revalidatePath('/admin/documents');
+    return { success: true };
+  } catch (err) {
+    console.error('[updateDocCost]', err);
+    return { success: false, error: 'ไม่สามารถบันทึกต้นทุนได้' };
+  }
+}
+
 export async function deleteDocument(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     await connectDB();
