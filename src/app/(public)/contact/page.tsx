@@ -1,4 +1,4 @@
-import { MapPin, Phone, Mail, Clock, ShieldCheck, Truck, Percent, Wrench, ExternalLink } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, ShieldCheck, Truck, Percent, Wrench, ExternalLink, Store } from 'lucide-react';
 import Image from 'next/image';
 import connectDB from '@/lib/mongodb';
 import ContactSettings from '@/models/ContactSettings';
@@ -9,6 +9,34 @@ const LineIcon = ({ className = "" }: { className?: string }) => (
   <svg className={className} fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <title>LINE</title>
     <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/>
+  </svg>
+);
+
+const FacebookIcon = ({ className = "" }: { className?: string }) => (
+  <svg className={className} fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <title>Facebook</title>
+    <path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/>
+  </svg>
+);
+
+const InstagramIcon = ({ className = "" }: { className?: string }) => (
+  <svg className={className} fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <title>Instagram</title>
+    <path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z"/>
+  </svg>
+);
+
+const TikTokIcon = ({ className = "" }: { className?: string }) => (
+  <svg className={className} fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <title>TikTok</title>
+    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+  </svg>
+);
+
+const ShopeeIcon = ({ className = "" }: { className?: string }) => (
+  <svg className={className} fill="currentColor" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <title>Shopee</title>
+    <path d="M12 0c-2.317 0-4.213 2.069-4.297 4.653H3.398L2.25 24h19.5L20.602 4.653h-4.305C16.213 2.069 14.317 0 12 0zm0 1.5c1.47 0 2.72 1.386 2.797 3.153H9.203C9.28 3.386 10.53 1.5 12 1.5zm.036 6.541c1.412 0 2.706.489 3.35.907l-.65 1.31c-.888-.474-1.817-.775-2.7-.775-1.06 0-1.765.492-1.765 1.242 0 .782.71 1.079 2.024 1.499 1.844.575 3.278 1.28 3.278 3.062 0 1.876-1.559 3.024-3.573 3.024-1.5 0-2.94-.556-3.795-1.213l.727-1.285c.735.548 1.909 1.065 3.068 1.065 1.19 0 1.996-.562 1.996-1.5 0-.85-.723-1.19-2.166-1.647-1.828-.57-3.104-1.264-3.104-2.945 0-1.653 1.406-2.744 3.31-2.744z"/>
   </svg>
 );
 
@@ -34,7 +62,18 @@ async function getSettings() {
 
 export default async function ContactPage() {
   const settings = await getSettings();
-  
+
+  const lineHref = settings?.lineUrl || `https://line.me/R/ti/p/${settings?.lineId?.replace('@', '%40') || ''}`;
+
+  const socials = [
+    { name: 'LINE',      url: lineHref,                icon: <LineIcon className="w-5 h-5" />,               bg: 'bg-[#00B900]' },
+    { name: 'Facebook',  url: settings?.facebookUrl,   icon: <FacebookIcon className="w-[18px] h-[18px]" />,  bg: 'bg-[#1877F2]' },
+    { name: 'Instagram', url: settings?.instagramUrl,  icon: <InstagramIcon className="w-[18px] h-[18px]" />, bg: 'bg-gradient-to-tr from-[#F58529] via-[#DD2A7B] to-[#8134AF]' },
+    { name: 'TikTok',    url: settings?.tiktokUrl,     icon: <TikTokIcon className="w-[18px] h-[18px]" />,    bg: 'bg-black' },
+    { name: 'Shopee',    url: settings?.shopeeUrl,     icon: <ShopeeIcon className="w-[18px] h-[18px]" />,    bg: 'bg-[#EE4D2D]' },
+    { name: 'ไทยมาร์ท',  url: settings?.thaimartUrl,   icon: <Store size={18} strokeWidth={2} />,             bg: 'bg-emerald-600' },
+  ].filter(s => !!s.url);
+
   const addressLines = settings?.address ? settings.address.split('\\n').map((line: string) => line.trim()) : [
     'เดอะนัทยางยนต์ (THE NUT TIRE)',
     'ถนน... ตำบล... อำเภอ...',
@@ -113,8 +152,12 @@ export default async function ContactPage() {
                     <div>
                       <h4 className="font-bold text-slate-900 text-[15px] mb-0.5">เบอร์โทรศัพท์</h4>
                       <p className="text-slate-500 text-sm leading-relaxed">
-                        {settings?.phoneMain || '099-999-9999'} {settings?.phoneMainLabel && `(${settings.phoneMainLabel})`}<br />
-                        {settings?.phoneSale || '088-888-8888'} {settings?.phoneSaleLabel && `(${settings.phoneSaleLabel})`}
+                        <a href={`tel:${(settings?.phoneMain || '0999999999').replace(/-/g, '')}`} className="hover:text-blue-600 hover:underline underline-offset-2 transition-colors">
+                          {settings?.phoneMain || '099-999-9999'}
+                        </a> {settings?.phoneMainLabel && `(${settings.phoneMainLabel})`}<br />
+                        <a href={`tel:${(settings?.phoneSale || '0888888888').replace(/-/g, '')}`} className="hover:text-blue-600 hover:underline underline-offset-2 transition-colors">
+                          {settings?.phoneSale || '088-888-8888'}
+                        </a> {settings?.phoneSaleLabel && `(${settings.phoneSaleLabel})`}
                       </p>
                     </div>
                   </div>
@@ -127,7 +170,9 @@ export default async function ContactPage() {
                     <div>
                       <h4 className="font-bold text-slate-900 text-[15px] mb-0.5">LINE Official</h4>
                       <p className="text-[#00B900] text-sm font-semibold">
-                        {settings?.lineId || '@thenuttire'} <span className="text-slate-400 font-normal">{settings?.lineLabel && `(${settings.lineLabel})`}</span>
+                        <a href={lineHref} target="_blank" rel="noopener noreferrer" className="hover:underline underline-offset-2">
+                          {settings?.lineId || '@thenuttire'}
+                        </a> <span className="text-slate-400 font-normal">{settings?.lineLabel && `(${settings.lineLabel})`}</span>
                       </p>
                     </div>
                   </div>
@@ -165,6 +210,27 @@ export default async function ContactPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Social Links */}
+                  {socials.length > 0 && (
+                    <div className="pt-2">
+                      <h4 className="font-bold text-slate-900 text-[15px] mb-3">ติดตามเราได้ที่</h4>
+                      <div className="flex flex-wrap gap-2.5">
+                        {socials.map(s => (
+                          <a
+                            key={s.name}
+                            href={s.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={s.name}
+                            className={`w-10 h-10 rounded-lg ${s.bg} text-white flex items-center justify-center shadow-sm hover:scale-110 hover:shadow-md transition-all`}
+                          >
+                            {s.icon}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -245,7 +311,7 @@ export default async function ContactPage() {
               </div>
 
               <div className="relative z-10 flex flex-col sm:flex-row w-full md:w-auto gap-3">
-                <a href={`https://line.me/R/ti/p/${settings?.lineId?.replace('@', '%40') || ''}`} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#00B900] text-white px-6 py-3 rounded-md font-bold text-sm shadow-lg shadow-[#00B900]/20 hover:bg-[#009900] transition-colors whitespace-nowrap">
+                <a href={lineHref} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#00B900] text-white px-6 py-3 rounded-md font-bold text-sm shadow-lg shadow-[#00B900]/20 hover:bg-[#009900] transition-colors whitespace-nowrap">
                   <LineIcon className="w-5 h-5" /> แชทกับเราใน LINE
                 </a>
                 <a href={`tel:${settings?.phoneMain?.replace(/-/g, '') || '0999999999'}`} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-transparent border border-slate-600 text-white px-6 py-3 rounded-md font-bold text-sm hover:bg-white hover:text-[#0A0D14] transition-all whitespace-nowrap">

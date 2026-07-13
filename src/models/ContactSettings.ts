@@ -8,6 +8,12 @@ export interface IContactSettings extends Document {
   phoneSaleLabel: string;
   lineId: string;
   lineLabel: string;
+  lineUrl: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  tiktokUrl: string;
+  shopeeUrl: string;
+  thaimartUrl: string;
   email: string;
   workingHours: string;
   workingDays: string;
@@ -29,6 +35,12 @@ const ContactSettingsSchema: Schema = new Schema({
   phoneSaleLabel: { type: String, default: 'ฝ่ายขาย' },
   lineId: { type: String, required: true, default: '@thenuttire' },
   lineLabel: { type: String, default: 'มี @ ด้วยนะครับ' },
+  lineUrl: { type: String, default: '' },
+  facebookUrl: { type: String, default: '' },
+  instagramUrl: { type: String, default: '' },
+  tiktokUrl: { type: String, default: '' },
+  shopeeUrl: { type: String, default: '' },
+  thaimartUrl: { type: String, default: '' },
   email: { type: String, required: true, default: 'contact@thenuttire.com' },
   workingHours: { type: String, required: true, default: '08:00 - 18:00 น.' },
   workingDays: { type: String, required: true, default: 'จันทร์ - อาทิตย์' },

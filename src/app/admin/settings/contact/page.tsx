@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Save, MapPin, Phone, MessageSquare, Mail, Clock, RefreshCw, CheckCircle, AlertCircle, X, UploadCloud, Image as ImageIcon } from 'lucide-react';
+import { Save, MapPin, Phone, MessageSquare, Mail, Clock, RefreshCw, CheckCircle, AlertCircle, X, UploadCloud, Share2 } from 'lucide-react';
 import { uploadImage } from '@/app/actions/upload';
 
 function Toast({ msg, type, onClose }: { msg: string; type: 'success' | 'error'; onClose: () => void }) {
@@ -28,6 +28,12 @@ export default function ContactSettingsPage() {
     phoneSaleLabel: '',
     lineId: '',
     lineLabel: '',
+    lineUrl: '',
+    facebookUrl: '',
+    instagramUrl: '',
+    tiktokUrl: '',
+    shopeeUrl: '',
+    thaimartUrl: '',
     email: '',
     workingHours: '',
     workingDays: '',
@@ -62,6 +68,12 @@ export default function ContactSettingsPage() {
           phoneSaleLabel: data.phoneSaleLabel || '',
           lineId: data.lineId || '',
           lineLabel: data.lineLabel || '',
+          lineUrl: data.lineUrl || '',
+          facebookUrl: data.facebookUrl || '',
+          instagramUrl: data.instagramUrl || '',
+          tiktokUrl: data.tiktokUrl || '',
+          shopeeUrl: data.shopeeUrl || '',
+          thaimartUrl: data.thaimartUrl || '',
           email: data.email || '',
           workingHours: data.workingHours || '',
           workingDays: data.workingDays || '',
@@ -364,6 +376,40 @@ export default function ContactSettingsPage() {
                 />
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Social Links */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-500 flex items-center justify-center">
+              <Share2 size={16} />
+            </div>
+            <h2 className="text-lg font-bold text-slate-900">ลิงก์โซเชียล / ช่องทางออนไลน์</h2>
+          </div>
+          <p className="text-xs text-slate-400 mb-6">วางลิงก์เต็ม (ขึ้นต้นด้วย https://) ช่องไหนเว้นว่าง ปุ่มนั้นจะไม่แสดงบนหน้าติดต่อเรา</p>
+
+          <div className="grid md:grid-cols-2 gap-x-6 gap-y-4">
+            {([
+              { name: 'lineUrl',      label: 'ลิงก์ LINE',       placeholder: 'https://line.me/R/ti/p/%40thenuttire (เว้นว่าง = สร้างจาก LINE ID อัตโนมัติ)' },
+              { name: 'facebookUrl',  label: 'เพจ Facebook',     placeholder: 'https://www.facebook.com/thenuttire' },
+              { name: 'instagramUrl', label: 'Instagram (ไอจี)', placeholder: 'https://www.instagram.com/thenuttire' },
+              { name: 'tiktokUrl',    label: 'TikTok (ติ๊กต๊อก)', placeholder: 'https://www.tiktok.com/@thenuttire' },
+              { name: 'shopeeUrl',    label: 'Shopee (ช้อปปี้)',  placeholder: 'https://shopee.co.th/thenuttire' },
+              { name: 'thaimartUrl',  label: 'ไทยมาร์ท',          placeholder: 'https://... ลิงก์ร้านบนไทยมาร์ท' },
+            ] as const).map(f => (
+              <div key={f.name}>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">{f.label}</label>
+                <input
+                  type="url"
+                  name={f.name}
+                  value={formData[f.name]}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all text-sm"
+                  placeholder={f.placeholder}
+                />
+              </div>
+            ))}
           </div>
         </div>
 
