@@ -6,7 +6,9 @@ const lineItemSchema = new Schema({
   unit:        { type: String, default: 'เส้น' },
   qty:         { type: Number, required: true, min: 1 },
   unitPrice:   { type: Number, required: true, min: 0 },
-  discount:    { type: Number, default: 0, min: 0, max: 100 },
+  // discountType 'pct' → discount คือ % (0–100), 'amt' → ยอดเงินบาท
+  discount:     { type: Number, default: 0, min: 0 },
+  discountType: { type: String, enum: ['pct', 'amt'], default: 'pct' },
   year:        { type: String, default: '' },
   lineTotal:   { type: Number, required: true },
 }, { _id: false });

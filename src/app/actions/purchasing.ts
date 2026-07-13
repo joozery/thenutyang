@@ -16,7 +16,8 @@ export type POFormPayload = {
   dueDate: string;
   items: {
     productId?: string; productName: string; unit: string;
-    qty: number; unitPrice: number; discount: number; year: string; lineTotal: number;
+    qty: number; unitPrice: number; discount: number; discountType: 'pct' | 'amt';
+    year: string; lineTotal: number;
   }[];
   reference?:      string;
   paymentTerm:     string;

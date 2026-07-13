@@ -78,7 +78,11 @@ export function POTemplate({ order, documentSettings }: { order: PORow; document
                 <td className="text-center py-2 px-3 border-b border-slate-100">{item.qty}</td>
                 <td className="text-center py-2 px-3 border-b border-slate-100 text-xs text-slate-800">{item.unit}</td>
                 <td className="text-right py-2 px-3 border-b border-slate-100 tabular-nums">฿{item.unitPrice.toLocaleString()}</td>
-                <td className="text-right py-2 px-3 border-b border-slate-100 text-xs">{item.discount > 0 ? `${item.discount}%` : '—'}</td>
+                <td className="text-right py-2 px-3 border-b border-slate-100 text-xs">
+                  {item.discount > 0
+                    ? item.discountType === 'amt' ? `฿${item.discount.toLocaleString()}` : `${item.discount}%`
+                    : '—'}
+                </td>
                 <td className="text-right py-2 px-3 border-b border-slate-100 font-semibold tabular-nums">฿{item.lineTotal.toLocaleString()}</td>
               </tr>
             ))}

@@ -18,6 +18,7 @@ export type POItem = {
   qty:         number;
   unitPrice:   number;
   discount:    number;
+  discountType: 'pct' | 'amt';
   year:        string;
   lineTotal:   number;
 };
@@ -84,6 +85,7 @@ function normalizeDoc(d: any): PORow {
       qty:         i.qty         ?? 0,
       unitPrice:   i.unitPrice   ?? 0,
       discount:    i.discount    ?? 0,
+      discountType: (i.discountType as 'pct' | 'amt') ?? 'pct',
       year:        i.year        ?? '',
       lineTotal:   i.lineTotal   ?? 0,
     })),
