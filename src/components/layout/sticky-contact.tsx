@@ -1,8 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import { X } from 'lucide-react';
-
 interface StickyContactProps {
   lineId: string;
   lineLabel: string;
@@ -17,10 +14,7 @@ export function StickyContact({
   lineLabel,
   phoneMain,
   phoneMainLabel,
-  phoneSale,
-  phoneSaleLabel,
 }: StickyContactProps) {
-  const [open, setOpen] = useState(false);
   const lineUrl = `https://line.me/R/ti/p/${encodeURIComponent(lineId)}`;
 
   const contacts = [
@@ -31,7 +25,6 @@ export function StickyContact({
       icon: <PhoneIcon className="text-yellow-400" />,
       label: phoneMainLabel || 'โทร',
       value: phoneMain,
-      delay: 'delay-[0ms]',
     },
     {
       key: 'line',
@@ -40,70 +33,32 @@ export function StickyContact({
       icon: <LineIcon />,
       label: 'LINE',
       value: lineLabel || lineId,
-      delay: 'delay-[60ms]',
       external: true,
     },
   ];
 
   return (
-    <>
-      {/* Backdrop */}
-      {open && (
-        <div
-          className="fixed inset-0 z-30"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      <div className="fixed right-4 bottom-24 md:bottom-8 z-40 flex flex-col items-end gap-3">
-
-        {/* Contact Items — pop up when open */}
-        <div className="flex flex-col items-end gap-2">
-          {contacts.map((c) => (
-            <a
-              key={c.key}
-              href={c.href}
-              target={c.external ? '_blank' : undefined}
-              rel={c.external ? 'noopener noreferrer' : undefined}
-              onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 ${c.bg} text-white rounded-2xl px-4 h-12 shadow-xl transition-all duration-300 ${open ? `opacity-100 translate-y-0 scale-100 ${c.delay}` : 'opacity-0 translate-y-6 scale-90 pointer-events-none'}`}
-            >
-              <div className="w-6 h-6 flex items-center justify-center shrink-0">{c.icon}</div>
-              <div className="flex flex-col leading-tight">
-                <span className="text-[10px] text-white/60 font-medium">{c.label}</span>
-                <span className="text-sm font-bold whitespace-nowrap tracking-wide">{c.value}</span>
-              </div>
-            </a>
-          ))}
-        </div>
-
-        {/* FAB Toggle Button */}
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 active:scale-90 ${open ? 'bg-slate-700 rotate-0 scale-100' : 'bg-[#06C755] scale-100'}`}
-          aria-label="ติดต่อเรา"
+    <div className="fixed right-4 bottom-24 md:bottom-8 z-40 flex flex-col items-end gap-2">
+      {contacts.map((c) => (
+        <a
+          key={c.key}
+          href={c.href}
+          target={c.external ? '_blank' : undefined}
+          rel={c.external ? 'noopener noreferrer' : undefined}
+          className={`flex items-center gap-3 ${c.bg} text-white rounded-2xl px-4 h-12 shadow-xl hover:scale-105 active:scale-95 transition-transform duration-200`}
         >
-          {open ? (
-            <X className="w-6 h-6 text-white" />
-          ) : (
-            <PhoneRingIcon />
-          )}
-        </button>
-
-      </div>
-    </>
+          <div className="w-6 h-6 flex items-center justify-center shrink-0">{c.icon}</div>
+          <div className="flex flex-col leading-tight">
+            <span className="text-[10px] text-white/60 font-medium">{c.label}</span>
+            <span className="text-sm font-bold whitespace-nowrap tracking-wide">{c.value}</span>
+          </div>
+        </a>
+      ))}
+    </div>
   );
 }
 
 /* ── Icons ── */
-function PhoneRingIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" fill="white"/>
-    </svg>
-  );
-}
-
 function PhoneIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={`w-4 h-4 fill-current ${className}`} xmlns="http://www.w3.org/2000/svg">
