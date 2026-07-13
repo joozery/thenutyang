@@ -22,6 +22,7 @@ export type DocFormPayload = {
   relatedDocId?:     string;
   relatedDocNumber?: string;
   items: {
+    productId?:   string;
     description:  string;
     qty:          number;
     unitPrice:    number;
@@ -44,9 +45,65 @@ export type DocFormPayload = {
   issuedDate?:   string;
 };
 
+// เอกสารที่ถือว่า "ของออกจากคลัง" — ตัดสต๊อกอัตโนมัติสำหรับบรรทัดที่ผูกสินค้าไว้
+const STOCK_DOC_TYPES = ['invoice', 'billing_note'];
+
+// ตัดสต๊อกตามรายการที่ผูกสินค้า + ลงประวัติเบิกออกอ้างอิงเลขเอกสาร
+// คืนค่า warnings สำหรับบรรทัดที่ตัดไม่ได้/ตัดไม่ครบ
+async function deductStockForDoc(
+  docNumber: string,
+  relatedDocNumber: string | undefined,
+  items: DocFormPayload['items'],
+): Promise<string[]> {
+  const linked = items.filter(i => i.productId);
+  if (linked.length === 0) return [];
+
+  const { Product } = await import('@/models/Product');
+  const { StockMovement } = await import('@/models/StockMovement');
+
+  // เอกสารต่อยอด (เช่นใบเสร็จที่ออกจากใบแจ้งหนี้) — ถ้าใบต้นทางตัดสต๊อกไปแล้ว ไม่ตัดซ้ำ
+  if (relatedDocNumber) {
+    const prior = await StockMovement.findOne({ refNo: relatedDocNumber, type: 'out' }).lean();
+    if (prior) return [];
+  }
+
+  const warnings: string[] = [];
+  for (const item of linked) {
+    const product = await Product.findById(item.productId).lean() as { stock?: number; brand?: string; model?: string; size?: string } | null;
+    if (!product) { warnings.push(`ไม่พบสินค้า "${item.description}" ในคลัง`); continue; }
+    const stockBefore = product.stock ?? 0;
+    const outQty = Math.min(item.qty, stockBefore);
+    if (outQty < item.qty) warnings.push(`"${item.description}" สต๊อกไม่พอ ตัดได้ ${outQty}/${item.qty} เส้น — ส่วนที่เหลือให้เบิกเองหลังรับของเข้า`);
+    if (outQty === 0) continue;
+    const productName = `${product.brand ?? ''} ${product.model ?? ''} ${product.size ?? ''}`.trim();
+    await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -outQty } });
+    await StockMovement.create({
+      productId: item.productId, productName, type: 'out',
+      qty: outQty, stockBefore, stockAfter: stockBefore - outQty,
+      refNo: docNumber, note: `ขายตามใบ ${docNumber}`,
+    });
+  }
+  revalidatePath('/admin/warehouse');
+  return warnings;
+}
+
+// คืนสต๊อก + ลบเฉพาะประวัติที่ระบบตัดให้อัตโนมัติของใบนี้ (ใช้ตอนแก้ไข/ยกเลิก/ลบเอกสาร)
+// รายการที่พนักงานเบิกเองในหน้าคลังจะไม่ถูกแตะ
+async function revertStockForDoc(docNumber: string): Promise<void> {
+  const { Product } = await import('@/models/Product');
+  const { StockMovement } = await import('@/models/StockMovement');
+  const moves = await StockMovement.find({ refNo: docNumber, type: 'out', note: `ขายตามใบ ${docNumber}` })
+    .lean() as { _id: unknown; productId?: unknown; qty: number }[];
+  for (const m of moves) {
+    if (m.productId) await Product.findByIdAndUpdate(m.productId, { $inc: { stock: m.qty } });
+    await StockMovement.findByIdAndDelete(m._id);
+  }
+  if (moves.length) revalidatePath('/admin/warehouse');
+}
+
 export async function createDocument(
   data: DocFormPayload,
-): Promise<{ success: boolean; docNumber?: string; id?: string; error?: string }> {
+): Promise<{ success: boolean; docNumber?: string; id?: string; error?: string; warnings?: string[] }> {
   try {
     await connectDB();
     const docNumber = await generateDocNumber(data.type);
@@ -83,8 +140,14 @@ export async function createDocument(
       });
     }
 
+    // ใบเสร็จ/ใบแจ้งหนี้ที่ผูกสินค้าไว้ → ตัดสต๊อก + ลงประวัติคลังอัตโนมัติ
+    let warnings: string[] = [];
+    if (STOCK_DOC_TYPES.includes(data.type)) {
+      warnings = await deductStockForDoc(docNumber, data.relatedDocNumber, data.items);
+    }
+
     revalidatePath('/admin/documents');
-    return { success: true, docNumber, id: String(doc._id) };
+    return { success: true, docNumber, id: String(doc._id), ...(warnings.length ? { warnings } : {}) };
   } catch (err) {
     console.error('[createDocument]', err);
     return { success: false, error: 'ไม่สามารถสร้างเอกสารได้' };
@@ -96,7 +159,7 @@ export async function createDocument(
 export async function updateDocument(
   id: string,
   data: Omit<DocFormPayload, 'relatedDocId' | 'relatedDocNumber'>,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; warnings?: string[] }> {
   try {
     await connectDB();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,8 +260,16 @@ export async function updateDocument(
     }
 
     await FinancialDocument.findByIdAndUpdate(id, update);
+
+    // รายการสินค้าเปลี่ยน → คืนสต๊อกที่ตัดไว้เดิมทั้งหมด แล้วตัดใหม่ตามรายการล่าสุด
+    let warnings: string[] = [];
+    if (STOCK_DOC_TYPES.includes(existing.type)) {
+      await revertStockForDoc(existing.docNumber);
+      warnings = await deductStockForDoc(existing.docNumber, existing.relatedDocNumber || undefined, data.items);
+    }
+
     revalidatePath('/admin/documents');
-    return { success: true };
+    return { success: true, ...(warnings.length ? { warnings } : {}) };
   } catch (err) {
     console.error('[updateDocument]', err);
     return { success: false, error: 'ไม่สามารถบันทึกการแก้ไขได้' };
@@ -452,7 +523,12 @@ export async function updateDocStatus(
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const doc = await FinancialDocument.findByIdAndUpdate(id, update) as any;
-    
+
+    // ยกเลิกเอกสาร → คืนสต๊อกที่ระบบตัดให้อัตโนมัติตอนสร้าง
+    if (status === 'cancelled' && doc?.docNumber) {
+      await revertStockForDoc(doc.docNumber);
+    }
+
     if (status === 'paid' && doc) {
       const { Income } = await import('@/models/Income');
       await Income.create({
@@ -537,6 +613,8 @@ export async function deleteDocument(id: string): Promise<{ success: boolean; er
     if (doc?.docNumber) {
       const { Income } = await import('@/models/Income');
       await Income.deleteMany({ note: { $regex: doc.docNumber } });
+      // คืนสต๊อกที่ระบบตัดให้อัตโนมัติของใบนี้
+      await revertStockForDoc(doc.docNumber);
     }
     revalidatePath('/admin/documents');
     return { success: true };

@@ -50,6 +50,7 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 
 interface LineItem {
   key:           number;
+  productId?:    string; // ผูกกับสินค้าในคลัง — ใบ INV/ใบแจ้งหนี้จะตัดสต๊อกอัตโนมัติ
   description:   string;
   qty:           number;
   unitPrice:     number;
@@ -67,7 +68,7 @@ export type DocPrefill = {
   customerAddress: string;
   customerTaxId:   string;
   customerBranch?: string;
-  items: { description: string; qty: number; unitPrice: number; discount: number }[];
+  items: { productId?: string; description: string; qty: number; unitPrice: number; discount: number }[];
   vatRate:       number;
   paymentMethod: PaymentMethod;
   technicianName?: string;
@@ -364,11 +365,13 @@ export function NewDocumentClient({
 
   function selectPickerEntry(key: number, entry: PickerEntry) {
     setLines((prev) => prev.map((l) => l.key !== key ? l : entry.kind === 'product'
-      ? { ...l, description: `${entry.data.brand} ${entry.data.model} ${entry.data.size}`, unitPrice: entry.data.priceCash, lineCostPrice: entry.data.costPrice ?? 0 }
-      : { ...l, description: entry.data.name, unitPrice: entry.data.price, lineCostPrice: entry.data.price * 0.5 }
+      ? { ...l, productId: entry.data.id, description: `${entry.data.brand} ${entry.data.model} ${entry.data.size}`, unitPrice: entry.data.priceCash, lineCostPrice: entry.data.costPrice ?? 0 }
+      : { ...l, productId: undefined, description: entry.data.name, unitPrice: entry.data.price, lineCostPrice: entry.data.price * 0.5 }
     ));
     setProductPickerLineKey(null);
   }
+
+  const productById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
   // เพิ่มบริการใหม่แบบรวดเร็วจากในช่องค้นหา ไม่ต้องออกไปหน้าตั้งค่า
   const [newServiceName,  setNewServiceName]  = useState('');
@@ -426,8 +429,11 @@ export function NewDocumentClient({
   const removeLine = (key: number) =>
     setLines(p => p.filter(l => l.key !== key));
 
+  // พิมพ์แก้ชื่อรายการเอง = ยกเลิกการผูกกับสินค้าในคลัง (ไม่รู้แล้วว่าหมายถึงตัวไหน)
   const updateLine = (key: number, field: keyof Omit<LineItem, 'key'>, value: string | number) =>
-    setLines(p => p.map(l => l.key === key ? { ...l, [field]: value } : l));
+    setLines(p => p.map(l => l.key === key
+      ? { ...l, [field]: value, ...(field === 'description' ? { productId: undefined } : {}) }
+      : l));
 
   // ── calculations ──────────────────────────────────────────────────────────
 
@@ -477,6 +483,7 @@ export function NewDocumentClient({
         customerTaxId:   customerTaxId.trim(),
         customerBranch:  composeTaxBranch(branchType, branchCode),
         items: lines.map((l, idx) => ({
+          productId:    l.productId,
           description:  l.description,
           qty:          l.qty,
           unitPrice:    l.unitPrice,
@@ -502,15 +509,17 @@ export function NewDocumentClient({
 
       if (isEditMode) {
         const res = await updateDocument(editTarget.docId, payload);
-        if (res.error) setError(res.error);
-        else router.push(`/admin/documents/${editTarget.docId}/print`);
+        if (res.error) { setError(res.error); return; }
+        if (res.warnings?.length) window.alert(`บันทึกแล้ว แต่มีแจ้งเตือนสต๊อก:\n\n${res.warnings.join('\n')}`);
+        router.push(`/admin/documents/${editTarget.docId}/print`);
         return;
       }
 
       const res = await createDocument(payload);
-      if (res.error) setError(res.error);
+      if (res.error) { setError(res.error); return; }
+      if (res.warnings?.length) window.alert(`สร้างเอกสารแล้ว แต่มีแจ้งเตือนสต๊อก:\n\n${res.warnings.join('\n')}`);
       // ไปหน้าตัวอย่างก่อนพิมพ์ในแท็บเดิมเลย ไม่เปิดแท็บใหม่ — กดปุ่ม "พิมพ์เอกสาร" ในหน้านั้นได้ทันที
-      else if (res.id) router.push(`/admin/documents/${res.id}/print`);
+      if (res.id) router.push(`/admin/documents/${res.id}/print`);
       else router.push('/admin/documents');
     });
   };
@@ -1083,6 +1092,15 @@ export function NewDocumentClient({
                           <Search size={13} />
                         </button>
                       </div>
+                      {line.productId && (() => {
+                        const p = productById.get(line.productId);
+                        const insufficient = p !== undefined && p.stock < line.qty;
+                        return (
+                          <p className={`text-[10px] mt-1 font-semibold ${insufficient ? 'text-red-500' : 'text-emerald-600'}`}>
+                            ✓ ผูกกับคลัง — จะตัดสต๊อกอัตโนมัติ{p !== undefined && ` (มีอยู่ ${p.stock}${insufficient ? ' ไม่พอ' : ''})`}
+                          </p>
+                        );
+                      })()}
                     </td>
                     <td className="px-3 py-2.5">
                       <input

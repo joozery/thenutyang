@@ -5,6 +5,7 @@ export type DocType      = 'invoice' | 'quote' | 'credit_note' | 'billing_note' 
 export type PaymentMethod = 'cash' | 'transfer' | 'credit_card' | 'pending';
 
 export type DocItem = {
+  productId?:   string; // ผูกกับสินค้าในคลัง (ตัดสต๊อกอัตโนมัติสำหรับ INV/ใบแจ้งหนี้)
   description:  string;
   qty:          number;
   unitPrice:    number;
@@ -77,6 +78,7 @@ function normalize(d: any): DocRow {
     customerBranch:  d.customerBranch  ?? '',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     items: (d.items ?? []).map((item: any) => ({
+      productId:    item.productId ? String(item.productId) : undefined,
       description:  item.description  ?? '',
       qty:          item.qty          ?? 0,
       unitPrice:    item.unitPrice    ?? 0,

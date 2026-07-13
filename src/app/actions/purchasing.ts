@@ -171,12 +171,16 @@ export async function receivePO(id: string): Promise<{
     revalidatePath('/admin/warehouse');
 
     // เช็คว่าเลขอ้างอิงของ PO เป็นใบ INV ในระบบไหม — ถ้าใช่ ให้หน้าจอถามต่อว่าเบิกออกให้บิลเลยไหม
+    // (ยกเว้นมีการเบิกออกอ้างอิงบิลนั้นไปแล้ว เช่นใบ INV ที่ตัดสต๊อกอัตโนมัติตอนสร้าง — ไม่ถามซ้ำ)
     let invoice: { docNumber: string; customerName: string } | undefined;
     if (po.reference) {
       const { FinancialDocument } = await import('@/models/FinancialDocument');
       const refDoc = await FinancialDocument.findOne({ docNumber: po.reference })
         .select('docNumber customerName').lean() as { docNumber: string; customerName: string } | null;
-      if (refDoc) invoice = { docNumber: refDoc.docNumber, customerName: refDoc.customerName ?? '' };
+      if (refDoc) {
+        const priorOut = await StockMovement.findOne({ refNo: refDoc.docNumber, type: 'out' }).lean();
+        if (!priorOut) invoice = { docNumber: refDoc.docNumber, customerName: refDoc.customerName ?? '' };
+      }
     }
 
     return { ...(warnings.length ? { warnings } : {}), ...(invoice ? { invoice } : {}) };
@@ -202,10 +206,10 @@ export async function disbursePOToInvoice(id: string): Promise<{ error?: string;
     const { Product } = await import('@/models/Product');
     const { StockMovement } = await import('@/models/StockMovement');
 
-    // กันเบิกซ้ำ — ถ้าเคยเบิกออกให้บิลนี้จาก PO ใบนี้แล้ว ไม่ทำซ้ำ
+    // กันเบิกซ้ำ — ถ้ามีการเบิกออกอ้างอิงบิลนี้แล้ว (จาก PO นี้ หรือระบบตัดอัตโนมัติตอนออกใบ) ไม่ทำซ้ำ
     const disburseNote = `เบิกออกให้ ${po.reference} (จาก ${po.poNumber})`;
-    const already = await StockMovement.findOne({ note: disburseNote }).lean();
-    if (already) return { error: `เคยเบิกออกให้ ${po.reference} ไปแล้ว` };
+    const already = await StockMovement.findOne({ refNo: po.reference, type: 'out' }).lean();
+    if (already) return { error: `มีการเบิกออกอ้างอิง ${po.reference} ไปแล้ว` };
 
     const warnings: string[] = [];
     for (const item of po.items) {

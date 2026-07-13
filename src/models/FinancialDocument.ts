@@ -1,6 +1,8 @@
 import { Schema, model, models } from 'mongoose';
 
 const itemSchema = new Schema({
+  // ผูกกับสินค้าในคลัง — ใบ INV/ใบแจ้งหนี้ที่ผูกไว้จะตัดสต๊อกอัตโนมัติตอนสร้าง
+  productId:    { type: Schema.Types.ObjectId, ref: 'Product', default: null },
   description:  { type: String, required: true },
   qty:          { type: Number, required: true },
   unitPrice:    { type: Number, required: true },

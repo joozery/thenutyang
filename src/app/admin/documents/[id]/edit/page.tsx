@@ -40,7 +40,7 @@ export default async function EditDocumentPage({
     customerAddress: doc.customerAddress,
     customerTaxId:   doc.customerTaxId,
     customerBranch:  doc.customerBranch,
-    items:           doc.items.map((i) => ({ description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
+    items:           doc.items.map((i) => ({ productId: i.productId, description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
     vatRate:         doc.vatRate,
     paymentMethod:   doc.paymentMethod,
     technicianName:  doc.technicianName,

@@ -76,7 +76,7 @@ export default async function NewDocumentPage({
         customerTaxId:   sourceDoc.customerTaxId,
         customerBranch:  sourceDoc.customerBranch,
         bookingRef:      sourceDoc.bookingRef,
-        items: sourceDoc.items.map((i) => ({ description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
+        items: sourceDoc.items.map((i) => ({ productId: i.productId, description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
         vatRate:       sourceDoc.vatRate,
         paymentMethod: sourceDoc.paymentMethod,
         note:          sourceDoc.note,
