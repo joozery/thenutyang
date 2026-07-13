@@ -53,6 +53,7 @@ export type DocumentTemplateProps = {
   notes?: string[];
   footerNote?: string;
   technicianName?: string;
+  accentColor?: string; // สีหัวเอกสารตามชนิด (ค่าเริ่มต้น: เขียว)
 };
 
 const fmt = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -88,6 +89,7 @@ export function DocumentTemplate({
   notes = [],
   footerNote,
   technicianName,
+  accentColor = '#15803d',
 }: DocumentTemplateProps) {
   const paid = paidAmount ?? grandTotal;
   const remainingBalance = depositAmount > 0 ? Math.max(0, grandTotal - depositAmount) : 0;
@@ -105,7 +107,7 @@ export function DocumentTemplate({
           )}
         </div>
         <div className="text-right">
-          <div className="text-xl font-black text-green-700">{docTypeLabel}</div>
+          <div className="text-xl font-black" style={{ color: accentColor }}>{docTypeLabel}</div>
           {docTypeLabelEn && <div className="text-[13px] font-bold text-slate-800">{docTypeLabelEn}</div>}
           <div className="text-[13px] text-slate-800">{copyLabel}</div>
         </div>

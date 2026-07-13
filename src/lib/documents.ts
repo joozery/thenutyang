@@ -4,6 +4,16 @@ import { FinancialDocument } from '@/models/FinancialDocument';
 export type DocType      = 'invoice' | 'quote' | 'credit_note' | 'billing_note' | 'payment_note' | 'booking_note';
 export type PaymentMethod = 'cash' | 'transfer' | 'credit_card' | 'pending';
 
+// สีประจำชนิดเอกสาร — ใช้ทั้งหน้าเลือกประเภทและหัวใบตอนพิมพ์
+export const DOC_TYPE_COLOR: Record<string, string> = {
+  invoice:      '#059669', // เขียว — ใบเสร็จ/ใบกำกับภาษี
+  quote:        '#2563eb', // น้ำเงิน — ใบเสนอราคา
+  billing_note: '#9333ea', // ม่วง — ใบแจ้งหนี้
+  credit_note:  '#e11d48', // แดงกุหลาบ — ใบลดหนี้
+  booking_note: '#d97706', // ส้มอำพัน — ใบจอง
+  payment_note: '#4f46e5', // คราม — ใบรับชำระ
+};
+
 export type DocItem = {
   productId?:   string; // ผูกกับสินค้าในคลัง (ตัดสต๊อกอัตโนมัติสำหรับ INV/ใบแจ้งหนี้)
   description:  string;

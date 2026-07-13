@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getDocumentById } from '@/lib/documents';
+import { getDocumentById, DOC_TYPE_COLOR } from '@/lib/documents';
 import { getDocumentSettings } from '@/lib/document-settings';
 import { PrintPageShell } from '@/components/admin/documents/print-page-shell';
 import { DocumentTemplate, type DocumentTemplateProps } from '@/components/admin/documents/document-template';
@@ -75,7 +75,9 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
     vatBase: doc.grandTotal - doc.vatAmount,
     vatAmount: doc.vatAmount,
     grandTotal: doc.grandTotal,
-    depositAmount: doc.type === 'booking_note' ? doc.depositAmount : 0,
+    // มัดจำแสดงทุกชนิดเอกสารที่มีค่า — ใบเสนอราคา/ใบเสร็จที่ต่อยอดจากใบจองต้องเห็นยอดคงเหลือด้วย
+    depositAmount: doc.depositAmount ?? 0,
+    accentColor: DOC_TYPE_COLOR[doc.type],
     payment: doc.paymentMethod !== 'pending' ? { method: PAYMENT_LABEL[doc.paymentMethod], date: fmtDate(doc.issuedAt) } : undefined,
     notes: doc.note ? [doc.note] : [],
     footerNote: undefined,

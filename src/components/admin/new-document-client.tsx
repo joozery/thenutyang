@@ -29,14 +29,15 @@ import { composeTaxBranch, parseTaxBranch, type TaxBranchType } from '@/lib/tax-
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
-const DOC_TYPES: { value: DocType; label: string; desc: string; icon: React.ReactNode; editOnly?: boolean }[] = [
-  { value: 'invoice',      label: 'ใบเสร็จ / ใบกำกับภาษี', desc: 'บันทึกการขายที่ชำระแล้ว',         icon: <Receipt  size={18} /> },
-  { value: 'quote',        label: 'ใบเสนอราคา',              desc: 'เสนอราคาให้ลูกค้าก่อนตัดสินใจ',   icon: <FileEdit size={18} /> },
-  { value: 'billing_note', label: 'ใบแจ้งหนี้',              desc: 'บิลเครดิต ออกก่อนรับเงิน รอลูกค้าชำระ (จ่ายเป็นงวดได้)', icon: <FileClock size={18} /> },
-  { value: 'credit_note',  label: 'ใบลดหนี้',                desc: 'ลดยอดหนี้จากใบเสร็จที่ออกแล้ว',  icon: <FileMinus   size={18} /> },
-  { value: 'booking_note', label: 'ใบจอง',                  desc: 'จองสินค้าล่วงหน้า รับมัดจำ นัดวันรับรถ', icon: <BookMarked size={18} /> },
+// sel = สไตล์ตอนถูกเลือก — สีประจำชนิดเอกสาร (ตรงกับสีหัวใบตอนพิมพ์)
+const DOC_TYPES: { value: DocType; label: string; desc: string; icon: React.ReactNode; editOnly?: boolean; sel: { border: string; bg: string; text: string; icon: string } }[] = [
+  { value: 'invoice',      label: 'ใบเสร็จ / ใบกำกับภาษี', desc: 'บันทึกการขายที่ชำระแล้ว',         icon: <Receipt  size={18} />, sel: { border: 'border-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-700', icon: 'text-emerald-600' } },
+  { value: 'quote',        label: 'ใบเสนอราคา',              desc: 'เสนอราคาให้ลูกค้าก่อนตัดสินใจ',   icon: <FileEdit size={18} />, sel: { border: 'border-blue-500', bg: 'bg-blue-50', text: 'text-blue-700', icon: 'text-blue-600' } },
+  { value: 'billing_note', label: 'ใบแจ้งหนี้',              desc: 'บิลเครดิต ออกก่อนรับเงิน รอลูกค้าชำระ (จ่ายเป็นงวดได้)', icon: <FileClock size={18} />, sel: { border: 'border-purple-500', bg: 'bg-purple-50', text: 'text-purple-700', icon: 'text-purple-600' } },
+  { value: 'credit_note',  label: 'ใบลดหนี้',                desc: 'ลดยอดหนี้จากใบเสร็จที่ออกแล้ว',  icon: <FileMinus   size={18} />, sel: { border: 'border-rose-500', bg: 'bg-rose-50', text: 'text-rose-700', icon: 'text-rose-600' } },
+  { value: 'booking_note', label: 'ใบจอง',                  desc: 'จองสินค้าล่วงหน้า รับมัดจำ นัดวันรับรถ', icon: <BookMarked size={18} />, sel: { border: 'border-amber-500', bg: 'bg-amber-50', text: 'text-amber-700', icon: 'text-amber-600' } },
   // ใบรับชำระออกอัตโนมัติจากการรับชำระใบแจ้งหนี้ — สร้างเองไม่ได้ แต่เปิดแก้ไขได้
-  { value: 'payment_note', label: 'ใบรับชำระ',              desc: 'บันทึกการรับชำระของใบแจ้งหนี้',   icon: <Receipt size={18} />, editOnly: true },
+  { value: 'payment_note', label: 'ใบรับชำระ',              desc: 'บันทึกการรับชำระของใบแจ้งหนี้',   icon: <Receipt size={18} />, editOnly: true, sel: { border: 'border-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-700', icon: 'text-indigo-600' } },
 ];
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -582,13 +583,13 @@ export function NewDocumentClient({
               disabled={isEditMode && docType !== t.value}
               className={`flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all ${
                 docType === t.value
-                  ? 'border-green-500 bg-green-50'
+                  ? `${t.sel.border} ${t.sel.bg}`
                   : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-white disabled:cursor-not-allowed'
               }`}
             >
-              <div className={`mt-0.5 ${docType === t.value ? 'text-green-600' : 'text-slate-400'}`}>{t.icon}</div>
+              <div className={`mt-0.5 ${docType === t.value ? t.sel.icon : 'text-slate-400'}`}>{t.icon}</div>
               <div>
-                <p className={`font-bold text-sm ${docType === t.value ? 'text-green-700' : 'text-slate-700'}`}>
+                <p className={`font-bold text-sm ${docType === t.value ? t.sel.text : 'text-slate-700'}`}>
                   {t.value === 'invoice' ? (vatMode !== 'none' ? 'ใบเสร็จรับเงิน/ใบกำกับภาษี' : 'ใบเสร็จรับเงิน') : t.label}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">{t.desc}</p>

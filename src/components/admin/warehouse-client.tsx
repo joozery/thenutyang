@@ -645,27 +645,36 @@ function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdju
 
 function MovementLog({ movements, onHistory }: { movements: MovementRow[]; onHistory: (id: string) => void }) {
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    if (!q) return movements;
-    return movements.filter(m =>
-      m.productName.toLowerCase().includes(q) ||
-      m.refNo.toLowerCase().includes(q) ||
-      (m.refParty ?? '').toLowerCase().includes(q)
-    );
-  }, [movements, search]);
+    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
+    return movements.filter(m => {
+      if (q && !(
+        m.productName.toLowerCase().includes(q) ||
+        m.refNo.toLowerCase().includes(q) ||
+        (m.refParty ?? '').toLowerCase().includes(q)
+      )) return false;
+      const t = new Date(m.date).getTime();
+      if (fromTime && t < fromTime) return false;
+      if (toTime && t > toTime) return false;
+      return true;
+    });
+  }, [movements, search, dateFrom, dateTo]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div>
-      <div className="p-4 border-b border-slate-100">
-        <div className="relative">
+      <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
@@ -673,6 +682,32 @@ function MovementLog({ movements, onHistory }: { movements: MovementRow[]; onHis
             placeholder="ค้นหาสินค้า, เลขอ้างอิง, ชื่อลูกค้า..."
             className="w-full pl-8 pr-4 py-2.5 rounded-md border border-slate-200 text-sm focus:outline-none focus:border-[#008a44]"
           />
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+            title="ตั้งแต่วันที่"
+            className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]"
+          />
+          <span className="text-slate-300 text-xs">—</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => { setDateTo(e.target.value); setPage(1); }}
+            title="ถึงวันที่"
+            className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]"
+          />
+          {(search || dateFrom || dateTo) && (
+            <button
+              onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); setPage(1); }}
+              title="ล้างตัวกรอง"
+              className="p-2 rounded-md border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
       </div>
       <div className="overflow-x-auto">
