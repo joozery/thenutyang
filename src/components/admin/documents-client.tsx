@@ -431,11 +431,12 @@ function ViewModal({
                   <span className="font-bold text-slate-800">ยอดรวมสุทธิ</span>
                   <span className="text-2xl font-black text-slate-900 tabular-nums tracking-tight">฿{fmtMoney(doc.grandTotal)}</span>
                 </div>
-                {doc.type === 'booking_note' && doc.depositAmount > 0 && (
+                {/* มัดจำแสดงทุกชนิดเอกสารที่พกยอดมา (ใบจอง/ใบเสนอราคา/ใบเสร็จที่ต่อยอดกันมา) */}
+                {doc.depositAmount > 0 && (
                   <>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-green-700 font-medium flex items-center gap-1.5">
-                        <CheckCircle size={13} /> มัดจำที่รับแล้ว
+                        <CheckCircle size={13} /> มัดจำที่รับแล้ว{doc.relatedDocNumber && <span className="text-slate-400 font-normal">(ตามใบ {doc.relatedDocNumber})</span>}
                       </span>
                       <span className="text-green-700 font-bold tabular-nums">-฿{fmtMoney(doc.depositAmount)}</span>
                     </div>
@@ -447,7 +448,8 @@ function ViewModal({
                     </div>
                   </>
                 )}
-                {bookingStatus && bookingStatus.depositStatus === 'verified' && bookingStatus.depositAmount > 0 && (
+                {/* fallback: ใบเก่าที่ยังไม่ได้ประทับมัดจำลงใบ — ดึงจากสถานะการจองแทน */}
+                {!(doc.depositAmount > 0) && bookingStatus && bookingStatus.depositStatus === 'verified' && bookingStatus.depositAmount > 0 && (
                   <>
                     <div className="flex justify-between text-[13px]">
                       <span className="text-emerald-600 font-medium flex items-center gap-1.5">
