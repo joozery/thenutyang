@@ -21,7 +21,8 @@ export async function syncVerifiedDeposit(booking: any): Promise<void> {
   const docNumber = await generateDocNumber('booking_note');
   const qty = booking.quantity ?? 1;
   const subtotal = qty * (booking.tirePrice ?? 0);
-  const vatAmount = subtotal * 0.07;
+  // ราคาที่ลูกค้าจองคือราคารวม VAT แล้ว (VAT ใน) — ถอด 7/107 ไม่บวกเพิ่ม
+  const vatAmount = subtotal - subtotal / 1.07;
   await FinancialDocument.create({
     docNumber,
     type: 'booking_note',
@@ -38,7 +39,7 @@ export async function syncVerifiedDeposit(booking: any): Promise<void> {
     discountTotal: 0,
     vatRate: 7,
     vatAmount,
-    grandTotal: subtotal + vatAmount,
+    grandTotal: subtotal,
     depositAmount: deposit,
     paymentMethod: 'pending',
     status: 'deposit_paid',

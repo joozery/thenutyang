@@ -308,8 +308,9 @@ function buildDocFromBooking(b: BookingForDoc, type: DocType, docNumber: string)
   const qty        = b.quantity ?? 1;
   const unitPrice   = b.tirePrice ?? 0;
   const subtotal    = qty * unitPrice;
-  const vatAmount   = subtotal * 0.07;
-  const grandTotal  = subtotal + vatAmount;
+  // ราคาที่ลูกค้าจองคือราคารวม VAT แล้ว (VAT ใน) — ถอด 7/107 ไม่บวกเพิ่ม
+  const vatAmount   = subtotal - subtotal / 1.07;
+  const grandTotal  = subtotal;
   const isInvoice   = type === 'invoice';
   const customerName = b.customerType === 'corporate' && b.companyName ? b.companyName : (b.name ?? '');
 
@@ -365,8 +366,9 @@ function buildMultiDocFromBookings(bookings: BookingForDoc[], type: DocType, doc
     return { description: b.tireName ?? '', qty, unitPrice, discount: 0, lineTotal: qty * unitPrice };
   });
   const subtotal   = items.reduce((sum, i) => sum + i.lineTotal, 0);
-  const vatAmount  = subtotal * 0.07;
-  const grandTotal = subtotal + vatAmount;
+  // ราคาที่ลูกค้าจองคือราคารวม VAT แล้ว (VAT ใน) — ถอด 7/107 ไม่บวกเพิ่ม
+  const vatAmount  = subtotal - subtotal / 1.07;
+  const grandTotal = subtotal;
   const primary    = bookings[0];
   const isInvoice  = type === 'invoice';
   const customerName = primary.customerType === 'corporate' && primary.companyName ? primary.companyName : (primary.name ?? '');
