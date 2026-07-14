@@ -128,50 +128,13 @@ export async function adminUpdatePaymentStatus(ref: string, data: {
     await connectDB();
     await Booking.updateOne({ ref }, update);
 
-    // ยืนยันมัดจำแล้ว → ใส่ยอดมัดจำเข้าเอกสารที่ผูกกับการจอง (ใบเสนอราคา ฯลฯ)
-    // เพื่อให้ตอนพิมพ์/ส่งต่อเป็นใบเสร็จ แสดง "มัดจำที่ได้รับแล้ว" และยอดคงเหลือถูกต้อง
-    // และออก "ใบจอง" (RES) ให้อัตโนมัติถ้ายังไม่มี
+    // ยืนยันมัดจำแล้ว → ประทับมัดจำเข้าเอกสาร + ออกใบจอง RES (logic กลาง ใช้ร่วมกับหน้าการชำระเงิน)
     if (data.depositStatus === 'verified') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const booking = await Booking.findOne({ ref }).lean() as any;
       if (booking) {
-        const deposit = booking.depositAmount ?? 0;
-        await FinancialDocument.updateMany(
-          { bookingId: booking._id, status: { $ne: 'cancelled' } },
-          { depositAmount: deposit },
-        );
-
-        const hasBookingNote = await FinancialDocument.findOne({ bookingId: booking._id, type: 'booking_note' }).lean();
-        if (!hasBookingNote && deposit > 0) {
-          const { generateDocNumber } = await import('@/lib/documents');
-          const docNumber = await generateDocNumber('booking_note');
-          const qty = booking.quantity ?? 1;
-          const subtotal = qty * (booking.tirePrice ?? 0);
-          const vatAmount = subtotal * 0.07;
-          await FinancialDocument.create({
-            docNumber,
-            type: 'booking_note',
-            source: 'booking',
-            bookingId: booking._id,
-            bookingRef: booking.orderRef ?? booking.ref ?? '',
-            customerName: booking.customerType === 'corporate' && booking.companyName ? booking.companyName : (booking.name ?? ''),
-            customerPhone: booking.phone ?? '',
-            customerCar: [booking.carBrand, booking.carModel, booking.licensePlate ? `ทะเบียน ${booking.licensePlate}` : ''].filter(Boolean).join(' '),
-            customerAddress: booking.address ?? '',
-            customerTaxId: booking.taxId ?? '',
-            items: [{ description: booking.tireName ?? '', qty, unitPrice: booking.tirePrice ?? 0, discount: 0, lineTotal: subtotal }],
-            subtotal,
-            discountTotal: 0,
-            vatRate: 7,
-            vatAmount,
-            grandTotal: subtotal + vatAmount,
-            depositAmount: deposit,
-            paymentMethod: 'pending',
-            status: 'deposit_paid',
-            issuedAt: new Date(),
-            note: `มัดจำรับแล้ว ฿${deposit.toLocaleString()} (จอง ${booking.ref})`,
-          });
-        }
+        const { syncVerifiedDeposit } = await import('@/lib/deposit-sync');
+        await syncVerifiedDeposit(booking);
       }
       revalidatePath('/admin/documents');
     }

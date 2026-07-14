@@ -120,7 +120,18 @@ export async function verifyDepositManually(ref: string): Promise<ActionResult> 
   try {
     await connectDB();
     await Booking.updateOne({ ref }, { depositStatus: 'verified', depositPaidAt: new Date() });
+
+    // ประทับมัดจำเข้าเอกสาร + ออกใบจอง RES — พฤติกรรมเดียวกับปุ่มยืนยันในหน้าจอง
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const booking = await Booking.findOne({ ref }).lean() as any;
+    if (booking) {
+      const { syncVerifiedDeposit } = await import('@/lib/deposit-sync');
+      await syncVerifiedDeposit(booking);
+    }
+
     revalidatePath('/admin/payments');
+    revalidatePath('/admin/bookings');
+    revalidatePath('/admin/documents');
     return { ok: true };
   } catch (err) {
     console.error('[verifyDepositManually]', err);
@@ -205,6 +216,10 @@ export async function getDepositDocIdByRef(bookingRef: string): Promise<{ id?: s
   try {
     await connectDB();
     const { FinancialDocument } = await import('@/models/FinancialDocument');
+    // ใบมัดจำตัวจริงคือ "ใบจอง (RES)" — ถ้ายังไม่มีค่อย fallback เป็นเอกสารใบล่าสุดของการจอง
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const resDoc = await FinancialDocument.findOne({ bookingRef, type: 'booking_note' }).sort({ createdAt: -1 }).lean() as any;
+    if (resDoc) return { id: String(resDoc._id) };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const doc = await FinancialDocument.findOne({ bookingRef }).sort({ createdAt: -1 }).lean() as any;
     if (!doc) return { error: 'ไม่พบเอกสาร' };
