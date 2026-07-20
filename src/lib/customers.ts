@@ -197,7 +197,12 @@ export function mergeCustomerSources(
     const pk = phoneKey(s.phone);
     const existing = (s.phone && byPhone.get(pk)) || byName.get(nameKey(s.name));
     if (existing) {
-      // ซ้ำกับรายชื่อเดิม — ไม่เพิ่มแถวใหม่ แต่แนบรายการ PO ให้แถวเดิมกดดูได้
+      // ซ้ำกับรายชื่อเดิม — ไม่เพิ่มแถวใหม่ แต่แนบ supplierId + PO ให้แถวเดิม
+      // ต้องตั้ง supplierId ด้วย ไม่อย่างนั้นฟิลเตอร์ "คู่ค้า" จะหาไม่เจอ
+      if (!existing.supplierId) {
+        existing.supplierId = s.supplierId;
+        existing.supplierContact = s.supplierContact;
+      }
       if (s.partnerPos?.length) existing.partnerPos = [...(existing.partnerPos ?? []), ...s.partnerPos];
       continue;
     }
@@ -211,38 +216,60 @@ export function mergeCustomerSources(
 // ยอดซื้อจากเอกสาร (ใบเสร็จ/ใบรับชำระ) รวมต่อเบอร์โทร — เบอร์ normalize เป็นตัวเลขล้วนกันกรอกคนละรูปแบบ
 type DocSpend = { phone: string; name: string; spent: number; bills: number; lastVisit: Date | null };
 
+type RawDocRow = { _id: unknown; type: string; status: string; customerPhone: string; customerTaxId: string; customerName: string; grandTotal: number; issuedAt?: Date; bookingRef?: string; relatedDocId?: unknown };
+
+function applyDocRow(map: Map<string, DocSpend>, key: string, phone: string, d: RawDocRow, paidBillingIds: Set<string>) {
+  if (!key) return;
+  if (d.type === 'billing_note') return;
+  if (d.bookingRef) return;
+  if (d.type === 'payment_note' && d.relatedDocId && paidBillingIds.has(String(d.relatedDocId))) return;
+  const cur = map.get(key) ?? { phone, name: '', spent: 0, bills: 0, lastVisit: null };
+  // credit_note หักออก ไม่นับบิล; ประเภทอื่นบวกปกติ
+  cur.spent += d.type === 'credit_note' ? -(d.grandTotal ?? 0) : (d.grandTotal ?? 0);
+  if (d.type !== 'credit_note') cur.bills += 1;
+  cur.name = d.customerName || cur.name;
+  if (d.issuedAt instanceof Date && (!cur.lastVisit || d.issuedAt > cur.lastVisit)) cur.lastVisit = d.issuedAt;
+  map.set(key, cur);
+}
+
 async function getDocSpendByPhone(): Promise<Map<string, DocSpend>> {
   const { FinancialDocument } = await import('@/models/FinancialDocument');
   const docRows = await FinancialDocument.find(
     {
       customerPhone: { $nin: ['', null] },
       status: { $ne: 'cancelled' },
-      type: { $in: ['invoice', 'payment_note', 'billing_note'] },
+      type: { $in: ['invoice', 'payment_note', 'billing_note', 'credit_note'] },
     },
-    { type: 1, status: 1, customerPhone: 1, customerName: 1, grandTotal: 1, issuedAt: 1, bookingRef: 1, relatedDocId: 1 },
-  ).lean() as { _id: unknown; type: string; status: string; customerPhone: string; customerName: string; grandTotal: number; issuedAt?: Date; bookingRef?: string; relatedDocId?: unknown }[];
+    { type: 1, status: 1, customerPhone: 1, customerTaxId: 1, customerName: 1, grandTotal: 1, issuedAt: 1, bookingRef: 1, relatedDocId: 1 },
+  ).lean() as RawDocRow[];
 
-  // ใบแจ้งหนี้ที่จ่ายครบ = มีใบเสร็จเต็มจำนวนออกอัตโนมัติแล้ว — ใบรับชำระรายงวดของมันต้องไม่ถูกนับซ้ำ
   const paidBillingIds = new Set(
     docRows.filter(d => d.type === 'billing_note' && d.status === 'paid').map(d => String(d._id)),
   );
+  const map = new Map<string, DocSpend>();
+  for (const d of docRows) applyDocRow(map, d.customerPhone.replace(/\D/g, ''), d.customerPhone, d, paidBillingIds);
+  return map;
+}
 
-  const spendByPhone = new Map<string, DocSpend>();
-  for (const d of docRows) {
-    if (d.type === 'billing_note') continue;
-    if (d.bookingRef) continue; // เอกสารจากระบบจอง — ยอดถูกนับผ่าน Booking แล้ว
-    if (d.type === 'payment_note' && d.relatedDocId && paidBillingIds.has(String(d.relatedDocId))) continue;
+// เอกสารที่ไม่มีเบอร์ แต่มี taxId — ใช้จับคู่กับลูกค้าใน directory ได้
+export async function getDocSpendByTaxId(): Promise<Map<string, DocSpend>> {
+  const { FinancialDocument } = await import('@/models/FinancialDocument');
+  const docRows = await FinancialDocument.find(
+    {
+      customerPhone: { $in: ['', null] },
+      customerTaxId: { $nin: ['', null] },
+      status: { $ne: 'cancelled' },
+      type: { $in: ['invoice', 'payment_note', 'billing_note', 'credit_note'] },
+    },
+    { type: 1, status: 1, customerPhone: 1, customerTaxId: 1, customerName: 1, grandTotal: 1, issuedAt: 1, bookingRef: 1, relatedDocId: 1 },
+  ).lean() as RawDocRow[];
 
-    const key = d.customerPhone.replace(/\D/g, '');
-    if (!key) continue;
-    const cur = spendByPhone.get(key) ?? { phone: d.customerPhone, name: '', spent: 0, bills: 0, lastVisit: null };
-    cur.spent += d.grandTotal ?? 0;
-    cur.bills += 1;
-    cur.name = d.customerName || cur.name;
-    if (d.issuedAt instanceof Date && (!cur.lastVisit || d.issuedAt > cur.lastVisit)) cur.lastVisit = d.issuedAt;
-    spendByPhone.set(key, cur);
-  }
-  return spendByPhone;
+  const paidBillingIds = new Set(
+    docRows.filter(d => d.type === 'billing_note' && d.status === 'paid').map(d => String(d._id)),
+  );
+  const map = new Map<string, DocSpend>();
+  for (const d of docRows) applyDocRow(map, (d.customerTaxId ?? '').replace(/\D/g, ''), '', d, paidBillingIds);
+  return map;
 }
 
 function customerTag(totalSpent: number, totalBills: number): 'VIP' | 'ปกติ' | 'ใหม่' {

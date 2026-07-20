@@ -3,6 +3,7 @@ import { Customer } from '@/models/Customer';
 import { FinancialDocument } from '@/models/FinancialDocument';
 import { Booking } from '@/models/Booking';
 import type { VehicleEntry } from '@/models/Customer';
+import { parseCarInfo } from './car-info';
 
 export type CustomerDetailData = {
   id: string;
@@ -39,6 +40,7 @@ export type CustomerDoc = {
 
 export type CustomerBooking = {
   id: string;
+  carBrand: string;
   carModel: string;
   carYear: string;
   licensePlate: string;
@@ -105,20 +107,33 @@ export async function getCustomerDetail(id: string): Promise<CustomerDetailResul
   };
 
   const phone = customer.phone;
+  const taxId = customer.taxId;
+
+  // normalize phone — กัน format mismatch เช่น '081-234-5678' vs '0812345678'
+  const phoneDigits = phone.replace(/\D/g, '');
+  const phoneFilter = phone
+    ? (phoneDigits && phoneDigits !== phone ? { $in: [phone, phoneDigits] } : phone)
+    : null;
+
+  // fallback สำหรับ FinancialDocument: ไม่มีเบอร์ → ใช้ taxId → ใช้ชื่อ
+  const taxDigits = taxId.replace(/\D/g, '');
+  const docFilter: Record<string, unknown> = phoneFilter
+    ? { customerPhone: phoneFilter }
+    : taxDigits
+      ? { customerTaxId: taxDigits && taxDigits !== taxId ? { $in: [taxId, taxDigits] } : taxId }
+      : { customerName: displayName };
 
   const [rawDocs, rawBookings] = await Promise.all([
-    phone
-      ? FinancialDocument.find({ customerPhone: phone })
+    FinancialDocument.find(docFilter)
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .select('docNumber type customerCar grandTotal status paymentMethod bookingRef relatedDocId createdAt')
+      .lean(),
+    phoneFilter
+      ? Booking.find({ phone: phoneFilter })
           .sort({ createdAt: -1 })
           .limit(50)
-          .select('docNumber type customerCar grandTotal status paymentMethod bookingRef relatedDocId createdAt')
-          .lean()
-      : Promise.resolve([]),
-    phone
-      ? Booking.find({ phone })
-          .sort({ createdAt: -1 })
-          .limit(50)
-          .select('carModel carYear licensePlate tireSize quantity tirePrice status createdAt')
+          .select('carBrand carModel carYear licensePlate tireSize quantity tirePrice status createdAt')
           .lean()
       : Promise.resolve([]),
   ]);
@@ -138,6 +153,7 @@ export async function getCustomerDetail(id: string): Promise<CustomerDetailResul
 
   const bookings: CustomerBooking[] = (rawBookings as Record<string, unknown>[]).map((b) => ({
     id:           String(b._id),
+    carBrand:     String(b.carBrand     ?? ''),
     carModel:     String(b.carModel     ?? ''),
     carYear:      String(b.carYear      ?? ''),
     licensePlate: String(b.licensePlate ?? ''),
@@ -147,6 +163,30 @@ export async function getCustomerDetail(id: string): Promise<CustomerDetailResul
     status:       String(b.status       ?? ''),
     createdAt:    b.createdAt instanceof Date ? b.createdAt.toISOString() : String(b.createdAt ?? ''),
   }));
+
+  // เติมรถจาก docs + bookings ที่ยังไม่มีใน Customer model (dedup ด้วย licensePlate หรือ brand+model)
+  const seen = new Set<string>(
+    customer.vehicles
+      .map(v => (v.licensePlate || `${v.carBrand}||${v.carModel}`).toLowerCase())
+      .filter(Boolean),
+  );
+  function addVehicleIfNew(v: VehicleEntry) {
+    if (!v.licensePlate && !v.carBrand && !v.carModel) return;
+    const key = (v.licensePlate || `${v.carBrand}||${v.carModel}`).toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    customer.vehicles.push(v);
+  }
+  // จาก customerCar ของ FinancialDocument (เก็บข้อมูลรถ ณ วันออกเอกสาร)
+  for (const doc of docs) {
+    if (!doc.customerCar) continue;
+    const p = parseCarInfo(doc.customerCar);
+    addVehicleIfNew({ carBrand: p.carBrand, carModel: p.carModel, carColor: p.carColor, licensePlate: p.licensePlate, mileage: p.mileage, chassisNo: p.chassisNo });
+  }
+  // จาก booking (กรณีลูกค้าจองออนไลน์)
+  for (const b of bookings) {
+    addVehicleIfNew({ carBrand: b.carBrand, carModel: b.carModel, carColor: '', licensePlate: b.licensePlate, mileage: '', chassisNo: '' });
+  }
 
   // ยอดซื้อรวม = ยอดจากการจอง + เอกสารที่ไม่ได้มาจากการจอง (กันนับเงินก้อนเดียวซ้ำสองทาง)
   // ใบแจ้งหนี้ที่จ่ายครบมีใบเสร็จเต็มจำนวนออกอัตโนมัติ — ใบรับชำระรายงวดของมันไม่ถูกนับซ้ำ

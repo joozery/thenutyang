@@ -598,7 +598,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
         || (sourceFilter === 'หน้าร้าน' && c.source === 'walkin');
       const matchRelation = relationFilter === 'ทั้งหมด'
         || (relationFilter === 'ลูกค้า' && c.relationType !== 'partner')
-        || (relationFilter === 'คู่ค้า' && c.relationType === 'partner');
+        || (relationFilter === 'คู่ค้า' && (c.relationType === 'partner' || !!c.supplierId));
       return matchSearch && matchTag && matchSource && matchRelation;
     });
   }, [customers, search, tagFilter, sourceFilter, relationFilter]);
@@ -750,7 +750,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
               {paginated.length === 0 ? (
                 <tr><td colSpan={8} className="py-16 text-center text-slate-400 text-sm font-medium">ไม่พบข้อมูลลูกค้าที่คุณค้นหา</td></tr>
               ) : paginated.map((c, i) => (
-                <tr key={c.id ?? c.phone} className="hover:bg-green-50/30 transition-colors group">
+                <tr key={c.id ?? c.supplierId ?? c.phone} className="hover:bg-green-50/30 transition-colors group">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="relative">

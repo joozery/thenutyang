@@ -306,7 +306,7 @@ export function CustomerDetailClient({ data, carBrands = [], carModels = [] }: {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-bold text-slate-800">
-                          {[b.carModel, b.carYear].filter(Boolean).join(' ปี ') || '—'}
+                          {[b.carBrand, b.carModel, b.carYear].filter(Boolean).join(' ') || '—'}
                         </p>
                         {b.licensePlate && (
                           <span className="text-[11px] font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
