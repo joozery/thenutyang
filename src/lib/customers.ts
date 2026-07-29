@@ -180,6 +180,12 @@ export function mergeCustomerSources(
   const nameKey = (n: string) => (n || '').trim().toLowerCase().replace(/\s+/g, '');
   const byName = new Map<string, UnifiedCustomerRow>();
 
+  // Populate byName with booking/docSpend rows so directory matching by name works
+  for (const r of [...byTaxId.values(), ...byPhone.values(), ...noPhone]) {
+    if (nameKey(r.name) && !byName.has(nameKey(r.name))) byName.set(nameKey(r.name), r);
+    if (nameKey(r.companyName) && !byName.has(nameKey(r.companyName))) byName.set(nameKey(r.companyName), r);
+  }
+
   for (const d of directoryRows) {
     const tk = d.taxId ? d.taxId.replace(/\D/g, '') : '';
     const pk = d.phone ? phoneKey(d.phone) : '';
@@ -333,12 +339,10 @@ function applyDocRow(map: Map<string, DocSpend>, key: string, phone: string, d: 
   map.set(key, cur);
 }
 
-async function getDocSpendByPhone(): Promise<Map<string, DocSpend>> {
+async function getAllDocSpends(): Promise<{ byPhone: Map<string, DocSpend>, byTaxId: Map<string, DocSpend>, byName: Map<string, DocSpend> }> {
   const { FinancialDocument } = await import('@/models/FinancialDocument');
   const docRows = await FinancialDocument.find(
     {
-      customerPhone: { $nin: ['', null] },
-      customerTaxId: { $in: ['', null] }, // ห้ามดึงบิลที่มี taxId เพราะเดี๋ยวจะไปดึงใน getDocSpendByTaxId
       status: { $ne: 'cancelled' },
       type: { $in: ['invoice', 'payment_note', 'billing_note', 'credit_note'] },
     },
@@ -348,54 +352,26 @@ async function getDocSpendByPhone(): Promise<Map<string, DocSpend>> {
   const paidBillingIds = new Set(
     docRows.filter(d => d.type === 'billing_note' && d.status === 'paid').map(d => String(d._id)),
   );
-  const map = new Map<string, DocSpend>();
-  for (const d of docRows) applyDocRow(map, d.customerPhone.replace(/\D/g, ''), d.customerPhone, d, paidBillingIds);
-  return map;
-}
+  
+  const byPhone = new Map<string, DocSpend>();
+  const byTaxId = new Map<string, DocSpend>();
+  const byName = new Map<string, DocSpend>();
 
-// เอกสารที่ไม่มีเบอร์ แต่มี taxId — ใช้จับคู่กับลูกค้าใน directory ได้
-export async function getDocSpendByTaxId(): Promise<Map<string, DocSpend>> {
-  const { FinancialDocument } = await import('@/models/FinancialDocument');
-  const docRows = await FinancialDocument.find(
-    {
-      customerTaxId: { $nin: ['', null] }, // ดึงทุกบิลที่มี taxId ไม่สนว่าจะมีเบอร์โทรหรือไม่ (ให้ taxId สำคัญกว่า)
-      status: { $ne: 'cancelled' },
-      type: { $in: ['invoice', 'payment_note', 'billing_note', 'credit_note'] },
-    },
-    { type: 1, status: 1, customerPhone: 1, customerTaxId: 1, customerName: 1, grandTotal: 1, issuedAt: 1, bookingRef: 1, relatedDocId: 1 },
-  ).lean() as RawDocRow[];
-
-  const paidBillingIds = new Set(
-    docRows.filter(d => d.type === 'billing_note' && d.status === 'paid').map(d => String(d._id)),
-  );
-  const map = new Map<string, DocSpend>();
-  for (const d of docRows) applyDocRow(map, (d.customerTaxId ?? '').replace(/\D/g, ''), d.customerPhone || '', d, paidBillingIds);
-  return map;
-}
-
-// เอกสารที่ไม่มีทั้งเบอร์ และ taxId — ใช้จับคู่ด้วยชื่อ (กันกรณีลูกค้าหน้าร้านที่ไม่ได้ใส่เบอร์และเลขผู้เสียภาษี)
-export async function getDocSpendByName(): Promise<Map<string, DocSpend>> {
-  const { FinancialDocument } = await import('@/models/FinancialDocument');
-  const docRows = await FinancialDocument.find(
-    {
-      customerPhone: { $in: ['', null] },
-      customerTaxId: { $in: ['', null] },
-      customerName: { $nin: ['', null] },
-      status: { $ne: 'cancelled' },
-      type: { $in: ['invoice', 'payment_note', 'billing_note', 'credit_note'] },
-    },
-    { type: 1, status: 1, customerPhone: 1, customerTaxId: 1, customerName: 1, grandTotal: 1, issuedAt: 1, bookingRef: 1, relatedDocId: 1 },
-  ).lean() as RawDocRow[];
-
-  const paidBillingIds = new Set(
-    docRows.filter(d => d.type === 'billing_note' && d.status === 'paid').map(d => String(d._id)),
-  );
-  const map = new Map<string, DocSpend>();
   for (const d of docRows) {
-    const nameKey = (d.customerName ?? '').trim().toLowerCase().replace(/\s+/g, '');
-    applyDocRow(map, nameKey, '', d, paidBillingIds);
+    const taxId = (d.customerTaxId || '').replace(/\D/g, '');
+    const phone = (d.customerPhone || '').replace(/\D/g, '');
+    const nameKey = (d.customerName || '').trim().toLowerCase().replace(/\s+/g, '');
+
+    if (taxId) {
+      applyDocRow(byTaxId, taxId, d.customerPhone || '', d, paidBillingIds);
+    } else if (phone) {
+      applyDocRow(byPhone, phone, d.customerPhone || '', d, paidBillingIds);
+    } else if (nameKey) {
+      applyDocRow(byName, nameKey, d.customerPhone || '', d, paidBillingIds);
+    }
   }
-  return map;
+
+  return { byPhone, byTaxId, byName };
 }
 
 function customerTag(totalSpent: number, totalBills: number): 'VIP' | 'ปกติ' | 'ใหม่' {
@@ -405,9 +381,7 @@ function customerTag(totalSpent: number, totalBills: number): 'VIP' | 'ปกต
 export async function getCustomers(): Promise<CustomerRow[]> {
   await connectDB();
 
-  const docSpendByPhone = await getDocSpendByPhone();
-  const docSpendByTaxId = await getDocSpendByTaxId();
-  const docSpendByName = await getDocSpendByName();
+  const { byPhone: docSpendByPhone, byTaxId: docSpendByTaxId, byName: docSpendByName } = await getAllDocSpends();
   const [rows, carInfoRows] = await Promise.all([
     Booking.aggregate([
       { $sort: { createdAt: 1 } },
