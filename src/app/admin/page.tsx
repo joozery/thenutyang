@@ -52,7 +52,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 function fmt(n: number) {
-  return n.toLocaleString('th-TH');
+  return n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function getStatusLabel(status: string) {

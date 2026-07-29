@@ -54,6 +54,8 @@ export type DocumentTemplateProps = {
   footerNote?: string;
   technicianName?: string;
   accentColor?: string; // สีหัวเอกสารตามชนิด (ค่าเริ่มต้น: เขียว)
+  subtotal?: number;      // มูลค่าก่อนหักส่วนลด — แสดงเมื่อมีส่วนลด
+  discountTotal?: number; // ส่วนลดรวม (ทั้ง per-line และ global)
 };
 
 const fmt = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -90,6 +92,8 @@ export function DocumentTemplate({
   footerNote,
   technicianName,
   accentColor = '#15803d',
+  subtotal,
+  discountTotal = 0,
 }: DocumentTemplateProps) {
   const paid = paidAmount ?? grandTotal;
   const remainingBalance = depositAmount > 0 ? Math.max(0, grandTotal - depositAmount) : 0;
@@ -218,6 +222,18 @@ export function DocumentTemplate({
         <div className="w-80 shrink-0">
           <table className="w-full text-[13px]">
             <tbody>
+              {discountTotal > 0 && subtotal != null && (
+                <>
+                  <tr>
+                    <td className="py-1 text-slate-800">มูลค่าก่อนหักส่วนลด</td>
+                    <td className="py-1 text-right tabular-nums">{fmt(subtotal)} บาท</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 text-red-600 font-medium">ส่วนลดรวม</td>
+                    <td className="py-1 text-right tabular-nums text-red-600 font-medium">-{fmt(discountTotal)} บาท</td>
+                  </tr>
+                </>
+              )}
               <tr><td className="py-1 text-slate-800">มูลค่าที่คำนวณภาษี {vatRate}%</td><td className="py-1 text-right tabular-nums">{fmt(vatBase)} บาท</td></tr>
               <tr><td className="py-1 text-slate-800">ภาษีมูลค่าเพิ่ม {vatRate}%</td><td className="py-1 text-right tabular-nums">{fmt(vatAmount)} บาท</td></tr>
               <tr style={{ backgroundColor: tintBg }}>

@@ -16,7 +16,7 @@ const RANGE_OPTIONS = [
 type Range = typeof RANGE_OPTIONS[number]['value'];
 
 function fmt(n: number) {
-  return n.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtK(n: number) {
   return `฿${fmt(n)}`;

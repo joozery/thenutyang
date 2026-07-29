@@ -76,6 +76,8 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
     vatBase: doc.grandTotal - doc.vatAmount,
     vatAmount: doc.vatAmount,
     grandTotal: doc.grandTotal,
+    subtotal: doc.subtotal,
+    discountTotal: doc.discountTotal,
     // มัดจำแสดงทุกชนิดเอกสารที่มีค่า — ใบเสนอราคา/ใบเสร็จที่ต่อยอดจากใบจองต้องเห็นยอดคงเหลือด้วย
     depositAmount: doc.depositAmount ?? 0,
     accentColor: DOC_TYPE_COLOR[doc.type],

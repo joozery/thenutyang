@@ -80,6 +80,7 @@ export type DocPrefill = {
   sourceDocNumber:    string;
   sourceDocTypeLabel: string;
   depositAmount?:     number;
+  globalDiscount?:    number;
 };
 
 // ใช้ตอนแก้ไขเอกสารที่มีอยู่แล้ว — แยกจาก prefill (ที่ใช้กับ flow "สร้างเอกสารอ้างอิงใบนี้") เพราะความหมายต่างกัน:
@@ -407,7 +408,7 @@ export function NewDocumentClient({
   const [issuedDate,      setIssuedDate]      = useState(today());
   const [dueDate,         setDueDate]         = useState(prefill?.dueDate ?? '');
   const [depositAmount,   setDepositAmount]   = useState(prefill?.depositAmount ?? 0);
-  const [globalDiscount,  setGlobalDiscount]  = useState(0);
+  const [globalDiscount,  setGlobalDiscount]  = useState(prefill?.globalDiscount ?? 0);
   const [note,            setNote]            = useState(prefill?.note ?? '');
   const [technicianName,  setTechnicianName]  = useState(prefill?.technicianName ?? '');
   const [showPaymentInfo, setShowPaymentInfo] = useState(prefill?.showPaymentInfo ?? false);

@@ -200,8 +200,9 @@ function ViewModal({
   const remaining = Math.max(0, doc.grandTotal - paidSoFar);
   const bookingStatus = doc.bookingRef ? bookingStatusMap[doc.bookingRef] : undefined;
 
-  const totalCost = doc.costPrice > 0
-    ? doc.costPrice
+  const hasCostOverride = doc.costPrice != null;
+  const totalCost = hasCostOverride
+    ? doc.costPrice!
     : doc.items.reduce((sum, item) => sum + (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty, 0);
   const profit = doc.grandTotal - totalCost;
 
@@ -325,7 +326,7 @@ function ViewModal({
                   <p className="text-[11px] font-bold text-slate-400 tracking-wide">ต้นทุนรวม</p>
                   {!editingCost && (
                     <button
-                      onClick={() => { setEditingCost(true); setCostDraft(totalCost > 0 ? String(totalCost) : ''); }}
+                      onClick={() => { setEditingCost(true); setCostDraft(doc.costPrice != null ? String(doc.costPrice) : String(totalCost)); }}
                       title="กรอกต้นทุนเอง"
                       className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-blue-600"
                     >
@@ -341,7 +342,7 @@ function ViewModal({
                     onBlur={() => {
                       setEditingCost(false);
                       const v = parseFloat(costDraft);
-                      if (Number.isFinite(v) && v >= 0 && v !== totalCost) onSaveCost(doc.id, v);
+                      if (Number.isFinite(v) && v >= 0) onSaveCost(doc.id, v);
                     }}
                     onKeyDown={e => {
                       if (e.key === 'Enter') e.currentTarget.blur();
@@ -353,7 +354,7 @@ function ViewModal({
                   <p className="text-2xl font-black text-slate-800 tabular-nums">฿{fmtMoney(totalCost)}</p>
                 )}
                 <p className="text-[11px] text-slate-400 mt-1">
-                  {doc.costPrice > 0 ? 'ต้นทุนที่กรอกเอง' : 'คำนวณจาก costPrice ของสินค้า'}
+                  {doc.costPrice != null ? 'ต้นทุนที่กรอกเอง' : 'คำนวณจาก costPrice ของสินค้า'}
                 </p>
               </div>
               <div className={`rounded-xl p-5 shadow-sm border ${profit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
@@ -750,7 +751,7 @@ export function DocumentsClient({
     for (const doc of filtered) {
       if (doc.type !== 'invoice') continue;
       totalRevenue += doc.grandTotal;
-      if (doc.costPrice > 0) {
+      if (doc.costPrice != null) {
         totalCost += doc.costPrice;
       } else {
         for (const item of doc.items) {
@@ -951,8 +952,8 @@ export function DocumentsClient({
             { label: 'บิลค้างชำระ', label2: 'ทั้งหมด', value: `${stats.unpaidCount}`, sub: 'บิล', icon: <AlertCircle className="w-4 h-4 text-red-500" />, iconBg: 'bg-red-100/80 text-red-600', cardBg: 'bg-red-50/50 border-red-100/40', textColor: 'text-slate-800' },
             { label: 'ใบเสนอราคา', label2: 'รอดำเนินการ', value: `${stats.pendingQuoteCount}`, sub: 'ใบ', icon: <Clock className="w-4 h-4 text-amber-500" />, iconBg: 'bg-amber-100/80 text-amber-600', cardBg: 'bg-amber-50/40 border-amber-100/40', textColor: 'text-slate-800' },
             { label: 'ใบแจ้งหนี้', label2: `ค้างชำระ (฿${fmtMoney(stats.billingOutstandingTotal)})`, value: `${stats.billingOutstandingCount}`, sub: 'บิล', icon: <FileClock className="w-4 h-4 text-purple-600" />, iconBg: 'bg-purple-100/80 text-purple-600', cardBg: 'bg-purple-50/40 border-purple-100/40', textColor: 'text-slate-800' },
-            { label: 'รายรับ (Income)', label2: 'เดือนนี้', value: `฿${stats.totalIncomeMonth.toLocaleString()}`, sub: 'รวม', small: true, icon: <Wallet className="w-4 h-4 text-emerald-600" />, iconBg: 'bg-emerald-100/80 text-emerald-600', cardBg: 'bg-emerald-50/40 border-emerald-100/40', textColor: 'text-slate-800' },
-            { label: 'รายจ่าย (Expense)', label2: 'เดือนนี้', value: `฿${stats.totalExpenseMonth.toLocaleString()}`, sub: 'รวม', small: true, icon: <TrendingUp className="w-4 h-4 text-rose-600" />, iconBg: 'bg-rose-100/80 text-rose-600', cardBg: 'bg-rose-50/40 border-rose-100/40', textColor: 'text-slate-800' },
+            { label: 'รายรับ (Income)', label2: 'เดือนนี้', value: `฿${fmtMoney(stats.totalIncomeMonth)}`, sub: 'รวม', small: true, icon: <Wallet className="w-4 h-4 text-emerald-600" />, iconBg: 'bg-emerald-100/80 text-emerald-600', cardBg: 'bg-emerald-50/40 border-emerald-100/40', textColor: 'text-slate-800' },
+            { label: 'รายจ่าย (Expense)', label2: 'เดือนนี้', value: `฿${fmtMoney(stats.totalExpenseMonth)}`, sub: 'รวม', small: true, icon: <TrendingUp className="w-4 h-4 text-rose-600" />, iconBg: 'bg-rose-100/80 text-rose-600', cardBg: 'bg-rose-50/40 border-rose-100/40', textColor: 'text-slate-800' },
           ].map((s: { label: string; label2: string; value: string; sub: string; small?: boolean; icon: React.ReactNode; iconBg: string; cardBg: string; textColor: string }) => (
             <div key={s.label} className={`${s.cardBg} rounded-2xl border p-5 shadow-[0_1px_3px_rgb(0,0,0,0.01)] hover:shadow-md transition-all relative overflow-hidden group flex flex-col justify-between min-h-[130px]`}>
               <div className="absolute -right-6 -bottom-6 opacity-[0.04] group-hover:opacity-[0.06] group-hover:scale-110 transition-all duration-500 pointer-events-none">
@@ -1111,7 +1112,7 @@ export function DocumentsClient({
                 </tr>
               ) : paginated.map(d => {
                 const rowCost = d.type === 'invoice'
-                  ? (d.costPrice > 0
+                  ? (d.costPrice != null
                     ? d.costPrice
                     : d.items.reduce((sum, item) => sum + (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty, 0))
                   : null;

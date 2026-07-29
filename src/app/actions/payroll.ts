@@ -205,6 +205,42 @@ export async function markAllPaid(period: string): Promise<Result> {
   }
 }
 
+// ยกเลิกการจ่ายรายบุคคล
+export async function markUnpaid(id: string): Promise<Result> {
+  try {
+    await connectDB();
+    const p = await Payslip.findById(id).lean() as any;
+    if (!p) return { ok: false, error: 'ไม่พบรายการ' };
+
+    if (p.expenseId) {
+      await Expense.findByIdAndDelete(p.expenseId);
+    }
+
+    await Payslip.findByIdAndUpdate(id, {
+      $set: { status: 'pending', paidAt: null },
+      $unset: { expenseId: '' }
+    });
+    
+    revalidatePath('/admin/payroll');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+// ยกเลิกการจ่ายทั้งหมดในรอบบิลนั้นๆ
+export async function markAllUnpaid(period: string): Promise<Result> {
+  try {
+    await connectDB();
+    const paid = await Payslip.find({ period, status: 'paid' }).lean() as { _id: string }[];
+    await Promise.all(paid.map((p) => markUnpaid(String(p._id))));
+    revalidatePath('/admin/payroll');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
 // ลบ payslip (และ Expense ที่ผูกไว้ถ้ามี)
 export async function deletePayslip(id: string): Promise<Result> {
   try {

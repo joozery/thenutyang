@@ -115,12 +115,27 @@ export async function updateCustomer(id: string, input: CustomerFormInput): Prom
     if (plateError) return { error: plateError };
 
     // เก็บข้อมูลเดิมไว้ก่อน — ใช้ตามหาบิลของลูกค้าคนนี้ (บิลเก็บชื่อ/เบอร์เป็น snapshot ไม่มี customerId)
-    const existing = await Customer.findById(id).lean() as {
-      customerType?: string; companyName?: string; firstName?: string; lastName?: string; phone?: string;
-    } | null;
-    if (!existing) return { error: 'ไม่พบลูกค้า' };
+    let existing: { customerType?: string; companyName?: string; firstName?: string; lastName?: string; phone?: string; } | null = null;
+    let actualId = id;
 
-    await Customer.findByIdAndUpdate(id, { ...input, updatedAt: new Date() });
+    if (id.startsWith('virtual_')) {
+      const parts = id.split('_');
+      const type = parts[1];
+      const val = parts.slice(2).join('_');
+      existing = {
+        firstName: type === 'name' ? val : '',
+        phone: type === 'phone' ? val : '',
+      };
+      
+      const doc = await Customer.create({ ...input, source: 'walkin' });
+      actualId = String(doc._id);
+    } else {
+      existing = await Customer.findById(id).lean() as {
+        customerType?: string; companyName?: string; firstName?: string; lastName?: string; phone?: string;
+      } | null;
+      if (!existing) return { error: 'ไม่พบลูกค้า' };
+      await Customer.findByIdAndUpdate(id, { ...input, updatedAt: new Date() });
+    }
 
     // sync ข้อมูลใหม่ไปยังบิล/เอกสารทั้งหมดของลูกค้าคนนี้
     // จับคู่ด้วยเบอร์โทรเดิมเป็นหลัก ถ้าไม่มีเบอร์ใช้ชื่อเดิม (เฉพาะบิลที่ไม่มีเบอร์ กันไปแก้บิลคนอื่นที่ชื่อซ้ำ)

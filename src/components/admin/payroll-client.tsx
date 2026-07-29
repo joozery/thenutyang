@@ -6,7 +6,7 @@ import {
   CalendarDays, CheckCircle, Clock, Calculator, Wallet, Edit2, X,
   TrendingUp, TrendingDown, Users, DollarSign, AlertCircle, ChevronRight, Trash2,
 } from 'lucide-react';
-import { generatePayroll, updatePayslip, markPaid, markAllPaid, deletePayslip } from '@/app/actions/payroll';
+import { generatePayroll, updatePayslip, markPaid, markAllPaid, markUnpaid, markAllUnpaid, deletePayslip } from '@/app/actions/payroll';
 import type { PayslipRow } from '@/lib/payroll';
 
 const fmt = (n: number) => `฿${Math.round(n).toLocaleString('th-TH')}`;
@@ -66,6 +66,25 @@ export function PayrollClient({
     startTransition(async () => {
       const res = await markPaid(id);
       if (res.ok) { flash('บันทึกการจ่ายแล้ว'); router.refresh(); }
+    });
+  }
+
+  function handleUnmarkAll() {
+    if (paid === 0) return;
+    if (!confirm('คุณต้องการยกเลิกการจ่ายเงินเดือนของพนักงานทุกคนในเดือนนี้ใช่หรือไม่? (รายการค่าใช้จ่ายที่ถูกสร้างไว้จะถูกลบออก)')) return;
+    
+    startTransition(async () => {
+      const res = await markAllUnpaid(period);
+      if (res.ok) { flash('ยกเลิกการจ่ายทั้งหมดแล้ว'); router.refresh(); }
+      else flash(res.error);
+    });
+  }
+
+  function handleUnmarkOne(id: string) {
+    startTransition(async () => {
+      const res = await markUnpaid(id);
+      if (res.ok) { flash('ยกเลิกการจ่ายแล้ว'); router.refresh(); }
+      else flash(res.error);
     });
   }
 
@@ -129,6 +148,16 @@ export function PayrollClient({
             <Calculator size={15} />
             {payslips.length === 0 ? 'คำนวณรอบนี้' : 'คำนวณใหม่'}
           </button>
+          {paid > 0 && (
+            <button
+              onClick={handleUnmarkAll}
+              disabled={isPending}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-red-200 text-sm font-semibold text-red-600 bg-white hover:bg-red-50 disabled:opacity-50 transition-all shadow-sm"
+              title="ยกเลิกการจ่ายเงินเดือนทั้งหมดในรอบนี้"
+            >
+              <X size={15} /> ยกเลิกจ่ายทั้งหมด
+            </button>
+          )}
           <button
             onClick={handleMarkAll}
             disabled={isPending || payslips.length === 0 || paid === payslips.length}
@@ -299,10 +328,16 @@ export function PayrollClient({
                             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors">
                             <Edit2 size={14} />
                           </button>
-                          {!isPaid && (
+                          {!isPaid ? (
                             <button onClick={() => handleMarkOne(p.id)} disabled={isPending}
                               className="text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 shadow-sm shadow-green-200">
                               จ่าย
+                            </button>
+                          ) : (
+                            <button onClick={() => handleUnmarkOne(p.id)} disabled={isPending}
+                              title="ยกเลิกการจ่าย"
+                              className="text-xs font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 hover:text-slate-800 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 shadow-sm">
+                              ยกเลิกจ่าย
                             </button>
                           )}
                           <button

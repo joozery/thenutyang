@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   Search, ArrowDownCircle, ArrowUpCircle, AlertTriangle,
   Package, SlidersHorizontal, X, CheckCircle,
-  Tag, Download, Upload, TrendingUp
+  Tag, Download, Upload, TrendingUp, ArrowUpDown
 } from 'lucide-react';
 import type { StockItem, MovementRow, WarehouseStats } from '@/lib/warehouse';
 import { receiveStock, disburseStock, adjustStock, lookupPOItems, moveStockBulk } from '@/app/actions/warehouse';
@@ -47,7 +47,10 @@ function MoveModal({
   const [isPending, startTransition] = useTransition();
   const initialProduct = products.length === 1 ? products[0] : null;
   const [productId, setProductId] = useState(initialProduct ? initialProduct.id : '');
-  const [qty, setQty] = useState(1);
+  const [qty, setQty] = useState(() => {
+    if (type === 'adjust' && initialProduct) return initialProduct.stock;
+    return 1;
+  });
   const [refNo, setRefNo] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
@@ -92,7 +95,7 @@ function MoveModal({
   };
 
   const usingPO = poItems !== null && type !== 'adjust';
-  const isValid = usingPO ? poItems!.some(i => i.qty > 0) : (!!productId && qty > 0);
+  const isValid = usingPO ? poItems!.some(i => i.qty > 0) : (!!productId && (type === 'adjust' ? qty >= 0 : qty > 0));
 
   const handleSubmit = () => {
     if (!isValid) return;
@@ -487,6 +490,7 @@ function ProductHistoryModal({
 function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdjust: (id: string) => void; onHistory: (id: string) => void }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'low' | 'ok'>('all');
+  const [stockSort, setStockSort] = useState<'none' | 'desc' | 'asc'>('none');
 
   const lowCount = items.filter(p => p.isLow).length;
   const [page, setPage] = useState(1);
@@ -497,7 +501,7 @@ function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdju
     // normalize tire size: "215/55R17", "215/55r17", "215/55/17", "2155517" → "2155517"
     const normalizeTire = (s: string) => s.replace(/[\/rR\s]/g, '');
     const qNorm = normalizeTire(q);
-    return items.filter(p => {
+    const base = items.filter(p => {
       if (!q) return filter === 'all' || (filter === 'low' ? p.isLow : !p.isLow);
       const label = p.label.toLowerCase();
       const matchSearch =
@@ -508,7 +512,15 @@ function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdju
       const matchFilter = filter === 'all' || (filter === 'low' ? p.isLow : !p.isLow);
       return matchSearch && matchFilter;
     });
-  }, [items, search, filter]);
+    if (stockSort === 'desc') return [...base].sort((a, b) => b.stock - a.stock);
+    if (stockSort === 'asc')  return [...base].sort((a, b) => a.stock - b.stock);
+    return base;
+  }, [items, search, filter, stockSort]);
+
+  const cycleStockSort = () => {
+    setStockSort(s => s === 'none' ? 'desc' : s === 'desc' ? 'asc' : 'none');
+    setPage(1);
+  };
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -544,6 +556,17 @@ function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdju
           >
             ปกติ
           </button>
+          {/* Sort by stock */}
+          <button
+            onClick={cycleStockSort}
+            title={stockSort === 'none' ? 'เรียงตามสต๊อก' : stockSort === 'desc' ? 'มากไปน้อย (คลิกเพื่อสลับ)' : 'น้อยไปมาก (คลิกเพื่อล้าง)'}
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-md text-[13px] font-bold whitespace-nowrap transition-colors ${
+              stockSort !== 'none' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            <ArrowUpDown size={14} className={`transition-transform ${stockSort === 'asc' ? 'rotate-180' : ''}`} />
+            {stockSort === 'none' ? 'เรียงสต๊อก' : stockSort === 'desc' ? 'มาก → น้อย' : 'น้อย → มาก'}
+          </button>
         </div>
       </div>
       <div className="overflow-x-auto flex-1">
@@ -551,7 +574,18 @@ function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdju
           <thead>
             <tr className="text-[12px] text-slate-500 font-bold uppercase tracking-wider border-b border-slate-200 bg-slate-50">
               <th className="text-left px-5 py-4">สินค้า</th>
-              <th className="text-center px-5 py-4">สต๊อก</th>
+              <th className="text-center px-5 py-4">
+                <button
+                  onClick={cycleStockSort}
+                  className={`inline-flex items-center gap-1 transition-colors hover:text-indigo-600 ${
+                    stockSort !== 'none' ? 'text-indigo-600' : ''
+                  }`}
+                  title="คลิกเพื่อเรียงตามสต๊อก"
+                >
+                  สต๊อก
+                  <ArrowUpDown size={11} className={`transition-transform ${stockSort === 'asc' ? 'rotate-180' : ''}`} />
+                </button>
+              </th>
               <th className="text-right px-5 py-4">ราคาทุน</th>
               <th className="text-center px-5 py-4">มูลค่า</th>
               <th className="text-center px-5 py-4">สถานะ</th>

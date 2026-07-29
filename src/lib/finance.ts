@@ -51,17 +51,15 @@ type BookingLean = {
 export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promise<FinanceSummary> {
   await connectDB();
 
-  const [invoicesRaw, paymentNotes, creditNotes, purchaseOrders, payslips, expenses, depositBookings, balanceBookings] = await Promise.all([
-    FinancialDocument.find({ type: 'invoice', status: 'paid', bookingRef: '', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
-    FinancialDocument.find({ type: 'payment_note', bookingRef: '', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
-    FinancialDocument.find({ type: 'credit_note', status: { $ne: 'cancelled' }, bookingRef: '', issuedAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
+  const [invoicesRaw, paymentNotes, creditNotes, purchaseOrders, payslips, expenses] = await Promise.all([
+    FinancialDocument.find({ type: 'invoice', status: 'paid', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
+    FinancialDocument.find({ type: 'payment_note', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
+    FinancialDocument.find({ type: 'credit_note', status: { $ne: 'cancelled' }, issuedAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
     // นับเฉพาะ PO ที่กดชำระแล้ว (ยอดจ่ายจริง ตามวันชำระ) — ยังไม่ชำระไม่ถือเป็นค่าใช้จ่าย
     PurchaseOrder.find({ status: 'received', paymentStatus: { $in: ['partial', 'paid'] }, paymentDate: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<POLean[]>,
     Payslip.find({ status: 'paid', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<PayslipLean[]>,
     // ตัดหมวด PurchaseOrder ออก — ยอดจ่ายค่าจัดซื้อนับจาก PO ด้านบนแล้ว ไม่ให้ซ้ำ
     Expense.find({ category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<ExpenseLean[]>,
-    Booking.find({ status: { $ne: 'cancelled' }, depositStatus: 'verified', depositRefunded: { $ne: true }, depositPaidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<BookingLean[]>,
-    Booking.find({ status: { $ne: 'cancelled' }, balanceStatus: 'paid', balancePaidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<BookingLean[]>,
   ]);
 
   // ตัดใบเสร็จที่ออกอัตโนมัติจากใบแจ้งหนี้ทิ้ง (เงินก้อนนั้นถูกนับไปแล้วตอนรับชำระแต่ละงวด/payment_note)
@@ -72,12 +70,8 @@ export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promi
   const relatedTypeMap = new Map(relatedDocs.map((d) => [String(d._id), d.type]));
   const invoices = invoicesRaw.filter((i) => !i.relatedDocId || relatedTypeMap.get(String(i.relatedDocId)) !== 'billing_note');
 
-  const incomeFromDeposits   = depositBookings.reduce((s, b) => s + (b.depositAmount ?? 0), 0);
-  const incomeFromBalances   = balanceBookings.reduce((s, b) => {
-    const totalAmount = b.tirePrice * b.quantity;
-    const expectedRemaining = b.depositStatus === 'verified' ? totalAmount - b.depositAmount : totalAmount;
-    return s + (b.balanceReceivedAmount ?? expectedRemaining);
-  }, 0);
+  const incomeFromDeposits   = 0;
+  const incomeFromBalances   = 0;
   const incomeFromInvoices    = invoices.reduce((s, d) => s + (d.grandTotal ?? 0), 0);
   const incomeFromPayments    = paymentNotes.reduce((s, d) => s + (d.grandTotal ?? 0), 0);
   const incomeFromCreditNotes = creditNotes.reduce((s, d) => s + Math.abs(d.grandTotal ?? 0), 0);
@@ -106,19 +100,6 @@ export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promi
   ].filter((c) => c.amount !== 0);
 
   const transactions: FinanceTransaction[] = [
-    ...depositBookings.map((b) => ({
-      id: `dep-${String(b._id)}`, date: new Date(b.depositPaidAt!).toISOString(),
-      desc: `รับมัดจำจาก ${b.name}`, ref: b.ref, type: 'in' as const, amount: b.depositAmount, deletable: false,
-    })),
-    ...balanceBookings.map((b) => {
-      const totalAmount = b.tirePrice * b.quantity;
-      const expectedRemaining = b.depositStatus === 'verified' ? totalAmount - b.depositAmount : totalAmount;
-      const received = b.balanceReceivedAmount ?? expectedRemaining;
-      return {
-        id: `bal-${String(b._id)}`, date: new Date(b.balancePaidAt!).toISOString(),
-        desc: `รับยอดคงเหลือจาก ${b.name}`, ref: b.ref, type: 'in' as const, amount: received, deletable: false,
-      };
-    }),
     ...invoices.map((d) => ({
       id: String(d._id), date: new Date(d.paidAt ?? d.issuedAt).toISOString(),
       desc: `รับเงินจาก ${d.customerName}`, ref: d.docNumber, type: 'in' as const, amount: d.grandTotal, deletable: false,

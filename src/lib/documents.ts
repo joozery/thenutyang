@@ -49,7 +49,7 @@ export type DocRow = {
   paymentMethod: PaymentMethod;
   technicianName: string;
   depositAmount:  number;
-  costPrice:      number;
+  costPrice:      number | null;
   status:        string;
   note:          string;
   showPaymentInfo: boolean;
@@ -104,7 +104,7 @@ function normalize(d: any): DocRow {
     paymentMethod: d.paymentMethod ?? 'pending',
     technicianName: d.technicianName ?? '',
     depositAmount:  d.depositAmount  ?? 0,
-    costPrice:      d.costPrice      ?? 0,
+    costPrice:      d.costPrice != null ? d.costPrice : null,
     status:        d.status        ?? '',
     note:          d.note          ?? '',
     showPaymentInfo: d.showPaymentInfo ?? false,
@@ -142,8 +142,10 @@ export async function getDocStats(): Promise<DocStats> {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const { Income } = await import('@/models/Income');
   const { Expense } = await import('@/models/Expense');
+  const { PurchaseOrder } = await import('@/models/PurchaseOrder');
+  const { Payslip } = await import('@/models/Payslip');
 
-  const [monthInvoices, unpaidCount, pendingQuoteCount, outstandingBillingNotes, paymentSums, monthIncomes, monthExpenses] = await Promise.all([
+  const [monthInvoices, unpaidCount, pendingQuoteCount, outstandingBillingNotes, paymentSums, monthIncomes, monthExpenses, monthPO, monthPayslip] = await Promise.all([
     FinancialDocument.find({ type: 'invoice', issuedAt: { $gte: monthStart } }).lean(),
     FinancialDocument.countDocuments({ type: 'invoice', status: 'unpaid' }),
     FinancialDocument.countDocuments({ type: 'quote',   status: 'pending_approval' }),
@@ -157,8 +159,16 @@ export async function getDocStats(): Promise<DocStats> {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]),
     Expense.aggregate([
-      { $match: { expenseDate: { $gte: monthStart } } },
+      { $match: { category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: monthStart } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]),
+    PurchaseOrder.aggregate([
+      { $match: { status: 'received', paymentStatus: { $in: ['partial', 'paid'] }, paymentDate: { $gte: monthStart } } },
+      { $group: { _id: null, total: { $sum: '$amountPaid' } } }
+    ]),
+    Payslip.aggregate([
+      { $match: { status: 'paid', paidAt: { $gte: monthStart } } },
+      { $group: { _id: null, total: { $sum: '$netPay' } } }
     ])
   ]);
 
@@ -177,7 +187,7 @@ export async function getDocStats(): Promise<DocStats> {
     billingOutstandingCount: outstandingBillingNotes.length,
     billingOutstandingTotal,
     totalIncomeMonth: monthIncomes[0]?.total ?? 0,
-    totalExpenseMonth: monthExpenses[0]?.total ?? 0,
+    totalExpenseMonth: (monthExpenses[0]?.total ?? 0) + (monthPO[0]?.total ?? 0) + (monthPayslip[0]?.total ?? 0),
   };
 }
 

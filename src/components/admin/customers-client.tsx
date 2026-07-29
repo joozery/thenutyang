@@ -590,7 +590,8 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
           carInfo.includes(q) ||
           (c.address ?? '').toLowerCase().includes(q) ||
           (c.taxId ?? '').includes(q) ||
-          (c.companyName ?? '').toLowerCase().includes(q);
+          (c.companyName ?? '').toLowerCase().includes(q) ||
+          (c.searchKeywords ?? []).some(k => k.toLowerCase().includes(q));
       }
       const matchTag    = tagFilter === 'ทั้งหมด' || c.tag === tagFilter;
       const matchSource = sourceFilter === 'ทั้งหมด'

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -186,10 +186,25 @@ export function NewPurchasingClient({
   const [overridePhone,   setOverridePhone]   = useState(initialData?.supplierSnapshot.phone ?? '');
   const [overrideEmail,   setOverrideEmail]   = useState(initialData?.supplierSnapshot.email ?? '');
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [supplierSearch, setSupplierSearch] = useState(initialData?.supplierSnapshot?.name ?? '');
+  const [supplierOpen, setSupplierOpen] = useState(false);
+  const supplierRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (supplierRef.current && !supplierRef.current.contains(e.target as Node)) {
+        setSupplierOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   function handleSupplierCreated(id: string, data: SupplierFormInput) {
     setJustCreatedSupplier({ id, ...data });
     setSupplierId(id);
+    setSupplierSearch(data.name);
+    setSupplierOpen(false);
     setOverrideAddress(data.address);
     setOverrideContact(data.contact);
     setOverridePhone(data.phone);
@@ -226,9 +241,22 @@ export function NewPurchasingClient({
   const [error, setError] = useState('');
   const [draftSaved, setDraftSaved] = useState('');
 
-  const handleSupplierChange = (id: string) => {
+  const allSuppliersList = useMemo(() => [
+    ...(justCreatedSupplier && !suppliers.some(s => s.id === justCreatedSupplier.id) ? [justCreatedSupplier] : []),
+    ...suppliers,
+  ], [suppliers, justCreatedSupplier]);
+
+  const filteredSuppliers = useMemo(() => {
+    const q = supplierSearch.toLowerCase().trim();
+    if (!q || supplierId) return allSuppliersList;
+    return allSuppliersList.filter(s => s.name.toLowerCase().includes(q));
+  }, [allSuppliersList, supplierSearch, supplierId]);
+
+  const handleSupplierChange = (id: string, name: string) => {
     setSupplierId(id);
-    const s = suppliers.find(x => x.id === id);
+    setSupplierSearch(name);
+    setSupplierOpen(false);
+    const s = allSuppliersList.find(x => x.id === id);
     if (s) {
       setOverrideAddress(s.address);
       setOverrideContact(s.contact);
@@ -515,15 +543,50 @@ export function NewPurchasingClient({
             <div>
               <Label required>ซัพพลายเออร์</Label>
               <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <select value={supplierId} onChange={e => handleSupplierChange(e.target.value)} className={inputCls + ' appearance-none pr-9'}>
-                    <option value="">-- เลือกซัพพลายเออร์ --</option>
-                    {justCreatedSupplier && !suppliers.some(s => s.id === justCreatedSupplier.id) && (
-                      <option value={justCreatedSupplier.id}>{justCreatedSupplier.name}</option>
+                <div className="relative flex-1" ref={supplierRef}>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={supplierSearch}
+                      onChange={e => {
+                        setSupplierSearch(e.target.value);
+                        setSupplierId('');
+                        setSupplierOpen(true);
+                      }}
+                      onFocus={() => setSupplierOpen(true)}
+                      placeholder="พิมพ์ชื่อซัพพลายเออร์..."
+                      className={inputCls + ' pr-9'}
+                    />
+                    {supplierId ? (
+                      <button
+                        type="button"
+                        onClick={() => { setSupplierId(''); setSupplierSearch(''); setSupplierOpen(true); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                        title="ล้างการเลือก"
+                      >
+                        <X size={14} />
+                      </button>
+                    ) : (
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     )}
-                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                  {supplierOpen && filteredSuppliers.length > 0 && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                      {filteredSuppliers.map(s => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => handleSupplierChange(s.id, s.name)}
+                          className={`w-full text-left px-4 py-2.5 text-sm border-b border-slate-50 last:border-0 hover:bg-green-50 transition-colors ${
+                            supplierId === s.id ? 'bg-green-50 text-green-700 font-semibold' : 'text-slate-700'
+                          }`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button" onClick={() => setSupplierModalOpen(true)}

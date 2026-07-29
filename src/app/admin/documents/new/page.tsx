@@ -41,6 +41,12 @@ export default async function NewDocumentPage({
 
   let prefill: DocPrefill | undefined;
   if (sourceDoc) {
+    const lineDiscTotal = sourceDoc.items.reduce((sum, i) => {
+      const gross = i.qty * i.unitPrice;
+      return sum + (i.discountType === 'amt' ? Math.min(i.discount, gross) : gross * (i.discount / 100));
+    }, 0);
+    const globalDiscount = Math.max(0, (sourceDoc.discountTotal || 0) - lineDiscTotal);
+
     const isDepositReceipt = deposit === '1' && sourceDoc.type === 'booking_note' && sourceDoc.depositAmount > 0;
 
     if (isDepositReceipt) {
@@ -63,6 +69,7 @@ export default async function NewDocumentPage({
         sourceDocNumber:    sourceDoc.docNumber,
         sourceDocTypeLabel: TYPE_LABEL[sourceDoc.type],
         depositAmount:      0,
+        globalDiscount:     0, // Deposit receipts usually don't carry over global discounts
       };
     } else {
       const targetType: DocType =
@@ -85,6 +92,7 @@ export default async function NewDocumentPage({
         sourceDocTypeLabel: TYPE_LABEL[sourceDoc.type],
         // มัดจำติดไปกับเอกสารต่อยอดทุกชนิด (ใบจอง/ใบเสนอราคา → ใบเสร็จ ฯลฯ) — แม่แบบจะหักและแสดงยอดคงเหลือ
         depositAmount:      sourceDoc.depositAmount ?? 0,
+        globalDiscount,
       };
     }
   }

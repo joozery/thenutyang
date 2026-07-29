@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft, TrendingDown, ShoppingCart, Wallet, Users, Filter, CalendarDays,
+  ArrowLeft, TrendingDown, ShoppingCart, Wallet, Users, Filter, CalendarDays, Search
 } from 'lucide-react';
 import type { DailyExpenseItem } from '@/lib/finance';
 
@@ -46,6 +46,7 @@ export function ExpenseSummaryClient({
   const router = useRouter();
   const [sourceFilter, setSourceFilter] = useState<'all' | DailyExpenseItem['source']>('all');
   const [catFilter,    setCatFilter]    = useState('ทั้งหมด');
+  const [searchQuery,  setSearchQuery]  = useState('');
 
   function pushRange(from: string, to: string) {
     const params = new URLSearchParams();
@@ -59,10 +60,14 @@ export function ExpenseSummaryClient({
     [items],
   );
 
-  const filtered = useMemo(() => items.filter(i =>
-    (sourceFilter === 'all' || i.source === sourceFilter) &&
-    (catFilter === 'ทั้งหมด' || i.category === catFilter)
-  ), [items, sourceFilter, catFilter]);
+  const filtered = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return items.filter(i =>
+      (sourceFilter === 'all' || i.source === sourceFilter) &&
+      (catFilter === 'ทั้งหมด' || i.category === catFilter) &&
+      (!q || i.desc.toLowerCase().includes(q) || i.ref.toLowerCase().includes(q) || i.category.toLowerCase().includes(q))
+    );
+  }, [items, sourceFilter, catFilter, searchQuery]);
 
   // จัดกลุ่มตามวัน (เรียงวันล่าสุดก่อน — items ถูก sort มาแล้ว)
   const byDay = useMemo(() => {
@@ -139,6 +144,16 @@ export function ExpenseSummaryClient({
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
+        <div className="flex-1 min-w-[200px] max-w-sm relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="ค้นหาชื่อรายการ, เลขอ้างอิง..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+          />
+        </div>
         <div className="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl bg-white">
           <Filter size={14} className="text-slate-400" />
           <select

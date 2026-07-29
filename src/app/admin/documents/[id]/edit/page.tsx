@@ -31,6 +31,12 @@ export default async function EditDocumentPage({
 
   const customers = mergeCustomerSources(bookingCustomers, directoryCustomers);
 
+  const lineDiscTotal = doc.items.reduce((sum, i) => {
+    const gross = i.qty * i.unitPrice;
+    return sum + (i.discountType === 'amt' ? Math.min(i.discount, gross) : gross * (i.discount / 100));
+  }, 0);
+  const globalDiscount = Math.max(0, (doc.discountTotal || 0) - lineDiscTotal);
+
   const prefill: DocPrefill = {
     docType:         doc.type,
     customerName:    doc.customerName,
@@ -50,6 +56,7 @@ export default async function EditDocumentPage({
     sourceDocId:        '',
     sourceDocNumber:    '',
     sourceDocTypeLabel: '',
+    globalDiscount,
   };
 
   return (

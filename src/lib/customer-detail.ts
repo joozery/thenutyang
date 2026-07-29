@@ -75,7 +75,35 @@ export function docTypeLabel(type: string): string {
 export async function getCustomerDetail(id: string): Promise<CustomerDetailResult | null> {
   await connectDB();
 
-  const raw = await Customer.findById(id).lean();
+  const decodedId = decodeURIComponent(id);
+  let raw: any = null;
+
+  if (decodedId.startsWith('virtual_')) {
+    const parts = decodedId.split('_');
+    const type = parts[1];
+    const val = parts.slice(2).join('_');
+    raw = {
+      _id: decodedId,
+      customerType: 'individual',
+      relationType: 'customer',
+      firstName: type === 'name' ? val : '',
+      lastName: '',
+      companyName: '',
+      phone: type === 'phone' ? val : '',
+      taxId: type === 'taxid' ? val : '',
+      email: '',
+      address: '',
+      branch: '',
+      carInfo: '',
+      vehicles: [],
+      note: 'ไม่มีในสมุดรายชื่อ (ดึงจากบิล)',
+      source: 'walkin',
+      createdAt: new Date(),
+    };
+  } else if (/^[0-9a-fA-F]{24}$/.test(decodedId)) {
+    raw = await Customer.findById(decodedId).lean();
+  }
+
   if (!raw) return null;
 
   const d = raw as Record<string, unknown>;

@@ -21,6 +21,10 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
 }
 
+function fmtMoney(n: number) {
+  return n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 const DEFAULT_EXPENSE_CATEGORIES = ['ค่าน้ำ', 'ค่าไฟ', 'ค่าเช่าที่', 'ค่าซ่อมบำรุง', 'ค่าใช้จ่ายอื่นๆ'];
 const NEW_CATEGORY = '__new__';
 
@@ -172,7 +176,7 @@ export function FinanceClient({
             <span className="text-slate-500 text-sm font-medium">รายรับรวม</span>
             <div className="bg-slate-100 p-2 rounded-xl text-slate-500"><TrendingUp size={18} /></div>
           </div>
-          <p className="text-3xl font-black text-slate-900 mb-1">฿{summary.totalIncome.toLocaleString()}</p>
+          <p className="text-3xl font-black text-slate-900 mb-1">฿{fmtMoney(summary.totalIncome)}</p>
           <p className="text-slate-400 text-xs">จากใบเสร็จ + ใบรับชำระที่ปิดยอดในช่วงนี้</p>
         </div>
         <div className="bg-white border border-slate-100 rounded-2xl p-5">
@@ -180,7 +184,7 @@ export function FinanceClient({
             <span className="text-slate-500 text-sm font-medium">รายจ่ายรวม</span>
             <div className="bg-slate-100 p-2 rounded-xl text-slate-500"><TrendingDown size={18} /></div>
           </div>
-          <p className="text-3xl font-black text-slate-900 mb-1">฿{summary.totalExpense.toLocaleString()}</p>
+          <p className="text-3xl font-black text-slate-900 mb-1">฿{fmtMoney(summary.totalExpense)}</p>
           <p className="text-slate-400 text-xs">ต้นทุนสินค้า + เงินเดือน + รายจ่ายทั่วไป</p>
         </div>
         <div className="bg-white border border-slate-100 rounded-2xl p-5">
@@ -189,7 +193,7 @@ export function FinanceClient({
             <div className="bg-green-50 p-2 rounded-xl text-green-600"><DollarSign size={18} /></div>
           </div>
           <p className={`text-3xl font-black mb-1 ${summary.netProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-            ฿{summary.netProfit.toLocaleString()}
+            ฿{fmtMoney(summary.netProfit)}
           </p>
           <p className="text-slate-400 text-xs">รายรับ − รายจ่าย</p>
         </div>
@@ -251,7 +255,7 @@ export function FinanceClient({
                         </div>
                       </td>
                       <td className={`px-4 py-3.5 text-right font-bold ${t.type === 'in' ? 'text-slate-800' : 'text-slate-500'}`}>
-                        {t.type === 'in' ? '+' : '-'}฿{t.amount.toLocaleString()}
+                        {t.type === 'in' ? '+' : '-'}฿{fmtMoney(t.amount)}
                       </td>
                       <td className="px-4 py-3.5">
                         {t.deletable && (

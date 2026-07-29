@@ -267,7 +267,7 @@ export function CustomerDetailClient({ data, carBrands = [], carModels = [] }: {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Link
-                          href={`/admin/documents/${doc.id}`}
+                          href={`/admin/documents/${doc.id}/edit`}
                           className="text-sm font-bold text-slate-800 hover:text-green-700 font-mono"
                         >
                           {doc.docNumber}
