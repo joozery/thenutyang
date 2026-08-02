@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -9,7 +9,7 @@ import {
   Tag, Download, Upload, TrendingUp, ArrowUpDown
 } from 'lucide-react';
 import type { StockItem, MovementRow, WarehouseStats } from '@/lib/warehouse';
-import { receiveStock, disburseStock, adjustStock, lookupPOItems, moveStockBulk } from '@/app/actions/warehouse';
+import { receiveStock, disburseStock, adjustStock, lookupPOItems, moveStockBulk, getProductMovements } from '@/app/actions/warehouse';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -337,23 +337,29 @@ function MoveModal({
 
 function ProductHistoryModal({
   product,
-  movements,
   onClose,
 }: {
   product: StockItem;
-  movements: MovementRow[];
   onClose: () => void;
 }) {
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [movements, setMovements] = useState<MovementRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getProductMovements(product.id).then(res => {
+      setMovements(res);
+      setLoading(false);
+    });
+  }, [product.id]);
 
   const rows = useMemo(() => {
     const q = search.toLowerCase().trim();
     const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
     const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
     return movements.filter(m => {
-      if (m.productId !== product.id) return false;
       if (q && !(
         m.refNo.toLowerCase().includes(q) ||
         (m.refParty ?? '').toLowerCase().includes(q) ||
@@ -364,7 +370,7 @@ function ProductHistoryModal({
       if (toTime && t > toTime) return false;
       return true;
     });
-  }, [movements, product.id, search, dateFrom, dateTo]);
+  }, [movements, search, dateFrom, dateTo]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -435,7 +441,13 @@ function ProductHistoryModal({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {rows.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-slate-400">
+                    กำลังโหลดข้อมูล...
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-400">
                     {search || dateFrom || dateTo ? 'ไม่พบรายการตามเงื่อนไขที่ค้นหา' : 'ยังไม่มีประวัติการเคลื่อนไหวของสินค้านี้'}
@@ -1042,7 +1054,6 @@ export function WarehouseClient({
         return product ? (
           <ProductHistoryModal
             product={product}
-            movements={movements}
             onClose={() => setHistoryProductId(null)}
           />
         ) : null;

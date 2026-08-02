@@ -149,3 +149,59 @@ export async function adjustStock(
     return { error: 'ไม่สามารถปรับสต๊อกได้' };
   }
 }
+
+export async function getProductMovements(productId: string) {
+  try {
+    await connectDB();
+    const docs = await StockMovement.find({ productId }).sort({ createdAt: -1 }).lean();
+
+    const refNos = [...new Set(docs.map((d: any) => d.refNo).filter(Boolean))] as string[];
+    const refHref = new Map<string, string>();
+    const refParty = new Map<string, string>();
+    
+    if (refNos.length > 0) {
+      const { PurchaseOrder } = await import('@/models/PurchaseOrder');
+      const { FinancialDocument } = await import('@/models/FinancialDocument');
+      const { StockReturn } = await import('@/models/StockReturn');
+      
+      const [pos, finDocs, returns] = await Promise.all([
+        PurchaseOrder.find({ poNumber: { $in: refNos } }).select('poNumber supplierSnapshot.name').lean(),
+        FinancialDocument.find({ docNumber: { $in: refNos } }).select('docNumber customerName').lean(),
+        StockReturn.find({ returnNumber: { $in: refNos } }).select('returnNumber poId supplier').lean(),
+      ]);
+      
+      for (const p of pos as any[]) {
+        refHref.set(p.poNumber, `/admin/purchasing/${p._id}/edit`);
+        if (p.supplierSnapshot?.name) refParty.set(p.poNumber, p.supplierSnapshot.name);
+      }
+      for (const f of finDocs as any[]) {
+        refHref.set(f.docNumber, `/admin/documents/${f._id}/edit`);
+        if (f.customerName) refParty.set(f.docNumber, f.customerName);
+      }
+      for (const r of returns as any[]) {
+        if (r.poId && !refHref.has(r.returnNumber)) refHref.set(r.returnNumber, `/admin/purchasing/${r.poId}/edit`);
+        if (r.supplier && !refParty.has(r.returnNumber)) refParty.set(r.returnNumber, r.supplier);
+      }
+    }
+
+    return docs.map((d: any) => {
+      const row = {
+        id:          String(d._id),
+        date:        d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt ?? ''),
+        type:        d.type        ?? 'in',
+        productId:   String(d.productId ?? ''),
+        productName: d.productName ?? '',
+        qty:         d.qty         ?? 0,
+        stockAfter:  d.stockAfter  ?? 0,
+        refNo:       d.refNo       ?? '',
+        note:        d.note        ?? '',
+        refHref:     refHref.get(d.refNo) ?? undefined,
+        refParty:    refParty.get(d.refNo) ?? undefined,
+      };
+      return row;
+    });
+  } catch (err) {
+    console.error('[getProductMovements]', err);
+    return [];
+  }
+}
