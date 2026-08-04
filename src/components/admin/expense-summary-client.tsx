@@ -7,6 +7,7 @@ import {
   ArrowLeft, TrendingDown, ShoppingCart, Wallet, Users, Filter, CalendarDays, Search
 } from 'lucide-react';
 import type { DailyExpenseItem } from '@/lib/finance';
+import { DatePicker } from "@/components/ui/date-picker";
 
 const SOURCE_LABEL: Record<DailyExpenseItem['source'], string> = {
   po:      'ใบสั่งซื้อ (PO)',
@@ -106,21 +107,9 @@ export function ExpenseSummaryClient({
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <input
-            type="date"
-            value={activeDateFrom}
-            max={activeDateTo || undefined}
-            onChange={e => pushRange(e.target.value, activeDateTo)}
-            className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white"
-          />
+          <DatePicker value={activeDateFrom} max={activeDateTo || undefined} onChange={e => pushRange(e.target.value, activeDateTo)} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white" />
           <span className="text-slate-400 text-sm">–</span>
-          <input
-            type="date"
-            value={activeDateTo}
-            min={activeDateFrom || undefined}
-            onChange={e => pushRange(activeDateFrom, e.target.value)}
-            className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white"
-          />
+          <DatePicker value={activeDateTo} min={activeDateFrom || undefined} onChange={e => pushRange(activeDateFrom, e.target.value)} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white" />
         </div>
       </div>
 

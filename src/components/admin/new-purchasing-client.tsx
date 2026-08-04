@@ -16,6 +16,7 @@ import type { POFormPayload } from '@/app/actions/purchasing';
 import type { PORow } from '@/lib/purchasing';
 import { createSupplier, type SupplierFormInput } from '@/app/actions/suppliers';
 import { PickerModal } from '@/components/admin/picker-modal';
+import { DatePicker } from "@/components/ui/date-picker";
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -472,13 +473,13 @@ export function NewPurchasingClient({
               </div>
               <div>
                 <Label>วันที่สั่งซื้อ</Label>
-                <input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} className={inputCls} />
+                <DatePicker value={orderDate} onChange={e => setOrderDate(e.target.value)} className={inputCls} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label required>กำหนดรับสินค้า</Label>
-                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={inputCls} />
+                <DatePicker value={dueDate} onChange={e => setDueDate(e.target.value)} className={inputCls} />
               </div>
               <div>
                 <Label>เลขที่อ้างอิง</Label>
@@ -774,7 +775,7 @@ export function NewPurchasingClient({
                 </div>
                 <div>
                   <Label>วันที่ชำระ (ตัวเลือก)</Label>
-                  <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={inputCls} />
+                  <DatePicker value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={inputCls} />
                 </div>
                 <div>
                   <Label>การคิดภาษี (VAT)</Label>

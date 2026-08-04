@@ -6,6 +6,7 @@ import {
   Users, Package, DollarSign,
 } from 'lucide-react';
 import type { ReportSummary } from '@/lib/reports';
+import { DatePicker } from "@/components/ui/date-picker";
 
 const RANGE_OPTIONS = [
   { value: 'this_month',     label: 'เดือนนี้' },
@@ -83,21 +84,9 @@ export function ReportsClient({
 
           {/* Custom date range */}
           <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              value={activeDateFrom}
-              max={activeDateTo || undefined}
-              onChange={(e) => pushDate(e.target.value, activeDateTo)}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-green-400 bg-white"
-            />
+            <DatePicker value={activeDateFrom} max={activeDateTo || undefined} onChange={(e) => pushDate(e.target.value, activeDateTo)} className="px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-green-400 bg-white" />
             <span className="text-slate-400 text-sm">–</span>
-            <input
-              type="date"
-              value={activeDateTo}
-              min={activeDateFrom || undefined}
-              onChange={(e) => pushDate(activeDateFrom, e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-green-400 bg-white"
-            />
+            <DatePicker value={activeDateTo} min={activeDateFrom || undefined} onChange={(e) => pushDate(activeDateFrom, e.target.value)} className="px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 focus:outline-none focus:border-green-400 bg-white" />
           </div>
 
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">

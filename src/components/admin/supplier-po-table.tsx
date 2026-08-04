@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, X } from 'lucide-react';
+import { DatePicker } from "@/components/ui/date-picker";
 
 export type SupplierPORow = {
   id: string;
@@ -69,11 +70,9 @@ export function SupplierPOTable({ pos }: { pos: SupplierPORow[] }) {
           />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="ตั้งแต่วันที่"
-            className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-green-400" />
+          <DatePicker value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="ตั้งแต่วันที่" className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-green-400" />
           <span className="text-slate-300 text-xs">—</span>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} title="ถึงวันที่"
-            className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-green-400" />
+          <DatePicker value={dateTo} onChange={e => setDateTo(e.target.value)} title="ถึงวันที่" className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-green-400" />
           {hasFilter && (
             <button onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); }} title="ล้างตัวกรอง"
               className="p-2 rounded-md border border-slate-200 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">

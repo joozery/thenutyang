@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react';
 import { createWarrantyClaim } from '@/app/actions/warranty-claims';
 import type { ClaimItem } from '@/lib/warranty-claims';
+import { DatePicker } from "@/components/ui/date-picker";
 
 const EMPTY_ITEM: ClaimItem = { productName: '', brand: '', size: '', quantity: 1, reason: '' };
 
@@ -73,11 +74,7 @@ export function NewWarrantyClaimClient() {
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 วันที่เข้าเครม <span className="text-red-500">*</span>
               </label>
-              <input
-                name="claimDate" type="date" required
-                defaultValue={new Date().toISOString().split('T')[0]}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
-              />
+              <DatePicker name="claimDate" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100" />
             </div>
           </div>
         </div>

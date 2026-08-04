@@ -13,6 +13,7 @@ import type { PORow, POStatusThai } from '@/lib/purchasing';
 import type { StockReturnRow } from '@/lib/stock-return';
 import { receivePO, cancelPO, deletePO, updatePOPayment, disbursePOToInvoice } from '@/app/actions/purchasing';
 import { createStockReturn, markRefundReceived } from '@/app/actions/stock-return';
+import { DatePicker } from "@/components/ui/date-picker";
 
 function fmtDate(iso: string) {
   if (!iso) return '—';
@@ -300,8 +301,7 @@ function ReturnModal({ order, onClose, onSuccess }: {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1.5">วันที่คืนสินค้า</label>
-              <input type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-orange-400" />
+              <DatePicker value={returnDate} onChange={e => setReturnDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-orange-400" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1.5">ยอดเงินคืน (บาท)</label>
@@ -460,7 +460,7 @@ function POPaymentModal({ order, onConfirm, onClose }: {
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">วันที่ชำระ</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-green-400" />
+            <DatePicker value={date} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-green-400" />
           </div>
         </div>
         <div className="flex gap-3">
@@ -502,8 +502,7 @@ function RefundReceivedModal({ ret, onClose, onSuccess }: {
         </p>
         <div className="mb-5">
           <label className="block text-xs font-semibold text-slate-500 mb-1.5">วันที่รับเงินคืน</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-green-400" />
+          <DatePicker value={date} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-green-400" />
         </div>
         <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg mb-4">
           จะบันทึกเป็นรายรับ &quot;คืนเงินจากซัพพลายเออร์&quot; ในระบบการเงินโดยอัตโนมัติ
@@ -804,17 +803,9 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
                 ))}
               </select>
               <div className="flex items-center gap-1.5">
-                <input
-                  type="date" value={dateFrom} max={dateTo || undefined}
-                  onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-                  className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400"
-                />
+                <DatePicker value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400" />
                 <span className="text-slate-400 text-sm">–</span>
-                <input
-                  type="date" value={dateTo} min={dateFrom || undefined}
-                  onChange={e => { setDateTo(e.target.value); setPage(1); }}
-                  className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400"
-                />
+                <DatePicker value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400" />
               </div>
             </div>
 

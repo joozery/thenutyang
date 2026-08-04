@@ -1,0 +1,50 @@
+[
+  {
+    "id": "6a54a30e25bfcdf241b13188",
+    "customerType": "corporate",
+    "relationType": "customer",
+    "name": "บริษัท ออโต้ มอเตอร์ส กรุ๊ป จำกัด",
+    "firstName": "",
+    "lastName": "",
+    "companyName": "บริษัท ออโต้ มอเตอร์ส กรุ๊ป จำกัด",
+    "phone": "0992469286",
+    "email": "",
+    "address": "เลขที่ 522 ถนน วิภาวดีรังสิต แขวงจอมพล เขตจตุจักร กรุงเทพมหานคร 10900",
+    "taxId": "0105533134815",
+    "branch": "",
+    "carInfo": "",
+    "vehicles": [
+      {
+        "carBrand": "Toyota",
+        "carModel": "Alphard",
+        "carColor": "ดำ",
+        "licensePlate": "ญ-8693 ป้ายแดง",
+        "mileage": "1154",
+        "chassisNo": ""
+      },
+      {
+        "carBrand": "Mercedes-Benz",
+        "carModel": "C200",
+        "carColor": "ขาว",
+        "licensePlate": "6กฎ8811",
+        "mileage": "",
+        "chassisNo": ""
+      },
+      {
+        "carBrand": "Tesla",
+        "carModel": "Model Y",
+        "carColor": "ขาว",
+        "licensePlate": "4กร959",
+        "mileage": "",
+        "chassisNo": ""
+      }
+    ],
+    "note": "",
+    "cars": [],
+    "totalBills": 3,
+    "totalSpent": 40400,
+    "lastVisit": "2026-07-21T00:00:00.000Z",
+    "tag": "ปกติ",
+    "source": "walkin"
+  }
+]

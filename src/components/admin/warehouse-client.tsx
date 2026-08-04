@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { StockItem, MovementRow, WarehouseStats } from '@/lib/warehouse';
 import { receiveStock, disburseStock, adjustStock, lookupPOItems, moveStockBulk, getProductMovements } from '@/app/actions/warehouse';
+import { DatePicker } from "@/components/ui/date-picker";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -401,21 +402,9 @@ function ProductHistoryModal({
             />
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={e => setDateFrom(e.target.value)}
-              title="ตั้งแต่วันที่"
-              className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]"
-            />
+            <DatePicker value={dateFrom} onChange={e => setDateFrom(e.target.value)} title="ตั้งแต่วันที่" className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]" />
             <span className="text-slate-300 text-xs">—</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={e => setDateTo(e.target.value)}
-              title="ถึงวันที่"
-              className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]"
-            />
+            <DatePicker value={dateTo} onChange={e => setDateTo(e.target.value)} title="ถึงวันที่" className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]" />
             {(search || dateFrom || dateTo) && (
               <button
                 onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); }}
@@ -730,21 +719,9 @@ function MovementLog({ movements, onHistory }: { movements: MovementRow[]; onHis
           />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-            title="ตั้งแต่วันที่"
-            className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]"
-          />
+          <DatePicker value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} title="ตั้งแต่วันที่" className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]" />
           <span className="text-slate-300 text-xs">—</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => { setDateTo(e.target.value); setPage(1); }}
-            title="ถึงวันที่"
-            className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]"
-          />
+          <DatePicker value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} title="ถึงวันที่" className="px-2.5 py-2 rounded-md border border-slate-200 text-xs text-slate-600 focus:outline-none focus:border-[#008a44]" />
           {(search || dateFrom || dateTo) && (
             <button
               onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); setPage(1); }}

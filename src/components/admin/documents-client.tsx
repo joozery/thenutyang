@@ -15,6 +15,7 @@ import { isDocEditable } from '@/lib/doc-editable';
 import type { OrderBooking } from '@/lib/payment-settings';
 import type { ProductRow } from '@/lib/products';
 import { updateDocStatus, importFromBookings, deleteDocument, recordPartialPayment, updateDocCost } from '@/app/actions/documents';
+import { DatePicker } from "@/components/ui/date-picker";
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -1020,21 +1021,9 @@ export function DocumentsClient({
           </div>
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-1.5">
-              <input
-                type="date"
-                value={dateFrom}
-                max={dateTo || undefined}
-                onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
-              />
+              <DatePicker value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); setPage(1); }} className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white" />
               <span className="text-slate-400 text-sm">–</span>
-              <input
-                type="date"
-                value={dateTo}
-                min={dateFrom || undefined}
-                onChange={e => { setDateTo(e.target.value); setPage(1); }}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
-              />
+              <DatePicker value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); setPage(1); }} className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white" />
             </div>
             <select
               value={typeFilter}

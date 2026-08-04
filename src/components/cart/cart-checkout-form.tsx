@@ -6,6 +6,7 @@ import type { CustomerProfile } from '@/lib/customer-profile';
 import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
 import { useCart } from './cart-context';
 import { CarCombobox } from './car-combobox';
+import { DatePicker } from "@/components/ui/date-picker";
 
 type CustomerType = 'individual' | 'corporate';
 
@@ -220,10 +221,7 @@ export function CartCheckoutForm({
         <label className="block text-sm font-medium text-slate-700 mb-1.5">
           วันที่ต้องการ <span className="text-green-500">*</span>
         </label>
-        <input
-          type="date" name="appointmentDate" required min={new Date().toISOString().split('T')[0]}
-          className="w-full md:w-64 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition"
-        />
+        <DatePicker name="appointmentDate" required min={new Date().toISOString().split('T')[0]} className="w-full md:w-64 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100 transition" />
         <p className="text-xs text-slate-400 mt-1.5">ร้านเปิด จันทร์–อาทิตย์ 08:00–18:00 น.</p>
       </div>
 

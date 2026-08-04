@@ -9,6 +9,7 @@ import {
 import { createEmployee, updateEmployee, deleteEmployee } from '@/app/actions/employees';
 import type { EmployeeRow } from '@/lib/employees';
 import type { EmpRole } from '@/models/Employee';
+import { DatePicker } from "@/components/ui/date-picker";
 
 const ROLE_LABELS: Record<EmpRole, string> = {
   mechanic: 'ช่างยาง',
@@ -454,7 +455,7 @@ export function StaffClient({ initialEmployees }: { initialEmployees: EmployeeRo
                     </div>
                   </Field>
                   <Field label="วันที่เริ่มงาน *">
-                    <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
+                    <DatePicker value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
                   </Field>
                   {form.employeeType === 'fulltime' ? (
                     <Field label="ฐานเงินเดือน (บาท)">

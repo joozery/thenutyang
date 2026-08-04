@@ -12,6 +12,7 @@ import { minutesToBilledHours } from '@/lib/attendance-calc';
 import { updateAttendance, deleteAttendance } from '@/app/actions/attendance';
 import type { AttendanceStatus } from '@/models/Attendance';
 import type { EmployeeRow } from '@/lib/employees';
+import { DatePicker } from "@/components/ui/date-picker";
 
 function fmtDateTH(iso: string) {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -228,8 +229,7 @@ export function AttendanceClient({ date, records, hasShifts, employees }: {
             <button onClick={() => navigate(nextDay(date))} className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50"><ChevronRight size={18} /></button>
           </div>
           <div className="mt-3 pt-3 border-t border-slate-100">
-            <input type="date" value={date} onChange={e => navigate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-indigo-400" />
+            <DatePicker value={date} onChange={e => navigate(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-indigo-400" />
           </div>
         </div>
 

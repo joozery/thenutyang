@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { CheckCircle2, Clock, ImageOff, Banknote, Landmark, CreditCard, Undo2, Paperclip, RotateCcw, AlertTriangle, Printer } from 'lucide-react';
 import { updateDepositAmount, verifyDepositManually, markBalancePaid, revertBalancePayment, refundDeposit, getDepositDocIdByRef } from '@/app/actions/payment';
 import type { PaymentReviewRow } from '@/lib/payment-settings';
+import { DatePicker } from "@/components/ui/date-picker";
 
 const STATUS_BADGE: Record<PaymentReviewRow['depositStatus'], { label: string; className: string }> = {
   pending:       { label: 'ยังไม่ชำระ',   className: 'bg-slate-100 text-slate-500' },
@@ -295,19 +296,9 @@ export function PaymentReviewList({ bookings }: { bookings: PaymentReviewRow[] }
       {/* Date filter */}
       <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-slate-100 bg-white flex-wrap">
         <span className="text-xs font-medium text-slate-500 shrink-0">กรองวันที่</span>
-        <input
-          type="date"
-          value={dateFrom}
-          onChange={e => setDateFrom(e.target.value)}
-          className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100"
-        />
+        <DatePicker value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100" />
         <span className="text-xs text-slate-400">—</span>
-        <input
-          type="date"
-          value={dateTo}
-          onChange={e => setDateTo(e.target.value)}
-          className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100"
-        />
+        <DatePicker value={dateTo} onChange={e => setDateTo(e.target.value)} className="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-100" />
         {(dateFrom || dateTo) && (
           <button
             type="button"

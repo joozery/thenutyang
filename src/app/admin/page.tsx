@@ -6,6 +6,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface DashboardData {
   summary: {
@@ -184,21 +185,9 @@ export default function AdminDashboard() {
           <div className="text-sm text-slate-500 font-medium mt-1">ข้อมูล ณ วันที่ {thDate}</div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <input
-            type="date"
-            value={dateFrom}
-            max={dateTo || undefined}
-            onChange={e => setDateFrom(e.target.value)}
-            className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
-          />
+          <DatePicker value={dateFrom} max={dateTo || undefined} onChange={e => setDateFrom(e.target.value)} className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all" />
           <span className="text-slate-400 text-sm">–</span>
-          <input
-            type="date"
-            value={dateTo}
-            min={dateFrom || undefined}
-            onChange={e => setDateTo(e.target.value)}
-            className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
-          />
+          <DatePicker value={dateTo} min={dateFrom || undefined} onChange={e => setDateTo(e.target.value)} className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all" />
           <button
             onClick={() => {
               setLoading(true);

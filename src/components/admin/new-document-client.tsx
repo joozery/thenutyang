@@ -26,6 +26,7 @@ import { PickerModal } from '@/components/admin/picker-modal';
 import { CustomerModal } from '@/components/admin/customers-client';
 import { parseCarInfo, composeCarInfo } from '@/lib/car-info';
 import { composeTaxBranch, parseTaxBranch, type TaxBranchType } from '@/lib/tax-branch';
+import { DatePicker } from "@/components/ui/date-picker";
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
@@ -612,12 +613,7 @@ export function NewDocumentClient({
               </div>
               <div>
                 <Label>วันที่ออกเอกสาร</Label>
-                <input
-                  type="date"
-                  value={issuedDate}
-                  onChange={e => setIssuedDate(e.target.value)}
-                  className={inputCls}
-                />
+                <DatePicker value={issuedDate} onChange={e => setIssuedDate(e.target.value)} className={inputCls} />
               </div>
             </div>
             {(docType === 'quote' || docType === 'billing_note' || docType === 'booking_note') && (
@@ -627,7 +623,7 @@ export function NewDocumentClient({
                     : docType === 'booking_note' ? 'วันนัดรับรถ / คาดว่าสินค้าจะถึง'
                     : 'วันหมดอายุ (ใบเสนอราคา)'}
                 </Label>
-                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={inputCls} />
+                <DatePicker value={dueDate} onChange={e => setDueDate(e.target.value)} className={inputCls} />
               </div>
             )}
             {docType === 'booking_note' && (

@@ -11,6 +11,7 @@ import type { LeaveRequestRow as LeaveRow } from '@/lib/leave';
 import type { EmployeeRow } from '@/lib/employees';
 import { LEAVE_LABELS, LEAVE_QUOTA } from '@/lib/leave-constants';
 import type { LeaveType } from '@/models/LeaveRequest';
+import { DatePicker } from "@/components/ui/date-picker";
 
 type LeaveStatus = 'pending' | 'approved' | 'rejected';
 
@@ -376,11 +377,11 @@ export function LeaveClient({ requests: leaves, employees }: { requests: LeaveRo
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-600">วันเริ่ม *</label>
-                  <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
+                  <DatePicker value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-slate-600">วันสิ้นสุด *</label>
-                  <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} className={inputCls} />
+                  <DatePicker value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} className={inputCls} />
                 </div>
               </div>
               <div className="space-y-2">

@@ -8,6 +8,7 @@ import {
 import type { ShiftRow } from '@/lib/shifts';
 import type { EmployeeRow } from '@/lib/employees';
 import { createShifts, deleteShift, copyShiftsFromDate, copyWeek } from '@/app/actions/shifts';
+import { DatePicker } from "@/components/ui/date-picker";
 
 function fmtDateTH(iso: string) {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -242,10 +243,7 @@ export function ShiftsClient({ date, shifts, employees }: {
 
           {/* Date picker */}
           <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3">
-            <input
-              type="date" value={date} onChange={e => navigate(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-indigo-400"
-            />
+            <DatePicker value={date} onChange={e => navigate(e.target.value)} className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-indigo-400" />
             {/* Copy buttons */}
             <button
               onClick={handleCopyYesterday} disabled={copying}

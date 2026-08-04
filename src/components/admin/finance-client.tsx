@@ -10,6 +10,7 @@ import {
 import { createExpense, deleteExpense } from '@/app/actions/expenses';
 import { FinanceCalendar } from '@/components/admin/finance-calendar';
 import type { FinanceSummary } from '@/lib/finance';
+import { DatePicker } from "@/components/ui/date-picker";
 
 const RANGE_LABEL: Record<string, string> = {
   this_month:    'เดือนนี้',
@@ -114,31 +115,19 @@ export function FinanceClient({
         </div>
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-1.5">
-            <input
-              type="date"
-              value={activeDateFrom || ''}
-              max={activeDateTo || undefined}
-              onChange={e => {
-                const params = new URLSearchParams();
-                if (e.target.value) params.set('dateFrom', e.target.value);
-                if (activeDateTo) params.set('dateTo', activeDateTo);
-                router.push(params.toString() ? `/admin/finance?${params.toString()}` : '/admin/finance?range=this_month');
-              }}
-              className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white"
-            />
+            <DatePicker value={activeDateFrom || ''} max={activeDateTo || undefined} onChange={e => {
+                                      const params = new URLSearchParams();
+                                      if (e.target.value) params.set('dateFrom', e.target.value);
+                                      if (activeDateTo) params.set('dateTo', activeDateTo);
+                                      router.push(params.toString() ? `/admin/finance?${params.toString()}` : '/admin/finance?range=this_month');
+                                    }} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white" />
             <span className="text-slate-400 text-sm">–</span>
-            <input
-              type="date"
-              value={activeDateTo || ''}
-              min={activeDateFrom || undefined}
-              onChange={e => {
-                const params = new URLSearchParams();
-                if (activeDateFrom) params.set('dateFrom', activeDateFrom);
-                if (e.target.value) params.set('dateTo', e.target.value);
-                router.push(params.toString() ? `/admin/finance?${params.toString()}` : '/admin/finance?range=this_month');
-              }}
-              className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white"
-            />
+            <DatePicker value={activeDateTo || ''} min={activeDateFrom || undefined} onChange={e => {
+                                      const params = new URLSearchParams();
+                                      if (activeDateFrom) params.set('dateFrom', activeDateFrom);
+                                      if (e.target.value) params.set('dateTo', e.target.value);
+                                      router.push(params.toString() ? `/admin/finance?${params.toString()}` : '/admin/finance?range=this_month');
+                                    }} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400 bg-white" />
           </div>
           <select
             value={(activeDateFrom || activeDateTo) ? '' : activeRange}
@@ -372,10 +361,7 @@ export function FinanceClient({
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-600 block mb-1.5">วันที่จ่าย</label>
-                  <input
-                    type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-green-400"
-                  />
+                  <DatePicker value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-green-400" />
                 </div>
               </div>
               <div>

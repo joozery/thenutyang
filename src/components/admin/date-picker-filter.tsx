@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { DatePicker } from "@/components/ui/date-picker";
 
 // ปฏิทินคู่ "จาก–ถึง" ผูกกับ URL searchParams (dateFrom/dateTo) ใช้กับหน้าที่ query ฝั่ง server
 export function DateRangePickerFilter({ label = "ช่วงวันที่" }: { label?: string }) {
@@ -27,21 +28,9 @@ export function DateRangePickerFilter({ label = "ช่วงวันที่"
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm font-semibold text-slate-600">{label}:</span>
-      <input
-        type="date"
-        value={dateFrom}
-        max={dateTo || undefined}
-        onChange={e => handleChange('dateFrom', e.target.value)}
-        className={inputCls}
-      />
+      <DatePicker value={dateFrom} max={dateTo || undefined} onChange={e => handleChange('dateFrom', e.target.value)} className={inputCls} />
       <span className="text-slate-400 text-sm">–</span>
-      <input
-        type="date"
-        value={dateTo}
-        min={dateFrom || undefined}
-        onChange={e => handleChange('dateTo', e.target.value)}
-        className={inputCls}
-      />
+      <DatePicker value={dateTo} min={dateFrom || undefined} onChange={e => handleChange('dateTo', e.target.value)} className={inputCls} />
     </div>
   );
 }

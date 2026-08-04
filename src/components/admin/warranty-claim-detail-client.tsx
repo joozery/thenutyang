@@ -14,6 +14,7 @@ import {
   updateResultStep,
   deleteWarrantyClaim,
 } from '@/app/actions/warranty-claims';
+import { DatePicker } from "@/components/ui/date-picker";
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
@@ -219,11 +220,7 @@ export function WarrantyClaimDetailClient({ claim }: { claim: ClaimRow }) {
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   วันที่ส่ง <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="date" name="supplierSentDate" required
-                  defaultValue={claim.supplierSentDate ? claim.supplierSentDate.split('T')[0] : new Date().toISOString().split('T')[0]}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
-                />
+                <DatePicker name="supplierSentDate" required defaultValue={claim.supplierSentDate ? claim.supplierSentDate.split('T')[0] : new Date().toISOString().split('T')[0]} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -309,11 +306,7 @@ export function WarrantyClaimDetailClient({ claim }: { claim: ClaimRow }) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1">วันที่สำรองจ่าย</label>
-                <input
-                  type="date" name="advanceDate"
-                  defaultValue={claim.advanceDate ? claim.advanceDate.split('T')[0] : new Date().toISOString().split('T')[0]}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
-                />
+                <DatePicker name="advanceDate" defaultValue={claim.advanceDate ? claim.advanceDate.split('T')[0] : new Date().toISOString().split('T')[0]} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100" />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-slate-700 mb-1">หมายเหตุ</label>
@@ -382,11 +375,7 @@ export function WarrantyClaimDetailClient({ claim }: { claim: ClaimRow }) {
                 <label className="block text-xs font-medium text-slate-700 mb-1">
                   วันที่ผลออก <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="date" name="resultDate" required
-                  defaultValue={new Date().toISOString().split('T')[0]}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
-                />
+                <DatePicker name="resultDate" required defaultValue={new Date().toISOString().split('T')[0]} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-2">
@@ -427,11 +416,7 @@ export function WarrantyClaimDetailClient({ claim }: { claim: ClaimRow }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">วันที่คืนให้ลูกค้า</label>
-                    <input
-                      type="date" name="customerResolutionDate"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"
-                    />
+                    <DatePicker name="customerResolutionDate" defaultValue={new Date().toISOString().split('T')[0]} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">หมายเหตุการคืน</label>

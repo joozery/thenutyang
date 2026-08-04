@@ -52,8 +52,8 @@ export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promi
   await connectDB();
 
   const [invoicesRaw, paymentNotes, creditNotes, purchaseOrders, payslips, expenses] = await Promise.all([
-    FinancialDocument.find({ type: 'invoice', status: 'paid', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
-    FinancialDocument.find({ type: 'payment_note', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
+    FinancialDocument.find({ type: 'invoice', status: 'paid', issuedAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
+    FinancialDocument.find({ type: 'payment_note', issuedAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
     FinancialDocument.find({ type: 'credit_note', status: { $ne: 'cancelled' }, issuedAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
     // นับเฉพาะ PO ที่กดชำระแล้ว (ยอดจ่ายจริง ตามวันชำระ) — ยังไม่ชำระไม่ถือเป็นค่าใช้จ่าย
     PurchaseOrder.find({ status: 'received', paymentStatus: { $in: ['partial', 'paid'] }, paymentDate: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<POLean[]>,
@@ -101,12 +101,12 @@ export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promi
 
   const transactions: FinanceTransaction[] = [
     ...invoices.map((d) => ({
-      id: String(d._id), date: new Date(d.paidAt ?? d.issuedAt).toISOString(),
+      id: String(d._id), date: new Date(d.issuedAt).toISOString(),
       desc: `รับเงินจาก ${d.customerName}`, ref: d.docNumber, type: 'in' as const, amount: d.grandTotal, deletable: false,
       href: `/admin/documents/${String(d._id)}/print`,
     })),
     ...paymentNotes.map((d) => ({
-      id: String(d._id), date: new Date(d.paidAt ?? d.issuedAt).toISOString(),
+      id: String(d._id), date: new Date(d.issuedAt).toISOString(),
       desc: `รับชำระจาก ${d.customerName}`, ref: d.docNumber, type: 'in' as const, amount: d.grandTotal, deletable: false,
       href: `/admin/documents/${String(d._id)}/print`,
     })),

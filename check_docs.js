@@ -1,0 +1,1 @@
+const { FinancialDocument } = require('./src/models/FinancialDocument'); const connectDB = require('./src/lib/mongodb').default; connectDB().then(async () => { const docs = await FinancialDocument.find({}).lean(); console.log(docs.filter(d => d.customerName && d.customerName.includes('1??7722'))); process.exit(0); });
