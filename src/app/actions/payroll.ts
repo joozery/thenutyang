@@ -151,14 +151,14 @@ export async function updatePayslip(id: string, bonus: number, otherDeduct: numb
   }
 }
 
-export async function markPaid(id: string): Promise<Result> {
+export async function markPaid(id: string, dateStr?: string): Promise<Result> {
   try {
     await connectDB();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = await Payslip.findById(id).lean() as any;
     if (!p) return { ok: false, error: 'ไม่พบรายการ' };
 
-    const paidAt = new Date();
+    const paidAt = dateStr ? new Date(dateStr) : new Date();
 
     // สร้าง / อัปเดต Expense record
     let expenseId = p.expenseId;
@@ -192,12 +192,12 @@ export async function markPaid(id: string): Promise<Result> {
   }
 }
 
-export async function markAllPaid(period: string): Promise<Result> {
+export async function markAllPaid(period: string, dateStr?: string): Promise<Result> {
   try {
     await connectDB();
     // ดึงเฉพาะ pending ที่ยังไม่จ่าย แล้ว markPaid ทีละคนเพื่อให้ Expense ถูกสร้างครบ
     const pending = await Payslip.find({ period, status: 'pending' }).lean() as { _id: string }[];
-    await Promise.all(pending.map((p) => markPaid(String(p._id))));
+    await Promise.all(pending.map((p) => markPaid(String(p._id), dateStr)));
     revalidatePath('/admin/payroll');
     return { ok: true };
   } catch (e) {

@@ -28,6 +28,8 @@ export function PayrollClient({
   const [isPending, startTransition] = useTransition();
   const [editTarget, setEditTarget] = useState<PayslipRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PayslipRow | null>(null);
+  const [payTarget, setPayTarget] = useState<{ type: 'all' } | { type: 'single', id: string, name: string } | null>(null);
+  const [payDate, setPayDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' }));
   const [bonus, setBonus] = useState(0);
   const [otherDeduct, setOtherDeduct] = useState(0);
   const [toast, setToast] = useState('');
@@ -54,18 +56,24 @@ export function PayrollClient({
     });
   }
 
-  function handleMarkAll() {
-    if (paid === payslips.length) return;
-    startTransition(async () => {
-      const res = await markAllPaid(period);
-      if (res.ok) { flash('จ่ายเงินเดือนทั้งหมดแล้ว'); router.refresh(); }
-    });
+  function openPayAll() {
+    if (paid === payslips.length || payslips.length === 0) return;
+    setPayTarget({ type: 'all' });
   }
 
-  function handleMarkOne(id: string) {
+  function openPayOne(id: string, name: string) {
+    setPayTarget({ type: 'single', id, name });
+  }
+
+  function confirmPay() {
+    if (!payTarget) return;
     startTransition(async () => {
-      const res = await markPaid(id);
-      if (res.ok) { flash('บันทึกการจ่ายแล้ว'); router.refresh(); }
+      const res = payTarget.type === 'all' 
+        ? await markAllPaid(period, payDate)
+        : await markPaid(payTarget.id, payDate);
+      
+      if (res.ok) { setPayTarget(null); flash(payTarget.type === 'all' ? 'จ่ายเงินเดือนทั้งหมดแล้ว' : 'บันทึกการจ่ายแล้ว'); router.refresh(); }
+      else flash(res.error);
     });
   }
 
@@ -159,7 +167,7 @@ export function PayrollClient({
             </button>
           )}
           <button
-            onClick={handleMarkAll}
+            onClick={openPayAll}
             disabled={isPending || payslips.length === 0 || paid === payslips.length}
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-br from-green-500 to-green-700 text-white rounded-lg font-bold text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-green-500/30"
           >
@@ -225,7 +233,7 @@ export function PayrollClient({
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-3.5 flex items-center gap-3">
           <AlertCircle size={18} className="text-amber-500 shrink-0" />
           <p className="text-sm text-amber-700 font-medium">มีพนักงาน <span className="font-black">{pending} คน</span> ที่ยังรอรับเงินเดือนในรอบนี้</p>
-          <button onClick={handleMarkAll} disabled={isPending} className="ml-auto text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 shrink-0">
+          <button onClick={openPayAll} disabled={isPending} className="ml-auto text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 shrink-0">
             จ่ายทั้งหมด <ChevronRight size={14} />
           </button>
         </div>
@@ -329,7 +337,7 @@ export function PayrollClient({
                             <Edit2 size={14} />
                           </button>
                           {!isPaid ? (
-                            <button onClick={() => handleMarkOne(p.id)} disabled={isPending}
+                            <button onClick={() => openPayOne(p.id, p.employeeName)} disabled={isPending}
                               className="text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 shadow-sm shadow-green-200">
                               จ่าย
                             </button>
@@ -433,6 +441,49 @@ export function PayrollClient({
           </div>
         </div>
       )}
+      {payTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPayTarget(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                  <Wallet size={15} className="text-green-600" />
+                </div>
+                <h2 className="font-bold text-slate-900">ยืนยันการจ่ายเงิน</h2>
+              </div>
+              <button onClick={() => setPayTarget(null)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"><X size={15} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-700">
+                {payTarget.type === 'all' 
+                  ? <span>คุณกำลังบันทึกจ่ายเงินเดือนพนักงาน <strong>ทั้งหมด</strong> ในรอบ {periodLabel(period)}</span>
+                  : <span>คุณกำลังบันทึกจ่ายเงินเดือนของ <strong>{payTarget.name}</strong></span>}
+              </p>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-600 block">วันที่จ่ายเงิน (สำหรับลงบัญชี)</label>
+                <input 
+                  type="date"
+                  value={payDate}
+                  onChange={e => setPayDate(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-green-400"
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
+              <button onClick={() => setPayTarget(null)} className="px-4 py-2.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-white transition-colors">ยกเลิก</button>
+              <button
+                onClick={confirmPay}
+                disabled={isPending || !payDate}
+                className="px-5 py-2.5 text-xs font-bold bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-40 transition-all shadow-sm shadow-green-200"
+              >
+                {isPending ? 'กำลังบันทึก...' : 'ยืนยันการจ่าย'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />

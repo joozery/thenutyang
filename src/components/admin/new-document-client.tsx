@@ -70,7 +70,7 @@ export type DocPrefill = {
   customerAddress: string;
   customerTaxId:   string;
   customerBranch?: string;
-  items: { productId?: string; description: string; qty: number; unitPrice: number; discount: number }[];
+  items: { productId?: string; description: string; qty: number; unitPrice: number; discount: number; lineCostPrice?: number }[];
   vatRate:       number;
   paymentMethod: PaymentMethod;
   technicianName?: string;
@@ -82,6 +82,7 @@ export type DocPrefill = {
   sourceDocTypeLabel: string;
   depositAmount?:     number;
   globalDiscount?:    number;
+  costPrice?:         number;
 };
 
 // ใช้ตอนแก้ไขเอกสารที่มีอยู่แล้ว — แยกจาก prefill (ที่ใช้กับ flow "สร้างเอกสารอ้างอิงใบนี้") เพราะความหมายต่างกัน:
@@ -353,10 +354,11 @@ export function NewDocumentClient({
   // line items
   const [lines, setLines] = useState<LineItem[]>(
     prefill?.items.length
-      ? prefill.items.map((it, idx) => ({ key: idx + 1, ...it, discountType: 'pct' as const, lineCostPrice: 0 }))
+      ? prefill.items.map((it, idx) => ({ key: idx + 1, ...it, discountType: 'pct' as const, lineCostPrice: it.lineCostPrice ?? 0 }))
       : [{ key: 1, description: '', qty: 1, unitPrice: 0, discount: 0, discountType: 'pct' as const, lineCostPrice: 0 }]
   );
   const [productPickerLineKey, setProductPickerLineKey] = useState<number | null>(null);
+  const [manualCostPrice, setManualCostPrice] = useState<number | null>(prefill?.costPrice ?? null);
 
   // รวมสินค้า (ยาง) + บริการ/ค่าแรง เป็นรายการเดียวให้เลือกจากช่องค้นหาเดียวกัน
   const [serviceItemsState, setServiceItemsState] = useState<ServiceItemRow[]>(serviceItems);
@@ -421,6 +423,7 @@ export function NewDocumentClient({
 
   const addLine = () =>
     setLines(p => [...p, { key: Date.now(), description: '', qty: 1, unitPrice: 0, discount: 0, discountType: 'pct' as const, lineCostPrice: 0 }]);
+    setManualCostPrice(null);
 
   // เพิ่มแถวใหม่พร้อมเปิดตัวเลือก สินค้า/บริการ ทันที ไม่ต้องกดค้นหาซ้ำอีกที
   const addLineAndOpenPicker = () => {
@@ -431,12 +434,14 @@ export function NewDocumentClient({
 
   const removeLine = (key: number) =>
     setLines(p => p.filter(l => l.key !== key));
+    setManualCostPrice(null);
 
   // พิมพ์แก้ชื่อรายการเอง = ยกเลิกการผูกกับสินค้าในคลัง (ไม่รู้แล้วว่าหมายถึงตัวไหน)
   const updateLine = (key: number, field: keyof Omit<LineItem, 'key'>, value: string | number) =>
     setLines(p => p.map(l => l.key === key
       ? { ...l, [field]: value, ...(field === 'description' ? { productId: undefined } : {}) }
       : l));
+    setManualCostPrice(null);
 
   // ── calculations ──────────────────────────────────────────────────────────
 
@@ -502,7 +507,7 @@ export function NewDocumentClient({
         paymentMethod,
         technicianName: technicianName.trim(),
         depositAmount,
-        costPrice: lines.reduce((sum, l) => sum + l.lineCostPrice * l.qty, 0),
+        costPrice: manualCostPrice ?? lines.reduce((sum, l) => sum + l.lineCostPrice * l.qty, 0),
         note:          note.trim(),
         showPaymentInfo,
         dueDate,

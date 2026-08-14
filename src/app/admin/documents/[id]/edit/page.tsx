@@ -46,7 +46,10 @@ export default async function EditDocumentPage({
     customerAddress: doc.customerAddress,
     customerTaxId:   doc.customerTaxId,
     customerBranch:  doc.customerBranch,
-    items:           doc.items.map((i) => ({ productId: i.productId, description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount })),
+    items:           doc.items.map((i) => {
+      const p = products.find(prod => prod.id === i.productId);
+      return { productId: i.productId, description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount, lineCostPrice: p?.costPrice ?? 0 };
+    }),
     vatRate:         doc.vatRate,
     paymentMethod:   doc.paymentMethod,
     technicianName:  doc.technicianName,
@@ -57,6 +60,7 @@ export default async function EditDocumentPage({
     sourceDocNumber:    '',
     sourceDocTypeLabel: '',
     globalDiscount,
+    costPrice:       doc.costPrice ?? undefined,
   };
 
   return (
