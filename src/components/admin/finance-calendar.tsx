@@ -83,10 +83,10 @@ export function FinanceCalendar({
         </h2>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3 text-xs font-semibold">
-            <span className="text-green-600">เข้า +฿{monthIn.toLocaleString()}</span>
-            <span className="text-red-500">ออก -฿{monthOut.toLocaleString()}</span>
-            <span className={monthIn - monthOut >= 0 ? 'text-slate-800' : 'text-red-600'}>
-              สุทธิ ฿{(monthIn - monthOut).toLocaleString()}
+            <span className="text-green-600">รับ +฿{monthIn.toLocaleString()}</span>
+            <span className="text-red-500">จ่าย -฿{monthOut.toLocaleString()}</span>
+            <span className="text-slate-900">
+              คงเหลือ ฿{(monthIn - monthOut).toLocaleString()}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -131,10 +131,13 @@ export function FinanceCalendar({
                 {day}
               </span>
               {agg && agg.income > 0 && (
-                <span className="text-[10px] font-bold text-green-600 leading-tight">+{compact.format(agg.income)}</span>
+                <span className="text-[10px] font-bold text-green-600 leading-tight truncate w-full">รับ +{compact.format(agg.income)}</span>
               )}
               {agg && agg.expense > 0 && (
-                <span className="text-[10px] font-bold text-red-500 leading-tight">-{compact.format(agg.expense)}</span>
+                <span className="text-[10px] font-bold text-red-500 leading-tight truncate w-full">จ่าย -{compact.format(agg.expense)}</span>
+              )}
+              {agg && (agg.income > 0 || agg.expense > 0) && (
+                <span className="text-[10px] font-bold text-slate-900 leading-tight truncate w-full mt-auto pt-0.5">คงเหลือ {compact.format(agg.income - agg.expense)}</span>
               )}
             </button>
           );
@@ -184,8 +187,9 @@ export function FinanceCalendar({
                 </div>
               ))}
               <div className="flex justify-end gap-3 pt-1 text-[11px] font-bold">
-                <span className="text-green-600">เข้า +฿{selectedAgg.income.toLocaleString()}</span>
-                <span className="text-red-500">ออก -฿{selectedAgg.expense.toLocaleString()}</span>
+                <span className="text-green-600">รับ +฿{selectedAgg.income.toLocaleString()}</span>
+                <span className="text-red-500">จ่าย -฿{selectedAgg.expense.toLocaleString()}</span>
+                <span className="text-slate-900">คงเหลือ ฿{(selectedAgg.income - selectedAgg.expense).toLocaleString()}</span>
               </div>
             </div>
           )}
