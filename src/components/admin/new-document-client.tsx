@@ -421,9 +421,10 @@ export function NewDocumentClient({
 
   // ── line item helpers ──────────────────────────────────────────────────────
 
-  const addLine = () =>
+  const addLine = () => {
     setLines(p => [...p, { key: Date.now(), description: '', qty: 1, unitPrice: 0, discount: 0, discountType: 'pct' as const, lineCostPrice: 0 }]);
     setManualCostPrice(null);
+  };
 
   // เพิ่มแถวใหม่พร้อมเปิดตัวเลือก สินค้า/บริการ ทันที ไม่ต้องกดค้นหาซ้ำอีกที
   const addLineAndOpenPicker = () => {
@@ -432,16 +433,18 @@ export function NewDocumentClient({
     setProductPickerLineKey(key);
   };
 
-  const removeLine = (key: number) =>
+  const removeLine = (key: number) => {
     setLines(p => p.filter(l => l.key !== key));
     setManualCostPrice(null);
+  };
 
   // พิมพ์แก้ชื่อรายการเอง = ยกเลิกการผูกกับสินค้าในคลัง (ไม่รู้แล้วว่าหมายถึงตัวไหน)
-  const updateLine = (key: number, field: keyof Omit<LineItem, 'key'>, value: string | number) =>
+  const updateLine = (key: number, field: keyof Omit<LineItem, 'key'>, value: string | number) => {
     setLines(p => p.map(l => l.key === key
       ? { ...l, [field]: value, ...(field === 'description' ? { productId: undefined } : {}) }
       : l));
     setManualCostPrice(null);
+  };
 
   // ── calculations ──────────────────────────────────────────────────────────
 
