@@ -37,8 +37,22 @@ export async function createProduct(data: ProductInput): Promise<Result> {
   try {
     await connectDB();
     const isTire = !data.productType || data.productType === 'tires';
-    const rimSize = isTire ? rimFromSize(data.size ?? '') : 0;
-    await Product.create({ ...data, size: data.size ?? '', rimSize });
+    const pType = data.productType || 'tires';
+    const pSize = data.size ?? '';
+    
+    const exists = await Product.exists({
+      productType: pType,
+      brand: data.brand,
+      model: data.model,
+      size: pSize
+    });
+    
+    if (exists) {
+      return { ok: false, error: `มีสินค้า ${data.brand} ${data.model} ${pSize} อยู่ในระบบแล้ว กรุณาไปแก้ไขสต๊อกแทน` };
+    }
+
+    const rimSize = isTire ? rimFromSize(pSize) : 0;
+    await Product.create({ ...data, productType: pType, size: pSize, rimSize });
     revalidatePath('/admin/products');
     if (isTire) revalidatePath('/tires');
     return { ok: true };

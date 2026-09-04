@@ -20,6 +20,7 @@ export type ReportSummary = {
   totalIncome:  number;
   totalExpense: number;
   netProfit:    number;
+  grossProfit:  number;
   monthly:      MonthlyBar[];
   incomeByCategory:  { label: string; amount: number; pct: number }[];
   expenseByCategory: { label: string; amount: number; pct: number }[];
@@ -30,6 +31,7 @@ export type ReportSummary = {
 };
 
 type AggRow = { _id: { y: number; m: number }; total: number };
+type InvoiceAggRow = AggRow & { cost: number };
 
 function findMonth(agg: AggRow[], y: number, m: number) {
   return agg.find((a) => a._id.y === y && a._id.m === m)?.total ?? 0;
@@ -50,9 +52,13 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
   const [invoiceAgg, expenseMiscAgg, poAgg, payslipAgg, expenseCatAgg,
     billCount, newCustomerCount, topProductsAgg, ytdInvoiceAgg] = await Promise.all([
     // รายรับจากใบเสร็จที่จ่ายแล้ว กรองตาม issuedAt
-    FinancialDocument.aggregate<AggRow>([
+    FinancialDocument.aggregate<InvoiceAggRow>([
       { $match: invoiceMatch },
-      { $group: { _id: { y: { $year: '$issuedAt' }, m: { $month: '$issuedAt' } }, total: { $sum: '$grandTotal' } } },
+      { $group: { 
+          _id: { y: { $year: '$issuedAt' }, m: { $month: '$issuedAt' } }, 
+          total: { $sum: '$grandTotal' },
+          cost: { $sum: { $ifNull: ['$costPrice', 0] } }
+      } },
     ]),
     // ตัดหมวด PurchaseOrder ออก — ยอดจ่ายค่าจัดซื้อนับจาก PO (amountPaid) ด้านล่างแล้ว ไม่ให้ซ้ำ
     Expense.aggregate<AggRow>([
@@ -106,6 +112,8 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
   }
 
   const totalIncome         = invoiceAgg.reduce((s, r) => s + r.total, 0);
+  const totalCostOfSales    = invoiceAgg.reduce((s, r) => s + (r.cost ?? 0), 0);
+  const grossProfit         = totalIncome - totalCostOfSales;
   const totalExpenseMisc    = expenseMiscAgg.reduce((s, r) => s + r.total, 0);
   const totalExpensePO      = poAgg.reduce((s, r) => s + r.total, 0);
   const totalExpensePayroll = payslipAgg.reduce((s, r) => s + r.total, 0);
@@ -131,7 +139,7 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
   const ytdIncome = ytdInvoiceAgg[0]?.total ?? 0;
 
   return {
-    totalIncome, totalExpense, netProfit, monthly, incomeByCategory, expenseByCategory,
+    totalIncome, totalExpense, netProfit, grossProfit, monthly, incomeByCategory, expenseByCategory,
     billCount, newCustomerCount, topProducts, ytdIncome,
   };
 }

@@ -23,7 +23,6 @@ function fmtK(n: number) {
   return `฿${fmt(n)}`;
 }
 
-
 export function ReportsClient({
   summary,
   activeRange,
@@ -96,7 +95,7 @@ export function ReportsClient({
       </div>
 
       {/* ── รายรับ / รายจ่าย KPI (ข้อมูลจริงตามช่วงเวลา) ──────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white border border-slate-100 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-slate-500 text-sm font-medium">รายรับรวม</span>
@@ -104,6 +103,15 @@ export function ReportsClient({
           </div>
           <p className="text-3xl font-black text-slate-900">฿{fmt(summary.totalIncome)}</p>
           <p className="text-slate-400 text-xs mt-1">{periodLabel}</p>
+        </div>
+
+        <div className="bg-white border border-slate-100 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-slate-500 text-sm font-medium">กำไรขั้นต้น (ยอดขาย)</span>
+            <div className="bg-blue-50 p-2 rounded-xl text-blue-600"><TrendingUp size={18} /></div>
+          </div>
+          <p className="text-3xl font-black text-slate-900">฿{fmt(summary.grossProfit)}</p>
+          <p className="text-slate-400 text-xs mt-1">รายรับ – ต้นทุนสินค้าที่ขาย</p>
         </div>
 
         <div className="bg-white border border-slate-100 rounded-2xl p-5">

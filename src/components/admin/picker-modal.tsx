@@ -18,7 +18,7 @@ export function PickerModal<T>({
   const [query, setQuery] = useState('');
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (q ? items.filter((i) => filterFn(i, q)) : items).slice(0, 50);
+    return (q ? items.filter((i) => filterFn(i, q)) : items).slice(0, 200);
   }, [items, query, filterFn]);
 
   return (

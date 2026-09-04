@@ -146,7 +146,7 @@ export async function receivePO(id: string): Promise<{
 }> {
   try {
     await connectDB();
-    const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; status?: string; reference?: string; items: { productId?: string; productName: string; qty: number }[] } | null;
+    const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; status?: string; reference?: string; items: { productId?: string; productName: string; qty: number }[]; createdAt?: Date } | null;
     if (!po) return { error: 'ไม่พบใบสั่งซื้อ' };
     // กันรับซ้ำ — รับได้ครั้งเดียว (กดรัว/แก้ไขแล้วกดรับใหม่ จะไม่บวกสต๊อกซ้ำ)
     if (po.status === 'received') return { error: `${po.poNumber} รับสินค้าไปแล้ว` };
@@ -176,6 +176,7 @@ export async function receivePO(id: string): Promise<{
         productId: item.productId, productName, type: 'in',
         qty: item.qty, stockBefore, stockAfter,
         refNo: po.poNumber, note: `รับสินค้าจาก ${po.poNumber}`,
+        createdAt: po.createdAt || new Date(),
       });
     }
 
@@ -209,15 +210,31 @@ export async function deletePO(id: string): Promise<{ error?: string }> {
     const po = await PurchaseOrder.findById(id).lean() as { poNumber: string; expenseId?: unknown } | null;
     if (!po) return { error: 'ไม่พบใบสั่งซื้อ' };
 
-    // มีใบคืนสินค้าผูกอยู่ — ลบแล้วข้อมูลคืนของจะลอย ให้ใช้ยกเลิกแทน
+    // ลบใบคืนสินค้าที่ผูกอยู่ด้วย (ถ้ามี)
     const { StockReturn } = await import('@/models/StockReturn');
-    const hasReturn = await StockReturn.findOne({ poId: id }).lean();
-    if (hasReturn) return { error: `${po.poNumber} มีใบคืนสินค้าผูกอยู่ — ลบไม่ได้ ให้ใช้ "ยกเลิก" แทน` };
+    const { Product } = await import('@/models/Product');
+    const { StockMovement } = await import('@/models/StockMovement');
+
+    const ret = await StockReturn.findOne({ poId: id }).lean() as { _id: unknown; returnNumber: string; incomeId?: unknown } | null;
+    if (ret) {
+      // ถอนผลสต๊อกของใบคืน (ใบคืนทำให้สต๊อกลด -> ต้องบวกกลับ)
+      const retMoves = await StockMovement.find({ refNo: ret.returnNumber }).lean() as { _id: unknown; productId?: unknown; type: string; qty: number }[];
+      for (const m of retMoves) {
+        if (m.type === 'out' && m.productId) {
+          await Product.findByIdAndUpdate(m.productId, { $inc: { stock: m.qty } });
+        }
+        await StockMovement.findByIdAndDelete(m._id);
+      }
+      // ลบรายรับที่ได้จากการคืนเงิน
+      if (ret.incomeId) {
+        const { Income } = await import('@/models/Income');
+        await Income.findByIdAndDelete(ret.incomeId);
+      }
+      await StockReturn.findByIdAndDelete(ret._id);
+    }
 
     // ถอนผลสต๊อกจากประวัติของใบนี้ (รับเข้า → หักคืน, คืนจากยกเลิก → บวกคืน) แล้วลบประวัติทิ้ง
     // ประวัติเบิกออกให้บิลขาย (refNo เป็นเลข INV) ไม่ถูกแตะ — การขายยังเกิดขึ้นจริง
-    const { Product } = await import('@/models/Product');
-    const { StockMovement } = await import('@/models/StockMovement');
     const moves = await StockMovement.find({ refNo: po.poNumber }).lean() as { _id: unknown; productId?: unknown; type: string; qty: number }[];
     for (const m of moves) {
       const delta = m.type === 'in' ? -m.qty : m.type === 'out' ? m.qty : 0;

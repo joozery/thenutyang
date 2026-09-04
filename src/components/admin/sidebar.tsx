@@ -20,10 +20,16 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
 
   const menuGroups = [
     {
-      title: "ภาพรวม",
+      title: "เมนูหลัก",
       items: [
         { icon: <Home size={20} />, label: "หน้าหลัก", href: "/admin", active: pathname === "/admin" },
         { icon: <BarChart2 size={20} />, label: "รายงาน", href: "/admin/reports", active: pathname.startsWith("/admin/reports"), hasSub: true },
+        { icon: <DollarSign size={20} />, label: "การเงิน", href: "/admin/finance", active: pathname.startsWith("/admin/finance"), hasSub: true },
+        { icon: <FileText size={20} />, label: "บิล/เอกสาร", href: "/admin/documents", active: pathname.startsWith("/admin/documents") && !pathname.startsWith("/admin/documents/settings/services"), hasSub: true },
+        { icon: <ShoppingBag size={20} />, label: "จัดซื้อ", href: "/admin/purchasing", active: pathname === "/admin/purchasing" },
+        { icon: <Warehouse size={20} />, label: "คลังสินค้า", href: "/admin/warehouse", active: pathname === "/admin/warehouse" },
+        { icon: <Package size={20} />, label: "สินค้า/สต๊อก", href: "/admin/products", active: pathname.startsWith("/admin/products") },
+        { icon: <Users size={20} />, label: "ลูกค้า", href: "/admin/customers", active: pathname === "/admin/customers" },
       ]
     },
     {
@@ -32,10 +38,9 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
         { icon: <ClipboardList size={20} />, label: "การจอง", href: "/admin/bookings", active: pathname.startsWith("/admin/bookings") },
         { icon: <QrCode size={20} />, label: "การชำระเงิน", href: "/admin/payments", active: pathname.startsWith("/admin/payments") },
         { icon: <Shield size={20} />, label: "เครมประกัน", href: "/admin/warranty-claims", active: pathname.startsWith("/admin/warranty-claims") },
-        { icon: <Users size={20} />, label: "ลูกค้า", href: "/admin/customers", active: pathname === "/admin/customers" },
         { icon: <Car size={20} />, label: "ยี่ห้อ/รุ่นรถ", href: "/admin/car-data", active: pathname.startsWith("/admin/car-data") },
-        { icon: <FileText size={20} />, label: "บิล/เอกสาร", href: "/admin/documents", active: pathname.startsWith("/admin/documents") && !pathname.startsWith("/admin/documents/settings/services"), hasSub: true },
         { icon: <Wrench size={20} />, label: "บริการ/ค่าแรง", href: "/admin/documents/settings/services", active: pathname.startsWith("/admin/documents/settings/services") },
+        { icon: <Tag size={20} />, label: "แบรนด์สินค้า", href: "/admin/brands", active: pathname.startsWith("/admin/brands") },
       ]
     },
     {
@@ -47,18 +52,8 @@ export function AdminSidebar({ isOpen }: SidebarProps) {
       ]
     },
     {
-      title: "สินค้าคงคลัง",
+      title: "บุคคล",
       items: [
-        { icon: <Package size={20} />, label: "สินค้า/สต๊อก", href: "/admin/products", active: pathname.startsWith("/admin/products") },
-        { icon: <Tag size={20} />, label: "แบรนด์", href: "/admin/brands", active: pathname.startsWith("/admin/brands") },
-        { icon: <ShoppingBag size={20} />, label: "จัดซื้อ", href: "/admin/purchasing", active: pathname === "/admin/purchasing" },
-        { icon: <Warehouse size={20} />, label: "คลังสินค้า", href: "/admin/warehouse", active: pathname === "/admin/warehouse" },
-      ]
-    },
-    {
-      title: "บุคคล & การเงิน",
-      items: [
-        { icon: <DollarSign size={20} />, label: "การเงิน", href: "/admin/finance", active: pathname.startsWith("/admin/finance"), hasSub: true },
         { icon: <UserCircle size={20} />, label: "พนักงาน", href: "/admin/staff", active: pathname === "/admin/staff" },
         { icon: <CalendarRange size={20} />, label: "เวรงาน", href: "/admin/shifts", active: pathname.startsWith("/admin/shifts") },
         { icon: <CalendarClock size={20} />, label: "ลงเวลา", href: "/admin/attendance", active: pathname === "/admin/attendance" },
