@@ -81,6 +81,68 @@ export async function createCustomer(input: CustomerFormInput): Promise<ActionRe
     if (error) return { error };
 
     await connectDB();
+    
+    // ถ้ามีการระบุเบอร์โทรศัพท์ ลองค้นหาว่ามีลูกค้าคนนี้ในระบบอยู่แล้วหรือไม่
+    if (input.phone) {
+      const cleanPhone = input.phone.replace(/\D/g, '');
+      if (cleanPhone) {
+        // ใช้ Regex เพื่อค้นหาเบอร์โทรแบบไม่สนเครื่องหมาย (เช่น 08-1234 หรือ 081234 ก็เจอเหมือนกัน)
+        const regexStr = cleanPhone.split('').join('\\D*');
+        const existing = await Customer.findOne({ phone: { $regex: new RegExp(regexStr) } }).lean() as any;
+        
+        if (existing && existing._id) {
+           const existingId = String(existing._id);
+           
+           // เช็คว่ารถที่เพิ่มใหม่ไปซ้ำกับ "ลูกค้าคนอื่น" หรือไม่
+           const plateError = await checkPlateOwnedByOther(input.vehicles, existingId);
+           if (plateError) return { error: plateError };
+           
+           // รวมข้อมูลรถ (Merge Vehicles) โดยป้องกันรถซ้ำ
+           const existingPlates = new Set((existing.vehicles || []).map((v: any) => normalizePlate(v.licensePlate || '')));
+           const mergedVehicles = [...(existing.vehicles || [])];
+           
+           let hasNewVehicles = false;
+           for (const v of input.vehicles) {
+             const p = normalizePlate(v.licensePlate);
+             if (p && !existingPlates.has(p)) {
+               mergedVehicles.push(v);
+               hasNewVehicles = true;
+             }
+           }
+           
+           // อัปเดตข้อมูลอื่นๆ ที่ยังว่างอยู่
+           const updates: any = {};
+           if (hasNewVehicles) updates.vehicles = mergedVehicles;
+           
+           const fields: (keyof CustomerFormInput)[] = ['firstName', 'lastName', 'companyName', 'email', 'address', 'taxId', 'branch', 'note'];
+           for (const f of fields) {
+             if (!existing[f] && input[f]) {
+               updates[f] = input[f];
+             }
+           }
+           
+           // ถ้ามีข้อมูลใหม่เข้ามา ให้บันทึกการอัปเดตแทนการสร้างใหม่
+           if (Object.keys(updates).length > 0) {
+             updates.updatedAt = new Date();
+             await Customer.findByIdAndUpdate(existingId, { $set: updates });
+           }
+           
+           revalidatePath('/admin/customers');
+           
+           // คำนวณชื่อที่จะส่งกลับไปอัปเดตหน้า UI
+           const finalType = existing.customerType || input.customerType;
+           const finalName = finalType === 'corporate' 
+             ? (existing.companyName || input.companyName || '').trim() 
+             : `${existing.firstName || input.firstName || ''} ${existing.lastName || input.lastName || ''}`.trim();
+             
+           return {
+             ok: true,
+             customer: { id: existingId, name: finalName, phone: input.phone, address: existing.address || input.address, taxId: existing.taxId || input.taxId, branch: existing.branch || input.branch, carInfo: input.carInfo, vehicles: mergedVehicles },
+           };
+        }
+      }
+    }
+
     const plateError = await checkPlateOwnedByOther(input.vehicles);
     if (plateError) return { error: plateError };
 
