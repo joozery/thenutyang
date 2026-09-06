@@ -56,6 +56,7 @@ export type DocumentTemplateProps = {
   accentColor?: string; // สีหัวเอกสารตามชนิด (ค่าเริ่มต้น: เขียว)
   subtotal?: number;      // มูลค่าก่อนหักส่วนลด — แสดงเมื่อมีส่วนลด
   discountTotal?: number; // ส่วนลดรวม (ทั้ง per-line และ global)
+  qrCodeUrl?: string;     // data URL ของ QR code ลิงก์ไปหน้าดูเอกสาร public
 };
 
 const fmt = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -94,6 +95,7 @@ export function DocumentTemplate({
   accentColor = '#15803d',
   subtotal,
   discountTotal = 0,
+  qrCodeUrl,
 }: DocumentTemplateProps) {
   const paid = paidAmount ?? grandTotal;
   const remainingBalance = depositAmount > 0 ? Math.max(0, grandTotal - depositAmount) : 0;
@@ -277,7 +279,16 @@ export function DocumentTemplate({
       {/* Certification / signatures */}
       <div className="pt-4 border-t border-slate-200">
         <p className="font-semibold text-slate-900 text-[13px] mb-3 flex items-center gap-1"><BadgeCheck size={15} /> รับรอง</p>
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div
+          className="grid gap-3 text-center"
+          style={{ gridTemplateColumns: qrCodeUrl ? 'auto 1fr 1fr 1fr' : '1fr 1fr 1fr' }}
+        >
+          {qrCodeUrl && (
+            <div className="flex flex-col items-start justify-end gap-0.5 pb-1 -ml-1">
+              <img src={qrCodeUrl} alt="QR เอกสาร" style={{ width: 80, height: 80 }} />
+              <p className="text-[8px] text-slate-400 leading-tight">สแกนดูเอกสาร</p>
+            </div>
+          )}
           {[
             { role: 'ลูกค้า', sig: '', name: '' },
             { role: 'ผู้ส่งสินค้า / ผู้รับเงิน', sig: seller.issuerSignatureUrl, name: seller.issuerName },

@@ -1,14 +1,10 @@
 import { notFound } from 'next/navigation';
-import { headers } from 'next/headers';
-import QRCode from 'qrcode';
 import { getDocumentById, DOC_TYPE_COLOR } from '@/lib/documents';
 import { getDocumentSettings } from '@/lib/document-settings';
-import { PrintPageShell } from '@/components/admin/documents/print-page-shell';
 import { DocumentTemplate, type DocumentTemplateProps } from '@/components/admin/documents/document-template';
 import { PaymentInfoPage } from '@/components/admin/documents/payment-info-page';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'ตัวอย่างก่อนพิมพ์ | Admin' };
 
 const DOC_TYPE_PRINT_LABEL: Record<string, string> = {
   invoice:      'ใบเสร็จรับเงิน/ใบกำกับภาษี',
@@ -19,7 +15,6 @@ const DOC_TYPE_PRINT_LABEL: Record<string, string> = {
   booking_note: 'ใบจอง',
 };
 
-// ใบเสร็จที่ไม่มี VAT ใช้ชื่อ "ใบเสร็จรับเงิน" เฉยๆ — มี VAT ถึงจะนับเป็นใบกำกับภาษีได้ด้วย
 function docTypePrintLabel(type: string, vatRate: number): string {
   if (type === 'invoice' && vatRate <= 0) return 'ใบเสร็จรับเงิน';
   return DOC_TYPE_PRINT_LABEL[type] ?? type;
@@ -41,20 +36,21 @@ function fmtDate(iso: string) {
   }
 }
 
-export default async function DocumentPrintPage({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [doc, settings, hdrs] = await Promise.all([
+  const doc = await getDocumentById(id);
+  if (!doc) return { title: 'ไม่พบเอกสาร' };
+  return { title: `${doc.docNumber} — เดอะนัทยาง` };
+}
+
+export default async function PublicDocumentPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const [doc, settings] = await Promise.all([
     getDocumentById(id),
     getDocumentSettings(),
-    headers(),
   ]);
 
   if (!doc) notFound();
-
-  const host = hdrs.get('host') ?? 'localhost:3000';
-  const proto = host.startsWith('localhost') ? 'http' : 'https';
-  const publicUrl = `${proto}://${host}/doc/${id}`;
-  const qrCodeUrl = await QRCode.toDataURL(publicUrl, { width: 256, margin: 1 });
 
   const templateProps: DocumentTemplateProps = {
     docTypeLabel: docTypePrintLabel(doc.type, doc.vatRate),
@@ -86,27 +82,43 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
     grandTotal: doc.grandTotal,
     subtotal: doc.subtotal,
     discountTotal: doc.discountTotal,
-    // มัดจำแสดงทุกชนิดเอกสารที่มีค่า — ใบเสนอราคา/ใบเสร็จที่ต่อยอดจากใบจองต้องเห็นยอดคงเหลือด้วย
     depositAmount: doc.depositAmount ?? 0,
     accentColor: DOC_TYPE_COLOR[doc.type],
     payment: doc.paymentMethod !== 'pending' ? { method: PAYMENT_LABEL[doc.paymentMethod], date: fmtDate(doc.issuedAt) } : undefined,
     notes: doc.note ? [doc.note] : [],
-    footerNote: undefined,
     technicianName: doc.technicianName || undefined,
-    qrCodeUrl,
   };
 
   return (
-    <PrintPageShell>
-      <DocumentTemplate {...templateProps} />
-      {doc.showPaymentInfo && (
-        <PaymentInfoPage
-          settings={settings}
-          docNumber={doc.docNumber}
-          docTypeLabel={templateProps.docTypeLabel}
-          grandTotal={doc.grandTotal}
-        />
-      )}
-    </PrintPageShell>
+    <>
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 0; }
+          html, body { margin: 0 !important; padding: 0 !important; }
+          .no-print { display: none !important; }
+          #print-document * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}</style>
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center gap-6 py-6">
+        <div className="no-print flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 sticky top-4 z-10 text-sm text-slate-600">
+          <span className="font-semibold">{doc.docNumber}</span>
+          <span className="text-slate-400">·</span>
+          <span>{templateProps.docTypeLabel}</span>
+        </div>
+        <div className="shadow-2xl rounded-xl overflow-hidden bg-white">
+          <DocumentTemplate {...templateProps} />
+        </div>
+        {doc.showPaymentInfo && (
+          <div className="shadow-2xl rounded-xl overflow-hidden bg-white">
+            <PaymentInfoPage
+              settings={settings}
+              docNumber={doc.docNumber}
+              docTypeLabel={templateProps.docTypeLabel}
+              grandTotal={doc.grandTotal}
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
