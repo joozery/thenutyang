@@ -739,7 +739,9 @@ export function ProductsClient({
               </div>
 
               <Field label="การรับประกัน">
-                <input value={form.warranty} onChange={e => setForm(f => ({ ...f, warranty: e.target.value }))} className={inputCls}
+                <textarea value={form.warranty} onChange={e => setForm(f => ({ ...f, warranty: e.target.value }))}
+                  rows={3}
+                  className={inputCls}
                   placeholder="เช่น รับประกัน 2 ปี หรือ 50,000 กม. / ประกันบวมแตก 1 ปี" />
               </Field>
 
