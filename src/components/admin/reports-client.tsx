@@ -107,15 +107,6 @@ export function ReportsClient({
 
         <div className="bg-white border border-slate-100 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-slate-500 text-sm font-medium">กำไรขั้นต้น (ยอดขาย)</span>
-            <div className="bg-blue-50 p-2 rounded-xl text-blue-600"><TrendingUp size={18} /></div>
-          </div>
-          <p className="text-3xl font-black text-slate-900">฿{fmt(summary.grossProfit)}</p>
-          <p className="text-slate-400 text-xs mt-1">รายรับ – ต้นทุนสินค้าที่ขาย</p>
-        </div>
-
-        <div className="bg-white border border-slate-100 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
             <span className="text-slate-500 text-sm font-medium">รายจ่ายรวม</span>
             <div className="bg-red-50 p-2 rounded-xl text-red-500"><TrendingDown size={18} /></div>
           </div>
@@ -134,6 +125,15 @@ export function ReportsClient({
             {summary.netProfit >= 0 ? '' : '-'}฿{fmt(Math.abs(summary.netProfit))}
           </p>
           <p className={`text-xs mt-1 ${summary.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>รายรับ – รายจ่าย</p>
+        </div>
+
+        <div className="bg-white border border-slate-100 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-slate-500 text-sm font-medium">กำไรขั้นต้น (ยอดขาย)</span>
+            <div className="bg-blue-50 p-2 rounded-xl text-blue-600"><TrendingUp size={18} /></div>
+          </div>
+          <p className="text-3xl font-black text-slate-900">฿{fmt(summary.grossProfit)}</p>
+          <p className="text-slate-400 text-xs mt-1">รายรับ – ต้นทุนสินค้าที่ขาย</p>
         </div>
       </div>
 

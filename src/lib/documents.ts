@@ -46,6 +46,8 @@ export type DocRow = {
   vatRate:       number;
   vatAmount:     number;
   grandTotal:    number;
+  withholdingTaxRate: number;
+  withholdingAmount:  number;
   paymentMethod: PaymentMethod;
   technicianName: string;
   depositAmount:  number;
@@ -101,6 +103,8 @@ function normalize(d: any): DocRow {
     vatRate:       d.vatRate       ?? 7,
     vatAmount:     d.vatAmount     ?? 0,
     grandTotal:    d.grandTotal    ?? 0,
+    withholdingTaxRate: d.withholdingTaxRate ?? 0,
+    withholdingAmount:  d.withholdingAmount  ?? 0,
     paymentMethod: d.paymentMethod ?? 'pending',
     technicianName: d.technicianName ?? '',
     depositAmount:  d.depositAmount  ?? 0,

@@ -35,6 +35,8 @@ export type DocFormPayload = {
   vatRate:       number;
   vatAmount:     number;
   grandTotal:    number;
+  withholdingTaxRate: number;
+  withholdingAmount:  number;
   paymentMethod: PaymentMethod;
   technicianName: string;
   depositAmount:  number;
@@ -184,6 +186,8 @@ export async function updateDocument(
       vatRate:         data.vatRate,
       vatAmount:       data.vatAmount,
       grandTotal:      data.grandTotal,
+      withholdingTaxRate: data.withholdingTaxRate,
+      withholdingAmount:  data.withholdingAmount,
       paymentMethod:   data.paymentMethod,
       technicianName:  data.technicianName,
       depositAmount:   data.depositAmount,
@@ -337,6 +341,8 @@ function buildDocFromBooking(b: BookingForDoc, type: DocType, docNumber: string)
     vatRate:       7,
     vatAmount,
     grandTotal,
+    withholdingTaxRate: 0,
+    withholdingAmount:  0,
     paymentMethod: isInvoice ? 'cash' : 'pending',
     status:        isInvoice ? 'paid' : 'pending_approval',
     paidAt:        isInvoice ? (b.createdAt ?? new Date()) : null,
@@ -390,6 +396,8 @@ function buildMultiDocFromBookings(bookings: BookingForDoc[], type: DocType, doc
     vatRate:       7,
     vatAmount,
     grandTotal,
+    withholdingTaxRate: 0,
+    withholdingAmount:  0,
     paymentMethod: isInvoice ? 'cash' : 'pending',
     status:        isInvoice ? 'paid' : 'pending_approval',
     paidAt:        isInvoice ? (primary.createdAt ?? new Date()) : null,

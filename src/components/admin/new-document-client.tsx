@@ -82,6 +82,7 @@ export type DocPrefill = {
   sourceDocTypeLabel: string;
   depositAmount?:     number;
   globalDiscount?:    number;
+  withholdingTaxRate?: number;
   costPrice?:         number;
 };
 
@@ -412,6 +413,8 @@ export function NewDocumentClient({
   const [dueDate,         setDueDate]         = useState(prefill?.dueDate ?? '');
   const [depositAmount,   setDepositAmount]   = useState(prefill?.depositAmount ?? 0);
   const [globalDiscount,  setGlobalDiscount]  = useState(prefill?.globalDiscount ?? 0);
+  const [hasWithholding, setHasWithholding] = useState((prefill?.withholdingTaxRate ?? 0) > 0);
+  const [withholdingTaxRate, setWithholdingTaxRate] = useState<number | ''>(prefill?.withholdingTaxRate || '');
   const [note,            setNote]            = useState(prefill?.note ?? '');
   const [technicianName,  setTechnicianName]  = useState(prefill?.technicianName ?? '');
   const [showPaymentInfo, setShowPaymentInfo] = useState(prefill?.showPaymentInfo ?? false);
@@ -468,8 +471,9 @@ export function NewDocumentClient({
       : afterDisc * 0.07;
     const grandTotal   = vatMode === 'extra' ? afterDisc + vatAmount : afterDisc;
     const preVatAmount = vatMode === 'included' ? afterDisc / 1.07 : afterDisc;
-    return { lineCalcs, subtotal, discountTotal, afterDisc, vatAmount, preVatAmount, grandTotal };
-  }, [lines, vatMode, globalDiscount]);
+    const withholdingAmount = hasWithholding && typeof withholdingTaxRate === 'number' ? preVatAmount * (withholdingTaxRate / 100) : 0;
+    return { lineCalcs, subtotal, discountTotal, afterDisc, vatAmount, preVatAmount, grandTotal, withholdingAmount };
+  }, [lines, vatMode, globalDiscount, hasWithholding, withholdingTaxRate]);
 
   // ── validation ─────────────────────────────────────────────────────────────
 
@@ -507,6 +511,8 @@ export function NewDocumentClient({
         vatRate:       vatMode === 'none' ? 0 : 7,
         vatAmount:     calc.vatAmount,
         grandTotal:    calc.grandTotal,
+        withholdingTaxRate: hasWithholding && typeof withholdingTaxRate === 'number' ? withholdingTaxRate : 0,
+        withholdingAmount:  calc.withholdingAmount,
         paymentMethod,
         technicianName: technicianName.trim(),
         depositAmount,
@@ -1250,11 +1256,52 @@ export function NewDocumentClient({
               )}
             </div>
 
+            {/* Withholding Tax */}
+            <div className="border-t border-slate-100 pt-3 space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  checked={hasWithholding}
+                  onChange={(e) => setHasWithholding(e.target.checked)}
+                  className="w-4 h-4 text-green-600 rounded border-slate-300 focus:ring-green-500"
+                />
+                <span className="text-sm font-medium text-slate-600">มีหัก ณ ที่จ่าย</span>
+              </label>
+
+              {hasWithholding && (
+                <div className="flex items-center justify-between text-sm bg-slate-50 rounded-lg px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-xs">หักกี่เปอร์เซ็นต์?</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={withholdingTaxRate}
+                        onChange={e => setWithholdingTaxRate(e.target.value === '' ? '' : Number(e.target.value))}
+                        className="w-16 px-2 py-1 text-center rounded border border-slate-200 text-sm focus:outline-none focus:border-green-400"
+                      />
+                      <span className="text-slate-400 text-xs">%</span>
+                    </div>
+                  </div>
+                  <span className="font-medium text-rose-600 tabular-nums">-฿{calc.withholdingAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+            </div>
+
             <div className="border-t border-slate-100 pt-3">
               <div className="flex justify-between items-center">
                 <span className="font-bold text-slate-700">มูลค่ารวมสุทธิ</span>
-                <span className="text-2xl font-black text-green-600 tabular-nums">฿{calc.grandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                <span className={`text-2xl font-black tabular-nums ${hasWithholding && calc.withholdingAmount > 0 ? 'text-slate-400 line-through text-lg' : 'text-green-600'}`}>
+                  ฿{calc.grandTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
+                </span>
               </div>
+              {hasWithholding && calc.withholdingAmount > 0 && (
+                <div className="flex justify-between items-center mt-1">
+                  <span className="font-bold text-slate-700 text-sm">ยอดสุทธิที่ต้องชำระ</span>
+                  <span className="text-2xl font-black text-green-600 tabular-nums">฿{(calc.grandTotal - calc.withholdingAmount).toLocaleString('th-TH', { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
             </div>
 
             {!isValid && (

@@ -37,6 +37,8 @@ const financialDocSchema = new Schema({
   vatRate:       { type: Number, default: 7 },
   vatAmount:     { type: Number, default: 0 },
   grandTotal:    { type: Number, required: true },
+  withholdingTaxRate: { type: Number, default: 0 },
+  withholdingAmount:  { type: Number, default: 0 },
 
   paymentMethod: { type: String, enum: ['cash', 'transfer', 'credit_card', 'pending'], default: 'pending' },
   paidAt:        { type: Date, default: null },

@@ -88,6 +88,8 @@ export default async function DocumentPrintPage({ params }: { params: Promise<{ 
     discountTotal: doc.discountTotal,
     // มัดจำแสดงทุกชนิดเอกสารที่มีค่า — ใบเสนอราคา/ใบเสร็จที่ต่อยอดจากใบจองต้องเห็นยอดคงเหลือด้วย
     depositAmount: doc.depositAmount ?? 0,
+    withholding: doc.withholdingAmount ?? 0,
+    paidAmount: doc.grandTotal - (doc.withholdingAmount ?? 0),
     accentColor: DOC_TYPE_COLOR[doc.type],
     payment: doc.paymentMethod !== 'pending' ? { method: PAYMENT_LABEL[doc.paymentMethod], date: fmtDate(doc.issuedAt) } : undefined,
     notes: doc.note ? [doc.note] : [],
