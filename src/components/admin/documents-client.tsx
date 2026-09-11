@@ -225,6 +225,30 @@ export function DocumentsClient({
     });
   };
 
+  const handleExportExcel = async () => {
+    try {
+      showToast('กำลังเตรียมไฟล์ Excel...');
+      const xlsx = await import('xlsx');
+      const exportData = filtered.map(d => ({
+        'เลขเอกสาร': d.docNumber,
+        'วันที่': new Date(d.issuedAt).toLocaleDateString('th-TH'),
+        'ประเภท': TYPE_LABEL[d.type] || d.type,
+        'ลูกค้า': d.customerName,
+        'เบอร์โทร': d.customerPhone,
+        'ป้ายทะเบียน': d.customerCar,
+        'ยอดรวม': d.grandTotal,
+        'สถานะ': STATUS_LABEL[d.status] || d.status,
+      }));
+      const ws = xlsx.utils.json_to_sheet(exportData);
+      const wb = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(wb, ws, "Documents");
+      xlsx.writeFile(wb, `documents_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+      console.error(err);
+      showToast('ไม่สามารถส่งออกไฟล์ได้', false);
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
       {/* Header Section */}
@@ -273,6 +297,12 @@ export function DocumentsClient({
               className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 transition-colors"
             >
               <Import size={18} className="text-slate-400" /> นำเข้าจากระบบจอง (Booking)
+            </button>
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+            >
+              <Download size={18} className="text-slate-400" /> ส่งออก Excel (ตามที่กรอง)
             </button>
             <Link
               href="/admin/documents/settings/services"

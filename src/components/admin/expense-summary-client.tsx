@@ -63,10 +63,15 @@ export function ExpenseSummaryClient({
 
   const filtered = useMemo(() => {
     const q = searchQuery.toLowerCase();
+    const cleanQ = q.replace(/,/g, ''); // เอาคอมมาออกเพื่อค้นหาจำนวนเงินได้ง่ายขึ้น
     return items.filter(i =>
       (sourceFilter === 'all' || i.source === sourceFilter) &&
       (catFilter === 'ทั้งหมด' || i.category === catFilter) &&
-      (!q || i.desc.toLowerCase().includes(q) || i.ref.toLowerCase().includes(q) || i.category.toLowerCase().includes(q))
+      (!q || 
+       i.desc.toLowerCase().includes(q) || 
+       i.ref.toLowerCase().includes(q) || 
+       i.category.toLowerCase().includes(q) ||
+       i.amount.toString().includes(cleanQ))
     );
   }, [items, sourceFilter, catFilter, searchQuery]);
 
@@ -137,7 +142,7 @@ export function ExpenseSummaryClient({
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="ค้นหาชื่อรายการ, เลขอ้างอิง..."
+            placeholder="ค้นหาชื่อรายการ, เลขอ้างอิง, จำนวนเงิน..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"

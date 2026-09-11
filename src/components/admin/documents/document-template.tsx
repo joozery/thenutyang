@@ -144,7 +144,7 @@ export function DocumentTemplate({
       </div>
 
       {/* Customer */}
-      <div className="grid grid-cols-[65%_1fr] gap-4 mb-2 pb-2 border-b border-slate-100 items-start">
+      <div className="grid grid-cols-[70%_1fr] gap-4 mb-2 pb-2 border-b border-slate-100 items-start">
         {/* Left Side: Name/Address + Contact */}
         <div className="flex gap-4 pr-4 border-r border-slate-100">
           {/* Customer Details */}
@@ -155,9 +155,9 @@ export function DocumentTemplate({
           </div>
 
           {/* Contact Info */}
-          <div className="w-32 shrink-0 space-y-1.5 text-[13px] text-slate-800">
+          <div className="w-44 shrink-0 space-y-1.5 text-[13px] text-slate-800">
             <p className="flex items-center gap-1.5"><Phone size={12} className="text-slate-400 shrink-0" /><span>{customer.phone || '-'}</span></p>
-            <p className="flex items-center gap-1.5"><Mail size={12} className="text-slate-400 shrink-0" /><span>{customer.email || '-'}</span></p>
+            <p className="flex items-start gap-1.5"><Mail size={12} className="text-slate-400 shrink-0 mt-0.5" /><span className="break-all">{customer.email || '-'}</span></p>
             <p className="flex items-center gap-1.5"><MessageCircle size={12} className="text-green-500 shrink-0" /><span>{customer.lineId || '-'}</span></p>
           </div>
         </div>
