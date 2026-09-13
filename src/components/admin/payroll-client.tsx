@@ -66,7 +66,7 @@ export function PayrollClient({
   }
 
   function confirmPay() {
-    if (!payTarget) return;
+    if (!payTarget || isPending) return;
     startTransition(async () => {
       const res = payTarget.type === 'all' 
         ? await markAllPaid(period, payDate)

@@ -160,11 +160,9 @@ export async function markPaid(id: string, dateStr?: string): Promise<Result> {
 
     const paidAt = dateStr ? new Date(dateStr) : new Date();
 
-    // สร้าง / อัปเดต Expense record
-    let expenseId = p.expenseId;
-    if (expenseId) {
-      // จ่ายซ้ำ → อัปเดต Expense เดิม
-      await Expense.findByIdAndUpdate(expenseId, {
+    if (p.expenseId) {
+      // จ่ายซ้ำ (เช่น แก้ไขวันที่แล้วกดจ่ายอีกครั้ง) → sync ยอดใน Expense เดิม ไม่สร้างรายการใหม่
+      await Expense.findByIdAndUpdate(p.expenseId, {
         $set: {
           amount: p.netPay,
           description: `เงินเดือน ${p.employeeName} รอบ ${p.period}`,
@@ -172,19 +170,34 @@ export async function markPaid(id: string, dateStr?: string): Promise<Result> {
           note: `โบนัส ฿${(p.bonus ?? 0).toLocaleString()} | หักอื่นๆ ฿${(p.otherDeduct ?? 0).toLocaleString()}`,
         },
       });
-    } else {
-      // จ่ายครั้งแรก → สร้าง Expense ใหม่
-      const exp = await Expense.create({
-        category: 'เงินเดือน',
-        description: `เงินเดือน ${p.employeeName} รอบ ${p.period}`,
-        amount: p.netPay,
-        expenseDate: paidAt,
-        note: `โบนัส ฿${(p.bonus ?? 0).toLocaleString()} | หักอื่นๆ ฿${(p.otherDeduct ?? 0).toLocaleString()}`,
-      });
-      expenseId = exp._id;
+      await Payslip.findByIdAndUpdate(id, { $set: { status: 'paid', paidAt } });
+      revalidatePath('/admin/payroll');
+      return { ok: true };
     }
 
-    await Payslip.findByIdAndUpdate(id, { $set: { status: 'paid', paidAt, expenseId } });
+    // จ่ายครั้งแรก → claim สถานะแบบ atomic ก่อนสร้าง Expense
+    // กันกรณีกดปุ่ม "ยืนยันการจ่าย" ซ้ำ/รัว ทำให้เกิด Expense ซ้ำ 2 รายการ
+    const claimed = await Payslip.findOneAndUpdate(
+      { _id: id, status: 'pending' },
+      { $set: { status: 'paid', paidAt } },
+      { new: false }
+    ).lean();
+
+    if (!claimed) {
+      // มีคำสั่งจ่ายอื่นที่ยิงมาพร้อมกันชนะไปแล้ว ไม่ต้องสร้าง Expense ซ้ำ
+      revalidatePath('/admin/payroll');
+      return { ok: true };
+    }
+
+    const exp = await Expense.create({
+      category: 'เงินเดือน',
+      description: `เงินเดือน ${p.employeeName} รอบ ${p.period}`,
+      amount: p.netPay,
+      expenseDate: paidAt,
+      note: `โบนัส ฿${(p.bonus ?? 0).toLocaleString()} | หักอื่นๆ ฿${(p.otherDeduct ?? 0).toLocaleString()}`,
+    });
+
+    await Payslip.findByIdAndUpdate(id, { $set: { expenseId: exp._id } });
     revalidatePath('/admin/payroll');
     return { ok: true };
   } catch (e) {
