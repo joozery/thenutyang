@@ -1,3 +1,4 @@
+import { getManualExpenseFilter } from './expense-filter';
 import connectDB from './mongodb';
 import { FinancialDocument } from '@/models/FinancialDocument';
 
@@ -142,6 +143,7 @@ export async function getDocumentByBookingRef(orderRef: string): Promise<DocRow 
 
 export async function getDocStats(): Promise<DocStats> {
   await connectDB();
+  const manualExpenseFilter = await getManualExpenseFilter();
   const now        = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const { Income } = await import('@/models/Income');
@@ -163,7 +165,7 @@ export async function getDocStats(): Promise<DocStats> {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]),
     Expense.aggregate([
-      { $match: { category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: monthStart } } },
+      { $match: { ...manualExpenseFilter, expenseDate: { $gte: monthStart } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]),
     PurchaseOrder.aggregate([

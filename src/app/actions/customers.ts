@@ -14,7 +14,15 @@ export type VehicleEntry = {
 };
 
 type SavedCustomer = { id: string; name: string; phone: string; address: string; taxId: string; branch: string; carInfo: string; vehicles: VehicleEntry[] };
-type ActionResult = { error?: string; ok?: boolean; customer?: SavedCustomer };
+export type ExistingCustomerMatch = { id: string; name: string; phone: string; vehicleCount: number };
+type ExistingCustomerMode = 'keep-profile' | 'replace-profile';
+type ActionResult = {
+  error?: string;
+  ok?: boolean;
+  customer?: SavedCustomer;
+  requiresExistingCustomerConfirmation?: boolean;
+  existingCustomer?: ExistingCustomerMatch;
+};
 
 export type CustomerFormInput = {
   customerType: 'individual' | 'corporate';
@@ -30,6 +38,11 @@ export type CustomerFormInput = {
   carInfo: string;
   vehicles: VehicleEntry[];
   note: string;
+};
+
+type ExistingCustomerRecord = Partial<CustomerFormInput> & {
+  _id: unknown;
+  vehicles?: VehicleEntry[];
 };
 
 // เทียบทะเบียนรถแบบไม่สนช่องว่าง/ตัวพิมพ์ — 'กก 1234' กับ 'กก-1234' คนพิมพ์ต่างกันแต่คือคันเดียวกัน
@@ -75,7 +88,10 @@ async function checkPlateOwnedByOther(vehicles: VehicleEntry[], excludeCustomerI
   return null;
 }
 
-export async function createCustomer(input: CustomerFormInput): Promise<ActionResult> {
+export async function createCustomer(
+  input: CustomerFormInput,
+  existingCustomerMode?: ExistingCustomerMode,
+): Promise<ActionResult> {
   try {
     const error = validate(input);
     if (error) return { error };
@@ -87,37 +103,56 @@ export async function createCustomer(input: CustomerFormInput): Promise<ActionRe
       const cleanPhone = input.phone.replace(/\D/g, '');
       if (cleanPhone) {
         // ใช้ Regex เพื่อค้นหาเบอร์โทรแบบไม่สนเครื่องหมาย (เช่น 08-1234 หรือ 081234 ก็เจอเหมือนกัน)
-        const regexStr = cleanPhone.split('').join('\\D*');
-        const existing = await Customer.findOne({ phone: { $regex: new RegExp(regexStr) } }).lean() as any;
+        const regexStr = `^\\D*${cleanPhone.split('').join('\\D*')}\\D*$`;
+        const existing = await Customer.findOne({ phone: { $regex: new RegExp(regexStr) } }).lean() as ExistingCustomerRecord | null;
         
         if (existing && existing._id) {
            const existingId = String(existing._id);
+           const existingName = displayName(existing) || 'ไม่ระบุชื่อ';
+
+           if (!existingCustomerMode) {
+             return {
+               requiresExistingCustomerConfirmation: true,
+               existingCustomer: {
+                 id: existingId,
+                 name: existingName,
+                 phone: existing.phone ?? input.phone,
+                 vehicleCount: (existing.vehicles ?? []).length,
+               },
+             };
+           }
            
            // เช็คว่ารถที่เพิ่มใหม่ไปซ้ำกับ "ลูกค้าคนอื่น" หรือไม่
            const plateError = await checkPlateOwnedByOther(input.vehicles, existingId);
            if (plateError) return { error: plateError };
            
            // รวมข้อมูลรถ (Merge Vehicles) โดยป้องกันรถซ้ำ
-           const existingPlates = new Set((existing.vehicles || []).map((v: any) => normalizePlate(v.licensePlate || '')));
            const mergedVehicles = [...(existing.vehicles || [])];
-           
-           let hasNewVehicles = false;
+
            for (const v of input.vehicles) {
              const p = normalizePlate(v.licensePlate);
-             if (p && !existingPlates.has(p)) {
+             const existingVehicleIndex = p
+               ? mergedVehicles.findIndex((current: VehicleEntry) => normalizePlate(current.licensePlate) === p)
+               : -1;
+             if (existingVehicleIndex >= 0) {
+               mergedVehicles[existingVehicleIndex] = v;
+             } else {
                mergedVehicles.push(v);
-               hasNewVehicles = true;
              }
            }
            
            // อัปเดตข้อมูลอื่นๆ ที่ยังว่างอยู่
-           const updates: any = {};
-           if (hasNewVehicles) updates.vehicles = mergedVehicles;
-           
-           const fields: (keyof CustomerFormInput)[] = ['firstName', 'lastName', 'companyName', 'email', 'address', 'taxId', 'branch', 'note'];
-           for (const f of fields) {
-             if (!existing[f] && input[f]) {
-               updates[f] = input[f];
+           const updates: Record<string, unknown> = {
+             vehicles: mergedVehicles,
+           };
+
+           const profileFields: (keyof CustomerFormInput)[] = [
+             'customerType', 'relationType', 'firstName', 'lastName', 'companyName',
+             'email', 'address', 'taxId', 'branch', 'note', 'carInfo',
+           ];
+           for (const field of profileFields) {
+             if (existingCustomerMode === 'replace-profile' || (!existing[field] && input[field])) {
+               updates[field] = input[field];
              }
            }
            
@@ -126,18 +161,52 @@ export async function createCustomer(input: CustomerFormInput): Promise<ActionRe
              updates.updatedAt = new Date();
              await Customer.findByIdAndUpdate(existingId, { $set: updates });
            }
+
+           if (existingCustomerMode === 'replace-profile') {
+             const oldName = displayName(existing);
+             const docFilter = existing.phone?.trim()
+               ? { customerPhone: existing.phone.trim() }
+               : oldName ? { customerName: oldName, customerPhone: '' } : null;
+             if (docFilter) {
+               const { FinancialDocument } = await import('@/models/FinancialDocument');
+               await FinancialDocument.updateMany(docFilter, {
+                 $set: {
+                   customerName: displayName(input),
+                   customerPhone: input.phone,
+                   customerEmail: input.email,
+                   customerAddress: input.address,
+                   customerTaxId: input.taxId,
+                   customerBranch: input.branch,
+                 },
+               });
+               revalidatePath('/admin/documents');
+             }
+           }
            
            revalidatePath('/admin/customers');
            
            // คำนวณชื่อที่จะส่งกลับไปอัปเดตหน้า UI
-           const finalType = existing.customerType || input.customerType;
+           const finalType = existingCustomerMode === 'replace-profile'
+             ? input.customerType
+             : existing.customerType || input.customerType;
            const finalName = finalType === 'corporate' 
-             ? (existing.companyName || input.companyName || '').trim() 
-             : `${existing.firstName || input.firstName || ''} ${existing.lastName || input.lastName || ''}`.trim();
+             ? (existingCustomerMode === 'replace-profile' ? input.companyName : existing.companyName || input.companyName || '').trim()
+             : existingCustomerMode === 'replace-profile'
+               ? `${input.firstName} ${input.lastName}`.trim()
+               : `${existing.firstName || input.firstName || ''} ${existing.lastName || input.lastName || ''}`.trim();
              
            return {
              ok: true,
-             customer: { id: existingId, name: finalName, phone: input.phone, address: existing.address || input.address, taxId: existing.taxId || input.taxId, branch: existing.branch || input.branch, carInfo: input.carInfo, vehicles: mergedVehicles },
+             customer: {
+               id: existingId,
+               name: finalName,
+               phone: input.phone,
+               address: existingCustomerMode === 'replace-profile' ? input.address : existing.address || input.address,
+               taxId: existingCustomerMode === 'replace-profile' ? input.taxId : existing.taxId || input.taxId,
+               branch: existingCustomerMode === 'replace-profile' ? input.branch : existing.branch || input.branch,
+               carInfo: input.carInfo,
+               vehicles: mergedVehicles,
+             },
            };
         }
       }
@@ -178,8 +247,6 @@ export async function updateCustomer(id: string, input: CustomerFormInput): Prom
 
     // เก็บข้อมูลเดิมไว้ก่อน — ใช้ตามหาบิลของลูกค้าคนนี้ (บิลเก็บชื่อ/เบอร์เป็น snapshot ไม่มี customerId)
     let existing: { customerType?: string; companyName?: string; firstName?: string; lastName?: string; phone?: string; } | null = null;
-    let actualId = id;
-
     if (id.startsWith('virtual_')) {
       const parts = id.split('_');
       const type = parts[1];
@@ -189,8 +256,7 @@ export async function updateCustomer(id: string, input: CustomerFormInput): Prom
         phone: type === 'phone' ? val : '',
       };
       
-      const doc = await Customer.create({ ...input, source: 'walkin' });
-      actualId = String(doc._id);
+      await Customer.create({ ...input, source: 'walkin' });
     } else {
       existing = await Customer.findById(id).lean() as {
         customerType?: string; companyName?: string; firstName?: string; lastName?: string; phone?: string;

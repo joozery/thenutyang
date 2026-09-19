@@ -1,3 +1,4 @@
+import { getManualExpenseFilter } from './expense-filter';
 import connectDB from './mongodb';
 import { FinancialDocument } from '@/models/FinancialDocument';
 import { PurchaseOrder } from '@/models/PurchaseOrder';
@@ -50,6 +51,7 @@ type BookingLean = {
 
 export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promise<FinanceSummary> {
   await connectDB();
+  const manualExpenseFilter = await getManualExpenseFilter();
 
   const [invoicesRaw, paymentNotes, creditNotes, purchaseOrders, payslips, expenses] = await Promise.all([
     FinancialDocument.find({ type: 'invoice', status: 'paid', issuedAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<DocLean[]>,
@@ -59,7 +61,7 @@ export async function getFinanceSummary(monthStart: Date, monthEnd: Date): Promi
     PurchaseOrder.find({ status: 'received', paymentStatus: { $in: ['partial', 'paid'] }, paymentDate: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<POLean[]>,
     Payslip.find({ status: 'paid', paidAt: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<PayslipLean[]>,
     // ตัดหมวด PurchaseOrder ออก — ยอดจ่ายค่าจัดซื้อนับจาก PO ด้านบนแล้ว ไม่ให้ซ้ำ
-    Expense.find({ category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<ExpenseLean[]>,
+    Expense.find({ ...manualExpenseFilter, expenseDate: { $gte: monthStart, $lte: monthEnd } }).lean() as Promise<ExpenseLean[]>,
   ]);
 
   // ตัดใบเสร็จที่ออกอัตโนมัติจากใบแจ้งหนี้ทิ้ง (เงินก้อนนั้นถูกนับไปแล้วตอนรับชำระแต่ละงวด/payment_note)
@@ -150,12 +152,13 @@ export type DailyExpenseItem = {
 
 export async function getDailyExpenses(start: Date, end: Date): Promise<DailyExpenseItem[]> {
   await connectDB();
+  const manualExpenseFilter = await getManualExpenseFilter();
 
   const [purchaseOrders, payslips, expenses] = await Promise.all([
     // เฉพาะ PO ที่จ่ายเงินแล้ว นับตามยอดจ่ายจริง/วันชำระ — เกณฑ์เดียวกับ getFinanceSummary
     PurchaseOrder.find({ status: 'received', paymentStatus: { $in: ['partial', 'paid'] }, paymentDate: { $gte: start, $lte: end } }).lean() as Promise<POLean[]>,
     Payslip.find({ status: 'paid', paidAt: { $gte: start, $lte: end } }).lean() as Promise<PayslipLean[]>,
-    Expense.find({ category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: start, $lte: end } }).lean() as Promise<ExpenseLean[]>,
+    Expense.find({ ...manualExpenseFilter, expenseDate: { $gte: start, $lte: end } }).lean() as Promise<ExpenseLean[]>,
   ]);
 
   const items: DailyExpenseItem[] = [
@@ -183,6 +186,7 @@ export async function getDailyExpenses(start: Date, end: Date): Promise<DailyExp
 // หมวดหมู่รายจ่ายที่เคยบันทึกไว้ทั้งหมด — ใช้เติม dropdown ให้หมวดที่ผู้ใช้เพิ่มเองโผล่ในครั้งถัดไป
 export async function getExpenseCategories(): Promise<string[]> {
   await connectDB();
-  const cats = await Expense.distinct('category', { category: { $ne: 'PurchaseOrder' } }) as string[];
+  const manualExpenseFilter = await getManualExpenseFilter();
+  const cats = await Expense.distinct('category', manualExpenseFilter) as string[];
   return cats.filter(Boolean).sort((a, b) => a.localeCompare(b, 'th'));
 }

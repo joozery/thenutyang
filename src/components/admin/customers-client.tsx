@@ -8,7 +8,7 @@ import {
   Download, Filter, Plus, X, Pencil, Trash2, Building2, Mail, MapPin, Hash, Car, Gauge, ChevronDown, Check, Handshake,
 } from 'lucide-react';
 import type { UnifiedCustomerRow } from '@/lib/customers';
-import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput, type VehicleEntry } from '@/app/actions/customers';
+import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput, type ExistingCustomerMatch, type VehicleEntry } from '@/app/actions/customers';
 import { updateSupplier } from '@/app/actions/suppliers';
 import { createCarBrand, createCarModel } from '@/app/actions/car-data';
 import type { CarBrandRow, CarModelRow } from '@/app/actions/car-data';
@@ -93,6 +93,7 @@ export function CustomerModal({
       : { ...EMPTY_FORM, vehicles: [emptyVehicle()] }
   );
   const [error, setError] = useState('');
+  const [existingMatch, setExistingMatch] = useState<ExistingCustomerMatch | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -194,7 +195,30 @@ export function CustomerModal({
     startTransition(async () => {
       const result = initial ? await updateCustomer(initial.id, finalForm) : await createCustomer(finalForm);
       if (result.error) setError(result.error);
+      else if (result.requiresExistingCustomerConfirmation && result.existingCustomer) {
+        setExistingMatch(result.existingCustomer);
+      }
       else { router.refresh(); onSaved(result.customer); }
+    });
+  }
+
+  function confirmExistingCustomer(mode: 'keep-profile' | 'replace-profile') {
+    setError('');
+    const validVehicles = form.vehicles.filter(v => v.licensePlate.trim() || v.carBrand.trim() || v.carModel.trim());
+    const finalForm = {
+      ...form,
+      vehicles: validVehicles,
+      carInfo: validVehicles.length > 0 ? composeCarInfo(validVehicles[0]) : '',
+    };
+    startTransition(async () => {
+      const result = await createCustomer(finalForm, mode);
+      if (result.error) {
+        setExistingMatch(null);
+        setError(result.error);
+      } else {
+        router.refresh();
+        onSaved(result.customer);
+      }
     });
   }
 
@@ -350,7 +374,7 @@ export function CustomerModal({
                         {filteredBrandsFor(idx).length === 0 && getBrandSearch(idx).trim() ? (
                           <button type="button" onMouseDown={() => pickBrandForVehicle(idx, getBrandSearch(idx).trim())}
                             className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-green-700 hover:bg-green-50 font-bold">
-                            <Plus size={11} /> เพิ่ม "{getBrandSearch(idx).trim()}"
+                            <Plus size={11} /> เพิ่ม &quot;{getBrandSearch(idx).trim()}&quot;
                           </button>
                         ) : (
                           filteredBrandsFor(idx).map(b => (
@@ -367,7 +391,7 @@ export function CustomerModal({
                           !filteredBrandsFor(idx).find(b => b.name.toLowerCase() === getBrandSearch(idx).toLowerCase()) && (
                           <button type="button" onMouseDown={() => pickBrandForVehicle(idx, getBrandSearch(idx).trim())}
                             className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-green-700 hover:bg-green-50 font-bold border-t border-slate-100">
-                            <Plus size={11} /> เพิ่ม "{getBrandSearch(idx).trim()}"
+                            <Plus size={11} /> เพิ่ม &quot;{getBrandSearch(idx).trim()}&quot;
                           </button>
                         )}
                       </div>
@@ -467,6 +491,44 @@ export function CustomerModal({
           </button>
         </div>
       </div>
+
+      {existingMatch && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-slate-900/30 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+            <h3 className="font-bold text-slate-900">พบลูกค้าเบอร์นี้อยู่แล้ว</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              {existingMatch.name} · {existingMatch.phone}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">มีรถอยู่แล้ว {existingMatch.vehicleCount} คัน ระบบจะเพิ่มทะเบียนเข้าในลูกค้ารายเดิม</p>
+            <div className="mt-5 space-y-2">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => confirmExistingCustomer('keep-profile')}
+                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                เพิ่มรถ โดยคงชื่อและข้อมูลเดิม
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => confirmExistingCustomer('replace-profile')}
+                className="w-full rounded-xl bg-green-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                อัปเดตชื่อและข้อมูล พร้อมเพิ่มรถ
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => setExistingMatch(null)}
+                className="w-full px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50"
+              >
+                ย้อนกลับไปตรวจสอบ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

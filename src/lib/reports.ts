@@ -1,3 +1,4 @@
+import { getManualExpenseFilter } from './expense-filter';
 import connectDB from './mongodb';
 import { Expense } from '@/models/Expense';
 import { PurchaseOrder } from '@/models/PurchaseOrder';
@@ -43,6 +44,7 @@ function pct(amount: number, total: number) {
 
 export async function getReportSummary(start: Date, end: Date): Promise<ReportSummary> {
   await connectDB();
+  const manualExpenseFilter = await getManualExpenseFilter();
 
   const yearStart = new Date(start.getFullYear(), 0, 1);
   const yearEnd   = new Date(start.getFullYear(), 11, 31, 23, 59, 59, 999);
@@ -62,7 +64,7 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
     ]),
     // ตัดหมวด PurchaseOrder ออก — ยอดจ่ายค่าจัดซื้อนับจาก PO (amountPaid) ด้านล่างแล้ว ไม่ให้ซ้ำ
     Expense.aggregate<AggRow>([
-      { $match: { category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: start, $lte: end } } },
+      { $match: { ...manualExpenseFilter, expenseDate: { $gte: start, $lte: end } } },
       { $group: { _id: { y: { $year: '$expenseDate' }, m: { $month: '$expenseDate' } }, total: { $sum: '$amount' } } },
     ]),
     // นับเฉพาะที่กดชำระแล้ว (ยอดที่จ่ายจริง ตามวันที่ชำระ) — PO ที่ยังไม่ชำระไม่ถือเป็นค่าใช้จ่าย
@@ -75,7 +77,7 @@ export async function getReportSummary(start: Date, end: Date): Promise<ReportSu
       { $group: { _id: { y: { $year: '$paidAt' }, m: { $month: '$paidAt' } }, total: { $sum: '$netPay' } } },
     ]),
     Expense.aggregate<{ _id: string; total: number }>([
-      { $match: { category: { $ne: 'PurchaseOrder' }, expenseDate: { $gte: start, $lte: end } } },
+      { $match: { ...manualExpenseFilter, expenseDate: { $gte: start, $lte: end } } },
       { $group: { _id: '$category', total: { $sum: '$amount' } } },
       { $sort: { total: -1 } },
     ]),
