@@ -1,95 +1,115 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useRef, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
-  Search, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle, XCircle,
+  Search, ChevronDown, ChevronLeft, ChevronRight, X, CheckCircle, XCircle, Loader2,
 } from 'lucide-react';
-import type { ProductRow } from '@/lib/products';
-import type { BrandRow } from '@/app/actions/brands';
+import type { TireListingResult, TireSort } from '@/lib/products';
 import { BRAND_LOGOS } from '@/lib/tires';
 import { AddToCartButton } from '@/components/cart/add-to-cart-button';
 
-const PAGE_SIZE = 16;
-
-type SortOption = 'recommended' | 'priceAsc' | 'priceDesc' | 'size';
-
-const SORT_LABEL: Record<SortOption, string> = {
+const SORT_LABEL: Record<TireSort, string> = {
   recommended: 'เรียง: แนะนำ',
   priceAsc:    'เรียง: ราคาต่ำ → สูง',
   priceDesc:   'เรียง: ราคาสูง → ต่ำ',
   size:        'เรียง: ขนาดยาง',
 };
 
-export function TiresGridClient({ initialProducts, initialBrands = [] }: { initialProducts: ProductRow[]; initialBrands?: BrandRow[] }) {
-  const [sizeFilter, setSizeFilter]   = useState('');
-  const [brandFilter, setBrandFilter] = useState('');
-  const [search, setSearch]           = useState('');
-  const [sort, setSort]               = useState<SortOption>('recommended');
-  const [page, setPage]               = useState(1);
+type Current = { brand: string; size: string; q: string; sort: TireSort };
 
-  const allSizes = useMemo(
-    () => [...new Set(initialProducts.map(p => p.size))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
-    [initialProducts]
-  );
+/**
+ * ตัวกรอง/เรียง/หน้า เก็บไว้ใน URL — server เป็นคนกรองและแบ่งหน้า
+ * ส่งมาแค่สินค้าในหน้าปัจจุบัน (ไม่โหลดสินค้าทั้งหมดมาที่ browser)
+ */
+export function TiresGridClient({
+  listing,
+  brandLogos = [],
+  current,
+}: {
+  listing: TireListingResult;
+  brandLogos?: { name: string; logo?: string }[];
+  current: Current;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
-  const availableBrands = useMemo(() => {
-    const base = !sizeFilter ? initialProducts : initialProducts.filter(p => p.size === sizeFilter);
-    return [...new Set(base.map(p => p.brand))].sort();
-  }, [initialProducts, sizeFilter]);
+  const { products, total, page, totalPages, sizes: allSizes, brands: availableBrands } = listing;
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    const qNorm = q.replace(/[\/rR\s-]/g, ''); // เช่น 2155517
-    const list = initialProducts.filter(p => {
-      const matchSize  = !sizeFilter || p.size === sizeFilter;
-      const matchBrand = !brandFilter || p.brand === brandFilter;
-      const sizeNorm = String(p.size || '').toLowerCase().replace(/[\/rR\s-]/g, '');
-      const matchSearch = !q ||
-        String(p.brand || '').toLowerCase().includes(q) ||
-        String(p.model || '').toLowerCase().includes(q) ||
-        String(p.size || '').toLowerCase().includes(q) ||
-        (qNorm.length > 0 && sizeNorm.includes(qNorm));
-      return matchSize && matchBrand && matchSearch;
-    });
-    switch (sort) {
-      case 'priceAsc':  return [...list].sort((a, b) => a.priceCash - b.priceCash);
-      case 'priceDesc': return [...list].sort((a, b) => b.priceCash - a.priceCash);
-      case 'size':      return [...list].sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true }));
-      default:          return list;
+  // ช่องค้นหา: พิมพ์แล้วรอ 400ms ค่อยยิงไป server
+  const [search, setSearch] = useState(current.q);
+  const [syncedQ, setSyncedQ] = useState(current.q);
+  if (current.q !== syncedQ) {
+    // URL เปลี่ยนจากที่อื่น (เช่น กดย้อนกลับ) → อัปเดตช่องค้นหาให้ตรง
+    setSyncedQ(current.q);
+    setSearch(current.q);
+  }
+
+  function navigate(updates: Record<string, string | number | null>, { resetPage = true } = {}) {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(updates)) {
+      if (v === null || v === '' || v === undefined) params.delete(k);
+      else params.set(k, String(v));
     }
-  }, [initialProducts, sizeFilter, brandFilter, search, sort]);
+    if (resetPage) params.delete('page');
+    if (params.get('page') === '1') params.delete('page');
+    if (params.get('sort') === 'recommended') params.delete('sort');
+    const qs = params.toString();
+    startTransition(() => {
+      router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: !resetPage });
+    });
+  }
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const hasFilter  = !!(sizeFilter || brandFilter || search);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+
+  function submitSearch(value: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim() !== current.q.trim()) navigate({ q: value.trim() || null });
+  }
+
+  function onSearchChange(value: string) {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => submitSearch(value), 400);
+  }
+
+  const hasFilter = !!(current.size || current.brand || current.q);
 
   const selectCls = 'appearance-none text-xs bg-white border border-slate-200 text-slate-700 rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-500 transition-colors font-semibold cursor-pointer';
 
   function brandLogo(brand: string): string | undefined {
-    return initialBrands.find(b => b.name === brand)?.logo || BRAND_LOGOS[brand];
+    return brandLogos.find(b => b.name === brand)?.logo || BRAND_LOGOS[brand];
   }
+
+  // แบรนด์ที่เลือกจาก URL อาจไม่อยู่ในรายการ (เช่นพิมพ์ตัวเล็ก) — ใส่ไว้ให้ select แสดงค่าได้
+  const brandOptions = current.brand && !availableBrands.includes(current.brand)
+    ? [current.brand, ...availableBrands]
+    : availableBrands;
 
   return (
     <div className="w-full space-y-6 pb-20">
       {/* Filter bar */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-wrap items-center gap-2.5">
         <div className="relative">
-          <select value={sizeFilter} onChange={e => { setSizeFilter(e.target.value); setBrandFilter(''); setPage(1); }} className={selectCls}>
+          <select value={current.size} onChange={e => navigate({ size: e.target.value, brand: null })} className={selectCls}>
             <option value="">ทุกขนาด ({allSizes.length})</option>
             {allSizes.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
         <div className="relative">
-          <select value={brandFilter} onChange={e => { setBrandFilter(e.target.value); setPage(1); }} className={selectCls}>
+          <select value={current.brand} onChange={e => navigate({ brand: e.target.value })} className={selectCls}>
             <option value="">ทุกยี่ห้อ ({availableBrands.length})</option>
-            {availableBrands.map(b => <option key={b} value={b}>{b}</option>)}
+            {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
           </select>
           <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
         <div className="relative">
-          <select value={sort} onChange={e => setSort(e.target.value as SortOption)} className={selectCls}>
+          <select value={current.sort} onChange={e => navigate({ sort: e.target.value })} className={selectCls}>
             {Object.entries(SORT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -97,27 +117,34 @@ export function TiresGridClient({ initialProducts, initialBrands = [] }: { initi
         <div className="relative flex-1 min-w-[180px]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input type="text" placeholder="ค้นหายี่ห้อ รุ่น หรือขนาด..." value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => onSearchChange(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') submitSearch(search); }}
             className="w-full pl-8 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-lg placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-500 transition-colors" />
-          {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><X size={12} /></button>}
+          {search && <button onClick={() => { setSearch(''); submitSearch(''); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><X size={12} /></button>}
         </div>
         {hasFilter && (
-          <button onClick={() => { setSizeFilter(''); setBrandFilter(''); setSearch(''); setPage(1); }}
+          <button onClick={() => { setSearch(''); if (debounceRef.current) clearTimeout(debounceRef.current); navigate({ size: null, brand: null, q: null }); }}
             className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center gap-1 font-medium border border-slate-200 px-2.5 py-2 rounded-lg bg-white hover:bg-slate-50 transition-colors">
             <X size={11} /> ล้างตัวกรอง
           </button>
         )}
-        <span className="text-[11px] text-slate-400 ml-auto">{filtered.length} รายการ</span>
+        <span className="text-[11px] text-slate-400 ml-auto flex items-center gap-1.5">
+          {isPending && <Loader2 size={11} className="animate-spin" />}
+          {total.toLocaleString()} รายการ
+        </span>
       </div>
 
       {/* Product cards */}
-      {paginated.length === 0 ? (
+      {products.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-xl py-20 text-center text-sm text-slate-400">
           ไม่พบสินค้าที่ตรงกับตัวกรอง
+          <div>
+            <Link href="/tires" className="text-green-600 font-bold mt-2 inline-block">ดูสินค้าทั้งหมด</Link>
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
-          {paginated.map(p => {
+        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5 transition-opacity ${isPending ? 'opacity-50 pointer-events-none' : ''}`}>
+          {products.map(p => {
             const logo = brandLogo(p.brand);
             const discount = p.oldPrice ? Math.round(((p.oldPrice - p.priceCash) / p.oldPrice) * 100) : 0;
             return (
@@ -193,7 +220,7 @@ export function TiresGridClient({ initialProducts, initialBrands = [] }: { initi
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-1">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+          <button onClick={() => navigate({ page: page - 1 }, { resetPage: false })} disabled={page === 1 || isPending}
             className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             <ChevronLeft size={14} />
           </button>
@@ -205,12 +232,12 @@ export function TiresGridClient({ initialProducts, initialBrands = [] }: { initi
             }, [])
             .map((n, i) => n === '...'
               ? <span key={`e${i}`} className="w-9 h-9 flex items-center justify-center text-[11px] text-slate-400">…</span>
-              : <button key={n} onClick={() => { setPage(n as number); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              : <button key={n} onClick={() => navigate({ page: n }, { resetPage: false })} disabled={isPending}
                   className={`w-9 h-9 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${page === n ? 'bg-slate-900 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
                   {n}
                 </button>
             )}
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+          <button onClick={() => navigate({ page: page + 1 }, { resetPage: false })} disabled={page === totalPages || isPending}
             className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             <ChevronRight size={14} />
           </button>

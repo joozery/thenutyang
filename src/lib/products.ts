@@ -61,8 +61,127 @@ export async function getProducts(filters?: {
     query.size = filters.size;
   }
 
-  const docs = await Product.find(query).sort({ brand: 1, model: 1 }).lean();
+  // ดึงเฉพาะฟิลด์ที่หน้า grid ใช้ — ไม่ส่ง description/images/specs (หนัก) และ costPrice (ข้อมูลภายใน) ไปหน้าร้าน
+  const docs = await Product.find(query)
+    .select(PUBLIC_LIST_FIELDS)
+    .sort({ brand: 1, model: 1 })
+    .lean();
   return docs.map(normalize);
+}
+
+const PUBLIC_LIST_FIELDS =
+  'brand model size rimSize type category productType priceCash priceCredit priceInstallment oldPrice image stock year badge note published';
+
+// ─── หน้าร้าน /tires — แบ่งหน้า + กรองฝั่ง server ─────────────────────────────
+
+export const TIRE_PAGE_SIZE = 16;
+export const TIRE_SORTS = ['recommended', 'priceAsc', 'priceDesc', 'size'] as const;
+export type TireSort = (typeof TIRE_SORTS)[number];
+
+export type TireListingFilters = {
+  /** ขนาดแบบตรงตัว (จาก dropdown ในหน้า) เช่น 215/55R17 */
+  size?: string;
+  brand?: string;
+  q?: string;
+  rim?: string;
+  width?: string;
+  series?: string;
+  category?: string;
+  sort?: TireSort;
+  page?: number;
+};
+
+export type TireListingResult = {
+  products: ProductRow[];
+  total: number;
+  page: number;
+  totalPages: number;
+  pageSize: number;
+  /** ขนาดทั้งหมดที่มีในตัวกรองหลัก (ไม่รวม size/brand ที่เลือก) — ใช้ทำ dropdown */
+  sizes: string[];
+  /** ยี่ห้อที่มีในขนาดที่เลือก — ใช้ทำ dropdown */
+  brands: string[];
+};
+
+const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** ยางเก่าที่ไม่มี productType ให้นับเป็นยาง (เหมือนฝั่งแอดมิน) */
+const TIRE_TYPE_QUERY = { $or: [{ productType: 'tires' }, { productType: { $exists: false } }, { productType: null }] };
+
+/**
+ * คำค้นแต่ละคำต้องเจอใน ยี่ห้อ/รุ่น/ขนาด
+ * ขนาดยางพิมพ์ได้หลายแบบ: 215/55R17, 215-55-17, 2155517 → เทียบแบบไม่สนตัวคั่น
+ */
+function searchClauses(q: string) {
+  return q.trim().split(/\s+/).slice(0, 5).map((token) => {
+    const textRx = new RegExp(escapeRx(token), 'i');
+    const bare = token.replace(/[/\-\sRr]/g, '');
+    const sizeRx = bare
+      ? new RegExp(bare.split('').map(escapeRx).join('[/\\-Rr ]*'), 'i')
+      : textRx;
+    return { $or: [{ brand: textRx }, { model: textRx }, { size: sizeRx }] };
+  });
+}
+
+export async function getTireListingPage(filters: TireListingFilters = {}): Promise<TireListingResult> {
+  await connectDB();
+
+  // ตัวกรองหลัก (มาจากเมนู/ลิงก์ค้นหาขนาด) — ใช้คำนวณตัวเลือกใน dropdown
+  const base: Record<string, unknown>[] = [{ published: true }, TIRE_TYPE_QUERY];
+  if (filters.q?.trim()) base.push(...searchClauses(filters.q));
+  if (filters.category) base.push({ category: filters.category });
+  if (filters.width && filters.series && filters.rim) {
+    // Matches: 205/55R16, 265/60-18, 195R14C (if series is 80)
+    base.push({
+      size: new RegExp(`^${escapeRx(filters.width)}(?:/)?(?:${escapeRx(filters.series)})?[^0-9]*${escapeRx(filters.rim)}`, 'i'),
+    });
+  } else if (filters.rim && Number(filters.rim)) {
+    base.push({ rimSize: Number(filters.rim) });
+  }
+
+  const sizeClause = filters.size ? [{ size: filters.size }] : [];
+  const brandClause = filters.brand ? [{ brand: new RegExp(`^${escapeRx(filters.brand)}$`, 'i') }] : [];
+
+  const listQuery = { $and: [...base, ...sizeClause, ...brandClause] };
+
+  const sort: Record<string, 1 | -1> =
+    filters.sort === 'priceAsc'  ? { priceCash: 1, _id: 1 } :
+    filters.sort === 'priceDesc' ? { priceCash: -1, _id: 1 } :
+    filters.sort === 'size'      ? { size: 1, _id: 1 } :
+                                   { brand: 1, model: 1, _id: 1 };
+
+  // นับก่อน เพื่อหนีบเลขหน้าไม่ให้เกินหน้าสุดท้าย
+  const [total, sizes, brands] = await Promise.all([
+    Product.countDocuments(listQuery),
+    Product.distinct('size', { $and: base }),
+    Product.distinct('brand', { $and: [...base, ...sizeClause] }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / TIRE_PAGE_SIZE));
+  const page = Math.min(Math.max(1, Math.floor(filters.page ?? 1)), totalPages);
+
+  let find = Product.find(listQuery)
+    .select(PUBLIC_LIST_FIELDS)
+    .sort(sort)
+    .skip((page - 1) * TIRE_PAGE_SIZE)
+    .limit(TIRE_PAGE_SIZE);
+  // เรียงขนาดแบบตัวเลข (205 < 1000) ไม่ใช่ตัวอักษร
+  if (filters.sort === 'size') find = find.collation({ locale: 'en', numericOrdering: true });
+
+  const docs = await find.lean();
+
+  const clean = (arr: unknown[]) =>
+    arr.filter((v): v is string => typeof v === 'string' && v.trim() !== '');
+
+  return {
+    products: docs.map((d) => normalize(d as Record<string, unknown>)),
+    total,
+    page,
+    totalPages,
+    pageSize: TIRE_PAGE_SIZE,
+    sizes: clean(sizes).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+    brands: clean(brands).sort(),
+  };
 }
 
 export async function getProductById(id: string): Promise<ProductRow | null> {
