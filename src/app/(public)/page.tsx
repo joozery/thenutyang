@@ -8,17 +8,15 @@ import { OurServices } from "@/components/home/our-services";
 import { OnsiteServices } from "@/components/home/onsite-services";
 import { BrandTicker } from "@/components/home/brand-ticker";
 import { getHomepageSettings } from "@/lib/homepage-settings";
-import connectDB from "@/lib/mongodb";
-import ContactSettings from "@/models/ContactSettings";
+import { getContactSettings } from "@/lib/contact-settings";
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  await connectDB();
   const [banners, homepageSettings, contactDoc] = await Promise.all([
     getAllBanners(),
     getHomepageSettings(),
-    ContactSettings.findOne({}).lean(),
+    getContactSettings(),
   ]);
   const googleMapUrl = (contactDoc as any)?.googleMapUrl ?? '';
   const main   = banners.find(b => b.slot === 'main');

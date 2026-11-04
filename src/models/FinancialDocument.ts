@@ -55,4 +55,8 @@ const financialDocSchema = new Schema({
   createdAt:     { type: Date, default: Date.now },
 }, { collection: 'financialdocuments' });
 
+financialDocSchema.index({ type: 1, issuedAt: -1 });
+financialDocSchema.index({ type: 1, status: 1, issuedAt: -1 });
+financialDocSchema.index({ bookingRef: 1, createdAt: -1 });
+
 export const FinancialDocument = models.FinancialDocument || model('FinancialDocument', financialDocSchema);

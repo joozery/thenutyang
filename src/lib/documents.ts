@@ -118,10 +118,109 @@ function normalize(d: any): DocRow {
   };
 }
 
-export async function getDocuments(): Promise<DocRow[]> {
+export interface DocumentListOptions {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  type?: string;
+  status?: string;
+  vat?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface DocumentListResult {
+  docs: DocRow[];
+  summaryDocs: Array<Pick<DocRow, 'type' | 'grandTotal' | 'costPrice' | 'items'>>;
+  summaryTotals: { totalRevenue: number; totalCost: number; invoiceCount: number };
+  totalItems: number;
+  page: number;
+  pageSize: number;
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export async function getDocuments(options: DocumentListOptions = {}): Promise<DocumentListResult> {
   await connectDB();
-  const docs = await FinancialDocument.find({}).sort({ createdAt: -1 }).lean();
-  return docs.map(normalize);
+
+  const pageSize = Math.max(1, Math.min(options.pageSize ?? 20, 100_000));
+  const requestedPage = Math.max(1, options.page ?? 1);
+  const query: Record<string, unknown> = {};
+
+  if (options.type) query.type = options.type;
+  if (options.status) query.status = options.status;
+  if (options.vat === 'vat') query.vatAmount = { $gt: 0 };
+  if (options.vat === 'novat') query.vatAmount = { $lte: 0 };
+
+  if (options.dateFrom || options.dateTo) {
+    query.issuedAt = {
+      ...(options.dateFrom ? { $gte: new Date(`${options.dateFrom}T00:00:00`) } : {}),
+      ...(options.dateTo ? { $lte: new Date(`${options.dateTo}T23:59:59.999`) } : {}),
+    };
+  }
+
+  const search = options.search?.trim();
+  if (search) {
+    const regex = new RegExp(escapeRegex(search), 'i');
+    const searchOr: Record<string, unknown>[] = [
+      { docNumber: regex },
+      { customerName: regex },
+      { customerPhone: regex },
+      { customerCar: regex },
+    ];
+    const numericSearch = Number(search.replace(/,/g, ''));
+    if (Number.isFinite(numericSearch)) searchOr.push({ grandTotal: numericSearch });
+    query.$or = searchOr;
+  }
+
+  const [totalItems, docs, summaryTotals, summaryDocs] = await Promise.all([
+    FinancialDocument.countDocuments(query),
+    FinancialDocument.find(query)
+      .sort({ createdAt: -1 })
+      .skip((requestedPage - 1) * pageSize)
+      .limit(pageSize)
+      .lean(),
+    FinancialDocument.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: { $cond: [{ $eq: ['$type', 'invoice'] }, '$grandTotal', 0] } },
+          totalCost: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'invoice'] }, { $ne: ['$costPrice', null] }] }, '$costPrice', 0] } },
+          invoiceCount: { $sum: { $cond: [{ $eq: ['$type', 'invoice'] }, 1, 0] } },
+        },
+      },
+    ]),
+    // Only invoices without a saved cost need the legacy product-description fallback.
+    FinancialDocument.find({ ...query, type: 'invoice', costPrice: null })
+      .select('type grandTotal costPrice items')
+      .lean(),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const pageDocs = page === requestedPage
+    ? docs
+    : await FinancialDocument.find(query)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * pageSize)
+        .limit(pageSize)
+        .lean();
+
+  return {
+    docs: pageDocs.map(normalize),
+    summaryDocs: summaryDocs.map(normalize),
+    totalItems,
+    summaryTotals: {
+      totalRevenue: summaryTotals[0]?.totalRevenue ?? 0,
+      totalCost: summaryTotals[0]?.totalCost ?? 0,
+      invoiceCount: summaryTotals[0]?.invoiceCount ?? 0,
+    },
+    page,
+    pageSize,
+  };
 }
 
 export async function getDocumentById(id: string): Promise<DocRow | null> {
@@ -152,10 +251,10 @@ export async function getDocStats(): Promise<DocStats> {
   const { Payslip } = await import('@/models/Payslip');
 
   const [monthInvoices, unpaidCount, pendingQuoteCount, outstandingBillingNotes, paymentSums, monthIncomes, monthExpenses, monthPO, monthPayslip] = await Promise.all([
-    FinancialDocument.find({ type: 'invoice', issuedAt: { $gte: monthStart } }).lean(),
+    FinancialDocument.find({ type: 'invoice', issuedAt: { $gte: monthStart } }).select('grandTotal').lean(),
     FinancialDocument.countDocuments({ type: 'invoice', status: 'unpaid' }),
     FinancialDocument.countDocuments({ type: 'quote',   status: 'pending_approval' }),
-    FinancialDocument.find({ type: 'billing_note', status: { $in: ['unpaid', 'partial'] } }, { grandTotal: 1 }).lean(),
+    FinancialDocument.find({ type: 'billing_note', status: { $in: ['unpaid', 'partial'] } }).select('_id grandTotal').lean(),
     FinancialDocument.aggregate([
       { $match: { type: 'payment_note' } },
       { $group: { _id: '$relatedDocId', paid: { $sum: '$grandTotal' } } },

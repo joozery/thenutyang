@@ -43,15 +43,15 @@ export async function GET(req: Request) {
       FinancialDocument.find({
         type: 'invoice',
         issuedAt: { $gte: rangeStart, $lte: rangeEnd },
-      }).lean(),
+      }).select('status grandTotal').lean(),
       isRange ? Promise.resolve([]) : FinancialDocument.find({
         type: 'invoice',
         issuedAt: { $gte: prevDayStart, $lt: rangeStart },
-      }).lean(),
+      }).select('status grandTotal').lean(),
       FinancialDocument.find({
         type: 'invoice',
         issuedAt: { $gte: monthStart, $lt: nextMonthStart },
-      }).lean(),
+      }).select('status grandTotal').lean(),
     ]);
 
     const rangeRevenue = rangeDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
@@ -91,35 +91,37 @@ export async function GET(req: Request) {
 
     // ─── Low stock products ──────────────────────────────────────
     const lowStock = await Product.find({ stock: { $lt: 5 }, published: true })
+      .select('brand model size stock category')
       .sort({ stock: 1 })
       .limit(5)
       .lean();
 
     // ─── Pending bookings ────────────────────────────────────────
-    const pendingBookings = await Booking.countDocuments({ status: 'pending' });
-    const rangeBookings = await Booking.countDocuments({
-      createdAt: { $gte: rangeStart, $lte: rangeEnd },
-    });
+    const [pendingBookings, rangeBookings] = await Promise.all([
+      Booking.countDocuments({ status: 'pending' }),
+      Booking.countDocuments({ createdAt: { $gte: rangeStart, $lte: rangeEnd } }),
+    ]);
 
     // ─── Recent invoices (ในช่วงที่เลือก) ─────────────────────────
     const recentInvoices = await FinancialDocument.find({ type: 'invoice', issuedAt: { $gte: rangeStart, $lte: rangeEnd } })
+      .select('docNumber customerName grandTotal status paymentMethod createdAt')
       .sort({ createdAt: -1 })
       .limit(8)
       .lean();
 
     // ─── Monthly chart data (last 6 months) ──────────────────────
+    const chartRows = await FinancialDocument.aggregate([
+      { $match: { type: 'invoice', status: 'paid', issuedAt: { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1), $lt: nextMonthStart } } },
+      { $group: { _id: { year: { $year: '$issuedAt' }, month: { $month: '$issuedAt' } }, revenue: { $sum: '$grandTotal' }, count: { $sum: 1 } } },
+    ]);
+    const chartMap = new Map(chartRows.map((row) => [`${row._id.year}-${row._id.month}`, row]));
     const chartData = [];
     for (let i = 5; i >= 0; i--) {
       const mStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const docs = await FinancialDocument.find({
-        type: 'invoice',
-        status: 'paid',
-        issuedAt: { $gte: mStart, $lt: mEnd },
-      }).lean();
-      const total = docs.reduce((s, d) => s + d.grandTotal, 0);
+      const row = chartMap.get(`${mStart.getFullYear()}-${mStart.getMonth() + 1}`);
+      const total = row?.revenue ?? 0;
       const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-      chartData.push({ month: thMonths[mStart.getMonth()], revenue: total, count: docs.length });
+      chartData.push({ month: thMonths[mStart.getMonth()], revenue: total, count: row?.count ?? 0 });
     }
 
     // ─── Category breakdown ───────────────────────────────────────

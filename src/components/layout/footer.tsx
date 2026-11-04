@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Phone, MapPin, Truck, ShieldCheck, Shield, ArrowUp } from "lucide-react";
-import connectDB from "@/lib/mongodb";
-import ContactSettings from "@/models/ContactSettings";
+import { getContactSettings } from "@/lib/contact-settings";
 
 const LineIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -25,8 +24,7 @@ const YoutubeIcon = ({ className }: { className?: string }) => (
 );
 
 export async function Footer() {
-  await connectDB();
-  const settings = await ContactSettings.findOne({}).lean() as any;
+  const settings = await getContactSettings() as any;
 
   const phoneMain = settings?.phoneMain || '02-123-4567';
   const lineId = settings?.lineId || '@thenutyangyont';

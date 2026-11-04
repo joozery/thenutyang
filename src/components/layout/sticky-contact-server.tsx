@@ -1,10 +1,8 @@
-import connectDB from '@/lib/mongodb';
-import ContactSettings from '@/models/ContactSettings';
+import { getContactSettings } from '@/lib/contact-settings';
 import { StickyContact } from './sticky-contact';
 
 export async function StickyContactServer() {
-  await connectDB();
-  const s = await ContactSettings.findOne().lean() as {
+  const s = await getContactSettings() as {
     lineId?: string; lineLabel?: string;
     phoneMain?: string; phoneMainLabel?: string;
     phoneSale?: string; phoneSaleLabel?: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition, useRef } from 'react';
+import { useState, useEffect, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search, Plus, Edit2, Trash2, X, Package,
@@ -41,8 +41,6 @@ const ICON_OPTIONS = [
   { name: 'Box',       label: 'สินค้า' },
 ];
 
-const PAGE_SIZE = 15;
-
 function calcDerivedPrices(cash: number) {
   const priceCredit = cash + cash * 0.03;
   const priceInstallment = cash + cash * 4 * 0.008 * 1.07 + cash * 0.015 * 1.07;
@@ -76,12 +74,20 @@ export function ProductsClient({
   initialCategories,
   initialProductTypes,
   activeType,
+  pagination,
+  filterOptions,
+  initialFilters,
+  summary,
 }: {
   initialProducts: ProductRow[];
   initialBrands: BrandRow[];
   initialCategories: CategoryRow[];
   initialProductTypes: ProductTypeRow[];
   activeType: string;
+  pagination: { page: number; pageSize: number; totalItems: number };
+  filterOptions: { sizes: string[]; brands: string[]; sizeCounts: Record<string, number> };
+  initialFilters: { search: string; size: string; brand: string; category: string; sort: string; dir: SortDir };
+  summary: { totalStock: number; lowStockCount: number; totalItems: number; categoryCounts: Record<string, number> };
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -90,17 +96,30 @@ export function ProductsClient({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const [search, setSearch]               = useState('');
-  const [sizeTab, setSizeTab]             = useState('all');
-  const [brandFilter, setBrandFilter]     = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [sortKey, setSortKey]             = useState('brand');
-  const [sortDir, setSortDir]             = useState<SortDir>('asc');
+  const [search, setSearch]               = useState(initialFilters.search);
+  const [sizeTab, setSizeTab]             = useState(initialFilters.size);
+  const [brandFilter, setBrandFilter]     = useState(initialFilters.brand);
+  const [categoryFilter, setCategoryFilter] = useState(initialFilters.category);
+  const [sortKey, setSortKey]             = useState(initialFilters.sort);
+  const [sortDir, setSortDir]             = useState<SortDir>(initialFilters.dir);
   const [modal, setModal]                 = useState<'add' | 'edit' | null>(null);
   const [editTarget, setEditTarget]       = useState<ProductRow | null>(null);
   const [form, setForm]                   = useState(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget]   = useState<ProductRow | null>(null);
-  const [page, setPage]                   = useState(1);
+  const page = pagination.page;
+
+  const navigate = (overrides: Record<string, string | number | undefined> = {}) => {
+    const values = { type: activeType, page, search, size: sizeTab === 'all' ? '' : sizeTab, brand: brandFilter, category: categoryFilter, sort: sortKey, dir: sortDir, ...overrides };
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== '') params.set(key, String(value));
+    router.replace(`/admin/products?${params.toString()}`);
+  };
+
+  useEffect(() => {
+    if (search === initialFilters.search) return;
+    const timer = window.setTimeout(() => navigate({ search, page: 1 }), 400);
+    return () => window.clearTimeout(timer);
+  }, [search]);
   const [error, setError]                 = useState('');
 
   /* ─── categories state ─── */
@@ -125,44 +144,16 @@ export function ProductsClient({
   const tabInfo = productTypes.find(t => t.key === activeType) ?? productTypes[0] ?? { label: 'สินค้า', unit: 'ชิ้น', icon: 'Package' };
 
   /* ─── filters ─── */
-  const allSizes = useMemo(
-    () => [...new Set(initialProducts.map(p => p.size).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
-    [initialProducts]
-  );
-  const availableBrands = useMemo(() => {
-    const base = sizeTab === 'all' ? initialProducts : initialProducts.filter(p => p.size === sizeTab);
-    return [...new Set(base.map(p => p.brand))].sort();
-  }, [initialProducts, sizeTab]);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return initialProducts
-      .filter(p => {
-        const matchSize     = sizeTab === 'all' || p.size === sizeTab;
-        const matchBrand    = !brandFilter || p.brand === brandFilter;
-        const matchCategory = !categoryFilter || p.category === categoryFilter;
-        const matchSearch = !q ||
-          p.brand.toLowerCase().includes(q) ||
-          p.model.toLowerCase().includes(q) ||
-          (p.size || '').toLowerCase().includes(q);
-        return matchSize && matchBrand && matchCategory && matchSearch;
-      })
-      .sort((a, b) => {
-        const av = a[sortKey as keyof ProductRow] as string | number;
-        const bv = b[sortKey as keyof ProductRow] as string | number;
-        const cmp = typeof av === 'number' && typeof bv === 'number'
-          ? av - bv : String(av ?? '').localeCompare(String(bv ?? ''), 'th');
-        return sortDir === 'asc' ? cmp : -cmp;
-      });
-  }, [initialProducts, sizeTab, brandFilter, search, sortKey, sortDir]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const allSizes = filterOptions.sizes;
+  const availableBrands = filterOptions.brands;
+  const filtered = initialProducts;
+  const paginated = initialProducts;
+  const totalPages = Math.max(1, Math.ceil(pagination.totalItems / pagination.pageSize));
 
   function toggleSort(key: string) {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('asc'); }
-    setPage(1);
+    const nextDir = sortKey === key ? (sortDir === 'asc' ? 'desc' : 'asc') : 'asc';
+    setSortKey(key); setSortDir(nextDir);
+    navigate({ sort: key, dir: nextDir, page: 1 });
   }
 
   function openAdd() { setForm(EMPTY_FORM); setError(''); setModal('add'); }
@@ -305,7 +296,7 @@ export function ProductsClient({
     router.refresh();
   }
 
-  const totalStock = initialProducts.reduce((s, p) => s + p.stock, 0);
+  const totalStock = summary.totalStock;
 
   return (
     <div className="max-w-full mx-auto space-y-5">
@@ -338,7 +329,7 @@ export function ProductsClient({
               <button
                 key={tab.key}
                 onClick={() => {
-                  setSizeTab('all'); setBrandFilter(''); setCategoryFilter(''); setSearch(''); setPage(1);
+                  setSizeTab('all'); setBrandFilter(''); setCategoryFilter(''); setSearch(''); navigate({ size: '', brand: '', category: '', search: '', page: 1 });
                   router.push(`/admin/products?type=${tab.key}`);
                 }}
                 className={`shrink-0 flex items-center gap-2 px-5 py-3.5 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
@@ -368,7 +359,7 @@ export function ProductsClient({
           <div className="bg-slate-100 p-2 rounded-lg"><Package size={16} className="text-slate-600" /></div>
           <div>
             <p className="text-[10px] text-slate-400 font-medium">รายการทั้งหมด</p>
-            <p className="text-lg font-bold text-slate-900 leading-none mt-0.5">{initialProducts.length} <span className="text-xs font-normal text-slate-400">รายการ</span></p>
+            <p className="text-lg font-bold text-slate-900 leading-none mt-0.5">{summary.totalItems} <span className="text-xs font-normal text-slate-400">รายการ</span></p>
           </div>
         </div>
         <div className="bg-white border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-3">
@@ -382,7 +373,7 @@ export function ProductsClient({
           <div className="bg-amber-50 p-2 rounded-lg"><Tag size={16} className="text-amber-600" /></div>
           <div>
             <p className="text-[10px] text-slate-400 font-medium">ใกล้หมด (≤5)</p>
-            <p className="text-lg font-bold text-slate-900 leading-none mt-0.5">{initialProducts.filter(p => p.stock > 0 && p.stock <= 5).length} <span className="text-xs font-normal text-slate-400">รายการ</span></p>
+            <p className="text-lg font-bold text-slate-900 leading-none mt-0.5">{summary.lowStockCount} <span className="text-xs font-normal text-slate-400">รายการ</span></p>
           </div>
         </div>
       </div>
@@ -392,14 +383,14 @@ export function ProductsClient({
         {/* Size tabs — tire only */}
         {isTire && allSizes.length > 0 && (
           <div className="flex items-center gap-0 overflow-x-auto border-b border-slate-100" style={{ scrollbarWidth: 'none' }}>
-            <button onClick={() => { setSizeTab('all'); setBrandFilter(''); setPage(1); }}
+            <button onClick={() => { setSizeTab('all'); setBrandFilter(''); navigate({ size: '', brand: '', page: 1 }); }}
               className={`shrink-0 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${sizeTab === 'all' ? 'border-slate-900 text-slate-900 bg-slate-50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-              ทั้งหมด <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{initialProducts.length}</span>
+              ทั้งหมด <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{summary.totalItems}</span>
             </button>
             {allSizes.map(size => (
-              <button key={size} onClick={() => { setSizeTab(size); setBrandFilter(''); setPage(1); }}
+              <button key={size} onClick={() => { setSizeTab(size); setBrandFilter(''); navigate({ size, brand: '', page: 1 }); }}
                 className={`shrink-0 px-4 py-2.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap ${sizeTab === size ? 'border-green-500 text-green-600 bg-green-50/50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
-                {size} <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{initialProducts.filter(p => p.size === size).length}</span>
+                {size} <span className="ml-1 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full">{filterOptions.sizeCounts[size] ?? 0}</span>
               </button>
             ))}
           </div>
@@ -409,15 +400,15 @@ export function ProductsClient({
         {isTire && categories.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap px-4 py-2.5 border-b border-slate-100 bg-white">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">หมวดหมู่:</span>
-            <button onClick={() => { setCategoryFilter(''); setPage(1); }}
+            <button onClick={() => { setCategoryFilter(''); navigate({ category: '', page: 1 }); }}
               className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${!categoryFilter ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
               ทั้งหมด
             </button>
             {categories.map(cat => (
-              <button key={cat.key} onClick={() => { setCategoryFilter(cat.key === categoryFilter ? '' : cat.key); setPage(1); }}
+              <button key={cat.key} onClick={() => { const value = cat.key === categoryFilter ? '' : cat.key; setCategoryFilter(value); navigate({ category: value, page: 1 }); }}
                 className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${categoryFilter === cat.key ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                 {cat.label}
-                <span className="ml-1 opacity-60">{initialProducts.filter(p => p.category === cat.key).length}</span>
+                <span className="ml-1 opacity-60">{summary.categoryCounts[cat.key] ?? 0}</span>
               </button>
             ))}
           </div>
@@ -429,7 +420,7 @@ export function ProductsClient({
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">ยี่ห้อ:</span>
               <div className="relative">
-                <select value={brandFilter} onChange={e => { setBrandFilter(e.target.value); setPage(1); }}
+                <select value={brandFilter} onChange={e => { setBrandFilter(e.target.value); navigate({ brand: e.target.value, page: 1 }); }}
                   className="text-xs bg-white border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 pr-7 focus:outline-none focus:ring-2 focus:ring-slate-900/10 appearance-none w-44">
                   <option value="">ทั้งหมด ({availableBrands.length})</option>
                   {availableBrands.map(b => <option key={b} value={b}>{b}</option>)}
@@ -441,9 +432,9 @@ export function ProductsClient({
           <div className="relative ml-auto">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input type="text" placeholder={`ค้นหา${tabInfo.label}...`} value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={e => setSearch(e.target.value)}
               className="pl-8 pr-8 py-1.5 w-52 text-xs bg-white border border-slate-200 rounded-lg placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10" />
-            {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><X size={12} /></button>}
+            {search && <button onClick={() => { setSearch(''); navigate({ search: '', page: 1 }); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"><X size={12} /></button>}
           </div>
         </div>
 
@@ -491,7 +482,7 @@ export function ProductsClient({
                 const logo = initialBrands.find(b => b.name === p.brand)?.logo;
                 return (
                   <tr key={p.id} className="hover:bg-slate-50/70 transition-colors group">
-                    <td className="px-4 py-3 text-[11px] text-slate-300">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                    <td className="px-4 py-3 text-[11px] text-slate-300">{(page - 1) * pagination.pageSize + idx + 1}</td>
                     {isTire && (
                       <td className="px-4 py-3">
                         <span className="font-mono text-[13px] font-semibold text-slate-900 bg-slate-100/80 border border-slate-200/50 px-2 py-1 rounded-md">{p.size}</span>
@@ -551,10 +542,10 @@ export function ProductsClient({
         {/* Pagination */}
         <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="text-[11px] text-slate-400">
-            แสดง <span className="font-semibold text-slate-600">{filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}</span> จาก <span className="font-semibold text-slate-600">{filtered.length}</span> รายการ
+            แสดง <span className="font-semibold text-slate-600">{pagination.totalItems === 0 ? 0 : (page - 1) * pagination.pageSize + 1}–{Math.min(page * pagination.pageSize, pagination.totalItems)}</span> จาก <span className="font-semibold text-slate-600">{pagination.totalItems}</span> รายการ
           </span>
           <div className="flex items-center gap-1">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+            <button onClick={() => navigate({ page: Math.max(1, page - 1) })} disabled={page === 1}
               className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed">
               <ChevronLeft size={14} />
             </button>
@@ -566,12 +557,12 @@ export function ProductsClient({
               }, [])
               .map((n, i) => n === '...'
                 ? <span key={`e${i}`} className="w-8 h-8 flex items-center justify-center text-[11px] text-slate-400">…</span>
-                : <button key={n} onClick={() => setPage(n as number)}
+                : <button key={n} onClick={() => navigate({ page: n as number })}
                     className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${page === n ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
                     {n}
                   </button>
               )}
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            <button onClick={() => navigate({ page: Math.min(totalPages, page + 1) })} disabled={page === totalPages}
               className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed">
               <ChevronRightIcon size={14} />
             </button>
@@ -924,7 +915,7 @@ export function ProductsClient({
                       <div className="flex items-center gap-3">
                         <span className="text-[10px] font-mono text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">{cat.key}</span>
                         <span className="text-sm font-semibold text-slate-800">{cat.label}</span>
-                        <span className="text-[10px] text-slate-400">{initialProducts.filter(p => p.category === cat.key).length} รายการ</span>
+                        <span className="text-[10px] text-slate-400">{summary.categoryCounts[cat.key] ?? 0} รายการ</span>
                       </div>
                       <button
                         onClick={() => handleDeleteCategory(cat.id)}

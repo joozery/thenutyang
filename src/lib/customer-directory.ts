@@ -31,7 +31,10 @@ function getDisplayName(d: Record<string, unknown>): string {
 
 export async function getCustomerDirectory(): Promise<CustomerDirectoryRow[]> {
   await connectDB();
-  const docs = await Customer.find({}).sort({ createdAt: -1 }).lean();
+  const docs = await Customer.find({})
+    .select('customerType relationType firstName lastName companyName phone email address taxId branch carInfo vehicles note source createdAt')
+    .sort({ createdAt: -1 })
+    .lean();
   return docs.map((d) => ({
     id: String(d._id),
     customerType: (d.customerType as 'individual' | 'corporate') ?? 'individual',

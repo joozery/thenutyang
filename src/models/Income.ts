@@ -18,4 +18,6 @@ const IncomeSchema = new Schema<IIncome>({
   createdAt: { type: Date, default: Date.now },
 });
 
+IncomeSchema.index({ incomeDate: 1 });
+
 export const Income = models.Income ?? model<IIncome>('Income', IncomeSchema);

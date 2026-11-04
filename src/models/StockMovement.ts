@@ -12,4 +12,7 @@ const stockMovementSchema = new Schema({
   createdAt:   { type: Date, default: Date.now },
 });
 
+stockMovementSchema.index({ createdAt: -1 });
+stockMovementSchema.index({ refNo: 1 });
+
 export const StockMovement = models.StockMovement || model('StockMovement', stockMovementSchema);

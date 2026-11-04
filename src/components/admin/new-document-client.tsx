@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -9,7 +9,7 @@ import {
   AlertCircle, Receipt, FileEdit, FileMinus, FileClock, BookMarked,
   Search, X, Building2, MapPin, Car, UserPlus, Wrench, PackageSearch, Gauge, HardHat, Banknote, Check,
 } from 'lucide-react';
-import { createDocument, updateDocument } from '@/app/actions/documents';
+import { createDocument, updateDocument, searchNewDocumentProducts, searchNewDocumentCustomers } from '@/app/actions/documents';
 import type { DocFormPayload } from '@/app/actions/documents';
 import type { DocType, PaymentMethod } from '@/lib/documents';
 import type { UnifiedCustomerRow } from '@/lib/customers';
@@ -70,6 +70,7 @@ export type DocPrefill = {
   customerAddress: string;
   customerTaxId:   string;
   customerBranch?: string;
+  issuedDate?: string;
   items: { productId?: string; description: string; qty: number; unitPrice: number; discount: number; lineCostPrice?: number }[];
   vatRate:       number;
   paymentMethod: PaymentMethod;
@@ -127,9 +128,9 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function NewDocumentClient({
-  customers = [],
-  products = [],
-  serviceItems = [],
+  customers: initialCustomers = [],
+  products: initialProducts = [],
+  serviceItems: initialServiceItems = [],
   employees = [],
   carBrands = [],
   carModels = [],
@@ -145,6 +146,8 @@ export function NewDocumentClient({
   prefill?: DocPrefill;
   editTarget?: DocEditTarget;
 }) {
+  const [customers, setCustomers] = useState(initialCustomers);
+  const [products, setProducts] = useState(initialProducts);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const isEditMode = !!editTarget;
@@ -362,7 +365,7 @@ export function NewDocumentClient({
   const [manualCostPrice, setManualCostPrice] = useState<number | null>(prefill?.costPrice ?? null);
 
   // รวมสินค้า (ยาง) + บริการ/ค่าแรง เป็นรายการเดียวให้เลือกจากช่องค้นหาเดียวกัน
-  const [serviceItemsState, setServiceItemsState] = useState<ServiceItemRow[]>(serviceItems);
+  const [serviceItemsState, setServiceItemsState] = useState<ServiceItemRow[]>(initialServiceItems);
   type PickerEntry = { kind: 'product'; data: ProductRow } | { kind: 'service'; data: ServiceItemRow };
   const pickerEntries = useMemo<PickerEntry[]>(() => [
     ...products.map((p) => ({ kind: 'product' as const, data: p })),
@@ -378,6 +381,16 @@ export function NewDocumentClient({
   }
 
   const productById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
+  const searchProductPicker = useCallback(async (query: string, page: number) => {
+    const productEntries = (await searchNewDocumentProducts(query, page)).map((p) => ({ kind: 'product' as const, data: p }));
+    if (page !== 1) return productEntries;
+    const q = query.trim().toLowerCase();
+    const services = serviceItemsState
+      .filter((s) => !q || s.name.toLowerCase().includes(q))
+      .slice(0, Math.max(0, 20 - productEntries.length))
+      .map((s) => ({ kind: 'service' as const, data: s }));
+    return [...productEntries, ...services];
+  }, [serviceItemsState]);
 
   // เพิ่มบริการใหม่แบบรวดเร็วจากในช่องค้นหา ไม่ต้องออกไปหน้าตั้งค่า
   const [newServiceName,  setNewServiceName]  = useState('');
@@ -409,7 +422,7 @@ export function NewDocumentClient({
   const [paymentMethod,  setPaymentMethod]  = useState<PaymentMethod>(prefill?.paymentMethod ?? 'cash');
 
   // meta
-  const [issuedDate,      setIssuedDate]      = useState(today());
+  const [issuedDate,      setIssuedDate]      = useState(prefill?.issuedDate ?? today());
   const [dueDate,         setDueDate]         = useState(prefill?.dueDate ?? '');
   const [depositAmount,   setDepositAmount]   = useState(prefill?.depositAmount ?? 0);
   const [globalDiscount,  setGlobalDiscount]  = useState(prefill?.globalDiscount ?? 0);
@@ -1327,6 +1340,7 @@ export function NewDocumentClient({
           title="เลือกลูกค้า"
           placeholder="ค้นหาทะเบียนรถ, ชื่อ หรือเบอร์โทร..."
           items={customers}
+          remoteSearch={searchNewDocumentCustomers}
           filterFn={(c, q) => {
             const plates = c.vehicles?.map(v => v.licensePlate.toLowerCase()).join(' ') ?? '';
             const legacy = c.carInfo?.toLowerCase() ?? '';
@@ -1377,6 +1391,7 @@ export function NewDocumentClient({
           title="เลือกสินค้า / ยาง / บริการ"
           placeholder="ค้นหายี่ห้อ รุ่น ขนาดยาง หรือชื่อบริการ..."
           items={pickerEntries}
+          remoteSearch={searchProductPicker}
           filterFn={(entry, q) => entry.kind === 'product'
             ? `${entry.data.brand} ${entry.data.model} ${entry.data.size}`.toLowerCase().includes(q)
             : entry.data.name.toLowerCase().includes(q)}

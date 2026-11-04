@@ -4,9 +4,83 @@ import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { FinancialDocument } from '@/models/FinancialDocument';
 import { Booking } from '@/models/Booking';
-import { generateDocNumber } from '@/lib/documents';
+import { generateDocNumber, getDocuments, getDocStats, type DocumentListOptions } from '@/lib/documents';
+import { getBookingsByOrderRef, type OrderBooking } from '@/lib/payment-settings';
+import { getProductCostRows } from '@/lib/products';
+import { getCustomers, mergeCustomerSources } from '@/lib/customers';
+import { getCustomerDirectory } from '@/lib/customer-directory';
+import { getAllProductsAdmin } from '@/lib/products';
+import { getServiceItems } from '@/lib/service-items';
+import { getProductAdminPage } from '@/lib/products';
+import { Customer } from '@/models/Customer';
+import type { UnifiedCustomerRow } from '@/lib/customers';
 import { isDocEditable } from '@/lib/doc-editable';
 import type { DocType, PaymentMethod } from '@/lib/documents';
+
+export async function getDocumentsForExport(options: DocumentListOptions = {}) {
+  const result = await getDocuments({ ...options, page: 1, pageSize: 100_000 });
+  return result.docs;
+}
+
+export async function loadDocumentOverview(input: { filters: DocumentListOptions }) {
+  const [stats, documentList] = await Promise.all([getDocStats(), getDocuments(input.filters)]);
+  const refs = [...new Set(documentList.docs.map((d) => d.bookingRef).filter(Boolean))];
+  const bookings = await Promise.all(refs.map((ref) => getBookingsByOrderRef(ref)));
+  const bookingStatusMap = refs.reduce((map, ref, i) => {
+    if (bookings[i]) map[ref] = bookings[i]!;
+    return map;
+  }, {} as Record<string, OrderBooking>);
+  const needsLegacyCost = documentList.summaryDocs.some((doc) => doc.type === 'invoice' && doc.costPrice == null);
+  const products = needsLegacyCost ? await getProductCostRows() : [];
+  const costMap = new Map<string, number>();
+  for (const product of products) {
+    const key = `${product.brand} ${product.model} ${product.size}`.trim().toLowerCase();
+    if (key && product.costPrice > 0) costMap.set(key, product.costPrice);
+  }
+  let totalCost = documentList.summaryTotals.totalCost;
+  for (const doc of documentList.summaryDocs) {
+    if (doc.type !== 'invoice') continue;
+    for (const item of doc.items) totalCost += (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty;
+  }
+  const totalRevenue = documentList.summaryTotals.totalRevenue;
+  return { stats, bookingStatusMap, costProfitSummary: { totalCost, totalRevenue, profit: totalRevenue - totalCost } };
+}
+
+export async function loadNewDocumentPickers() {
+  const [bookingCustomers, directoryCustomers, products, serviceItems] = await Promise.all([
+    getCustomers(),
+    getCustomerDirectory(),
+    getAllProductsAdmin(),
+    getServiceItems(),
+  ]);
+  return { customers: mergeCustomerSources(bookingCustomers, directoryCustomers), products, serviceItems };
+}
+
+export async function searchNewDocumentProducts(search = '', page = 1) {
+  const result = await getProductAdminPage({ search, page, pageSize: 20 });
+  return result.products;
+}
+
+export async function searchNewDocumentCustomers(search = '', page = 1): Promise<UnifiedCustomerRow[]> {
+  await connectDB();
+  const q = search.trim();
+  const rx = q ? new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : undefined;
+  const query = rx ? { $or: [{ firstName: rx }, { lastName: rx }, { companyName: rx }, { phone: rx }, { taxId: rx }, { carInfo: rx }, { 'vehicles.licensePlate': rx }] } : {};
+  const [docs, bookingDocs] = await Promise.all([
+    Customer.find(query).select('customerType relationType firstName lastName companyName phone email address taxId branch carInfo vehicles note source').sort({ createdAt: -1 }).skip((Math.max(1, page) - 1) * 20).limit(20).lean(),
+    page === 1 ? Booking.find(rx ? { $or: [{ name: rx }, { phone: rx }, { licensePlate: rx }, { carModel: rx }] } : {}).select('name phone carModel carYear licensePlate createdAt').sort({ createdAt: -1 }).limit(20).lean() : Promise.resolve([]),
+  ]);
+  const customerRows: UnifiedCustomerRow[] = docs.map((d) => ({
+    id: String(d._id), customerType: d.customerType ?? 'individual', relationType: d.relationType ?? 'customer',
+    name: d.customerType === 'corporate' && d.companyName ? d.companyName : `${d.firstName ?? ''} ${d.lastName ?? ''}`.trim() || d.companyName || 'ไม่ระบุชื่อ',
+    firstName: d.firstName ?? '', lastName: d.lastName ?? '', companyName: d.companyName ?? '', phone: d.phone ?? '', email: d.email ?? '', address: d.address ?? '', taxId: d.taxId ?? '', branch: d.branch ?? '', carInfo: d.carInfo ?? '', vehicles: d.vehicles ?? [], note: d.note ?? '', source: d.source ?? 'walkin', cars: [], totalBills: 0, totalSpent: 0, lastVisit: '',
+    tag: 'ใหม่' as const,
+  }));
+  const bookingRows = bookingDocs.map((d) => ({
+    id: null, customerType: 'individual' as const, relationType: 'customer' as const, name: d.name ?? '', firstName: d.name ?? '', lastName: '', companyName: '', phone: d.phone ?? '', email: '', address: '', taxId: '', branch: '', carInfo: d.licensePlate ?? '', vehicles: d.carModel ? [{ carBrand: '', carModel: d.carModel, carColor: '', licensePlate: d.licensePlate ?? '', mileage: '', chassisNo: '' }] : [], note: '', source: 'online' as const, cars: [], totalBills: 0, totalSpent: 0, lastVisit: d.createdAt instanceof Date ? d.createdAt.toISOString() : '', tag: 'ใหม่' as const,
+  }));
+  return [...customerRows, ...bookingRows].slice(0, 20);
+}
 
 export type DocFormPayload = {
   type:          DocType;
@@ -194,6 +268,7 @@ export async function updateDocument(
       costPrice:       data.costPrice,
       note:            data.note,
       showPaymentInfo: data.showPaymentInfo,
+      issuedAt:        data.issuedDate ? new Date(data.issuedDate) : existing.issuedAt ?? new Date(),
       dueDate:         data.dueDate ? new Date(data.dueDate) : null,
     };
 

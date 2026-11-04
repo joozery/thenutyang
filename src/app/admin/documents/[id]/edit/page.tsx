@@ -1,11 +1,10 @@
 import { notFound } from 'next/navigation';
-import { getCustomers, mergeCustomerSources } from '@/lib/customers';
-import { getCustomerDirectory } from '@/lib/customer-directory';
-import { getAllProductsAdmin } from '@/lib/products';
+import { getProductById } from '@/lib/products';
 import { getServiceItems } from '@/lib/service-items';
 import { getDocumentById } from '@/lib/documents';
 import { isDocEditable } from '@/lib/doc-editable';
 import { getActiveEmployees } from '@/lib/employees';
+import { getCarBrands, getCarModels } from '@/app/actions/car-data';
 import { NewDocumentClient, type DocPrefill } from '@/components/admin/new-document-client';
 
 export const dynamic = 'force-dynamic';
@@ -18,18 +17,19 @@ export default async function EditDocumentPage({
 }) {
   const { id } = await params;
 
-  const [bookingCustomers, directoryCustomers, products, serviceItems, doc, employees] = await Promise.all([
-    getCustomers(),
-    getCustomerDirectory(),
-    getAllProductsAdmin(),
+  const [serviceItems, doc, employees, carBrands, carModels] = await Promise.all([
     getServiceItems(),
     getDocumentById(id),
     getActiveEmployees(),
+    getCarBrands(),
+    getCarModels(),
   ]);
 
   if (!doc || !isDocEditable(doc.type, doc.status)) notFound();
 
-  const customers = mergeCustomerSources(bookingCustomers, directoryCustomers);
+  const productIds = [...new Set(doc.items.map((item) => item.productId).filter(Boolean))] as string[];
+  const productRows = await Promise.all(productIds.map((productId) => getProductById(productId)));
+  const products = productRows.filter((product): product is NonNullable<typeof product> => !!product);
 
   const lineDiscTotal = doc.items.reduce((sum, i) => {
     const gross = i.qty * i.unitPrice;
@@ -46,6 +46,7 @@ export default async function EditDocumentPage({
     customerAddress: doc.customerAddress,
     customerTaxId:   doc.customerTaxId,
     customerBranch:  doc.customerBranch,
+    issuedDate:      doc.issuedAt ? doc.issuedAt.slice(0, 10) : '',
     items:           doc.items.map((i) => {
       const p = products.find(prod => prod.id === i.productId);
       return { productId: i.productId, description: i.description, qty: i.qty, unitPrice: i.unitPrice, discount: i.discount, lineCostPrice: p?.costPrice ?? 0 };
@@ -65,10 +66,12 @@ export default async function EditDocumentPage({
 
   return (
     <NewDocumentClient
-      customers={customers}
-      products={products}
+      customers={[]}
+      products={[]}
       serviceItems={serviceItems}
       employees={employees}
+      carBrands={carBrands}
+      carModels={carModels}
       prefill={prefill}
       editTarget={{ docId: doc.id, docNumber: doc.docNumber }}
     />

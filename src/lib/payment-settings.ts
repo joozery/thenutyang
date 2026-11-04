@@ -50,7 +50,9 @@ export type OrderBooking = {
 export async function getBookingsByOrderRef(orderRef: string): Promise<OrderBooking | null> {
   await connectDB();
   const { Booking } = await import('@/models/Booking');
-  const docs = await Booking.find({ orderRef }).lean() as Record<string, unknown>[];
+  const docs = await Booking.find({ orderRef })
+    .select('ref tireName tirePrice quantity depositAmount depositStatus balanceStatus balanceVerifyNote balanceSlipUrl')
+    .lean() as Record<string, unknown>[];
   if (docs.length === 0) return null;
 
   const items = docs.map((d) => {

@@ -1,26 +1,25 @@
-import { getDocuments, getDocStats } from '@/lib/documents';
-import { getBookingsByOrderRef, type OrderBooking } from '@/lib/payment-settings';
-import { getAllProductsAdmin } from '@/lib/products';
+import { getDocuments } from '@/lib/documents';
 import { DocumentsClient } from '@/components/admin/documents-client';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'บิล / เอกสาร | Admin' };
 
-export default async function DocumentsPage() {
-  const [docs, stats, products] = await Promise.all([
-    getDocuments(),
-    getDocStats(),
-    getAllProductsAdmin(),
-  ]);
+export default async function DocumentsPage({ searchParams }: {
+  searchParams: Promise<{ page?: string; search?: string; type?: string; status?: string; vat?: string; dateFrom?: string; dateTo?: string }>;
+}) {
+  const params = await searchParams;
+  const page = Math.max(1, Number.parseInt(params.page || '1', 10) || 1);
+  const documentList = await getDocuments({ page, search: params.search, type: params.type, status: params.status, vat: params.vat, dateFrom: params.dateFrom, dateTo: params.dateTo });
 
-  // เอกสารที่มาจากการจอง (bookingRef) — ดึงสถานะมัดจำ/ยอดคงเหลือจริงจาก Booking มาโชว์คู่กัน
-  const uniqueBookingRefs = [...new Set(docs.map((d) => d.bookingRef).filter(Boolean))];
-  const bookingStatuses = await Promise.all(uniqueBookingRefs.map((ref) => getBookingsByOrderRef(ref)));
-  const bookingStatusMap = uniqueBookingRefs.reduce((map, ref, i) => {
-    const status = bookingStatuses[i];
-    if (status) map[ref] = status;
-    return map;
-  }, {} as Record<string, OrderBooking>);
-
-  return <DocumentsClient initialDocs={docs} stats={stats} bookingStatusMap={bookingStatusMap} products={products} />;
+  return (
+    <DocumentsClient
+      initialDocs={documentList.docs}
+      stats={null}
+      bookingStatusMap={{}}
+      products={[]}
+      pagination={{ page: documentList.page, pageSize: documentList.pageSize, totalItems: documentList.totalItems, invoiceCount: documentList.summaryTotals.invoiceCount }}
+      initialFilters={{ search: params.search || '', type: params.type || '', status: params.status || '', vat: params.vat || '', dateFrom: params.dateFrom || '', dateTo: params.dateTo || '' }}
+      costProfitSummary={null}
+    />
+  );
 }

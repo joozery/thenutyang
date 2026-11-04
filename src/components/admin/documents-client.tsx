@@ -13,11 +13,11 @@ import {
 import type { DocRow, DocStats, PaymentMethod } from '@/lib/documents';
 import { isDocEditable } from '@/lib/doc-editable';
 import type { OrderBooking } from '@/lib/payment-settings';
-import type { ProductRow } from '@/lib/products';
-import { updateDocStatus, importFromBookings, deleteDocument, recordPartialPayment, updateDocCost } from '@/app/actions/documents';
+import type { ProductCostRow } from '@/lib/products';
+import { updateDocStatus, importFromBookings, deleteDocument, recordPartialPayment, updateDocCost, getDocumentsForExport, loadDocumentOverview } from '@/app/actions/documents';
 import { DatePicker } from "@/components/ui/date-picker";
 
-import { TYPE_LABEL, TYPE_STYLE, STATUS_LABEL, STATUS_STYLE, PAYMENT_LABEL, fmtDate, fmtMoney, StatusBadge, PAGE_SIZE } from './documents/shared';
+import { TYPE_LABEL, TYPE_STYLE, STATUS_LABEL, STATUS_STYLE, PAYMENT_LABEL, fmtDate, fmtMoney, StatusBadge } from './documents/shared';
 
 import { RecordPaymentForm } from './documents/RecordPaymentForm';
 
@@ -31,17 +31,39 @@ import { Toast } from './documents/Toast';
 
 export function DocumentsClient({
   initialDocs,
-  stats,
-  bookingStatusMap,
+  stats: initialStats,
+  bookingStatusMap: initialBookingStatusMap,
   products,
+  pagination,
+  initialFilters,
+  costProfitSummary: initialCostProfitSummary,
 }: {
   initialDocs: DocRow[];
-  stats:       DocStats;
+  stats:       DocStats | null;
   bookingStatusMap: Record<string, OrderBooking>;
-  products: ProductRow[];
+  products: ProductCostRow[];
+  pagination: { page: number; pageSize: number; totalItems: number; invoiceCount: number };
+  initialFilters: { search: string; type: string; status: string; vat: string; dateFrom: string; dateTo: string };
+  costProfitSummary: { totalCost: number; totalRevenue: number; profit: number } | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [stats, setStats] = useState<DocStats>(initialStats ?? { invoiceCountMonth: 0, invoiceTotalMonth: 0, unpaidCount: 0, pendingQuoteCount: 0, billingOutstandingCount: 0, billingOutstandingTotal: 0, totalIncomeMonth: 0, totalExpenseMonth: 0 });
+  const [bookingStatusMap, setBookingStatusMap] = useState(initialBookingStatusMap);
+  const [costProfitSummary, setCostProfitSummary] = useState(initialCostProfitSummary ?? { totalCost: 0, totalRevenue: 0, profit: 0 });
+
+  useEffect(() => {
+    let active = true;
+    loadDocumentOverview({ filters: { page: pagination.page, pageSize: pagination.pageSize, search: initialFilters.search, type: initialFilters.type, status: initialFilters.status, vat: initialFilters.vat, dateFrom: initialFilters.dateFrom, dateTo: initialFilters.dateTo } })
+      .then((overview) => {
+        if (!active) return;
+        setStats(overview.stats);
+        setBookingStatusMap(overview.bookingStatusMap);
+        setCostProfitSummary(overview.costProfitSummary);
+      });
+    return () => { active = false; };
+  }, [initialFilters, pagination.page, pagination.pageSize]);
+
 
   // description → costPrice lookup (key = "${brand} ${model} ${size}".toLowerCase())
   const costMap = useMemo(() => {
@@ -57,13 +79,39 @@ export function DocumentsClient({
   useEffect(() => { setDocs(initialDocs); }, [initialDocs]);
 
   // filters
-  const [search,     setSearch]     = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [statFilter, setStatFilter] = useState('');
-  const [vatFilter,  setVatFilter]  = useState(''); // '' = ทั้งหมด | 'vat' = มี VAT | 'novat' = ไม่มี VAT
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo,   setDateTo]   = useState('');
-  const [page,       setPage]       = useState(1);
+  const [search,     setSearch]     = useState(initialFilters.search);
+  const [typeFilter, setTypeFilter] = useState(initialFilters.type);
+  const [statFilter, setStatFilter] = useState(initialFilters.status);
+  const [vatFilter,  setVatFilter]  = useState(initialFilters.vat);
+  const [dateFrom, setDateFrom] = useState(initialFilters.dateFrom);
+  const [dateTo,   setDateTo]   = useState(initialFilters.dateTo);
+
+  useEffect(() => {
+    setSearch(initialFilters.search);
+    setTypeFilter(initialFilters.type);
+    setStatFilter(initialFilters.status);
+    setVatFilter(initialFilters.vat);
+    setDateFrom(initialFilters.dateFrom);
+    setDateTo(initialFilters.dateTo);
+  }, [initialFilters]);
+
+  const navigateWithFilters = (overrides: Record<string, string | number | undefined> = {}) => {
+    const values = {
+      search, type: typeFilter, status: statFilter, vat: vatFilter, dateFrom, dateTo,
+      page: pagination.page, ...overrides,
+    };
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(values)) {
+      if (value !== undefined && value !== '') params.set(key, String(value));
+    }
+    router.replace(`/admin/documents${params.toString() ? `?${params.toString()}` : ''}`);
+  };
+
+  useEffect(() => {
+    if (search === initialFilters.search) return;
+    const timer = window.setTimeout(() => navigateWithFilters({ search, page: 1 }), 400);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   // modals
   const [viewDoc, setViewDoc] = useState<DocRow | null>(null);
@@ -78,54 +126,9 @@ export function DocumentsClient({
     setTimeout(() => setToast(null), 4000);
   };
 
-  // filtered & paginated
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    // ค้นทะเบียนรถแบบไม่สนช่องว่าง/ขีด — พิมพ์ 'ญข929' ต้องเจอ 'ญข 929' ที่บันทึกไว้
-    const qCompact = q.replace(/[\s-]+/g, '');
-    const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
-    const toTime   = dateTo   ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
-    return docs.filter(d => {
-      const issuedTime = new Date(d.issuedAt).getTime();
-      const matchSearch = !q
-        || d.docNumber.toLowerCase().includes(q)
-        || d.customerName.toLowerCase().includes(q)
-        || d.customerPhone.includes(q)
-        || d.customerCar.toLowerCase().includes(q)
-        || (!!qCompact && d.customerCar.toLowerCase().replace(/[\s-]+/g, '').includes(qCompact))
-        || d.grandTotal.toString().includes(q)
-        || fmtMoney(d.grandTotal).includes(q);
-      const matchVat = !vatFilter
-        || (vatFilter === 'vat' && d.vatAmount > 0)
-        || (vatFilter === 'novat' && !(d.vatAmount > 0));
-      return matchSearch && matchVat &&
-        (!typeFilter || d.type === typeFilter) &&
-        (!statFilter || d.status === statFilter) &&
-        (!fromTime || issuedTime >= fromTime) &&
-        (!toTime || issuedTime <= toTime);
-    });
-  }, [docs, search, typeFilter, statFilter, vatFilter, dateFrom, dateTo]);
-
-  const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  // สรุปต้นทุน + กำไรจาก docs ที่กรองอยู่ (เฉพาะ invoice/ใบเสร็จ)
-  const costProfitSummary = useMemo(() => {
-    let totalCost = 0;
-    let totalRevenue = 0;
-    for (const doc of filtered) {
-      if (doc.type !== 'invoice') continue;
-      totalRevenue += doc.grandTotal;
-      if (doc.costPrice != null) {
-        totalCost += doc.costPrice;
-      } else {
-        for (const item of doc.items) {
-          totalCost += (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty;
-        }
-      }
-    }
-    return { totalCost, totalRevenue, profit: totalRevenue - totalCost };
-  }, [filtered, costMap]);
+  const filtered = docs;
+  const paginated = docs;
+  const totalPages = Math.max(1, Math.ceil(pagination.totalItems / pagination.pageSize));
 
   const handleDirectPrint = (id: string) => {
     const existing = document.getElementById('print-iframe');
@@ -229,7 +232,10 @@ export function DocumentsClient({
     try {
       showToast('กำลังเตรียมไฟล์ Excel...');
       const xlsx = await import('xlsx');
-      const exportData = filtered.map(d => ({
+       const exportDocs = await getDocumentsForExport({
+         search, type: typeFilter, status: statFilter, vat: vatFilter, dateFrom, dateTo,
+       });
+       const exportData = exportDocs.map(d => ({
         'เลขเอกสาร': d.docNumber,
         'วันที่': new Date(d.issuedAt).toLocaleDateString('th-TH'),
         'ประเภท': TYPE_LABEL[d.type] || d.type,
@@ -378,7 +384,7 @@ export function DocumentsClient({
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5">
             <p className="text-[12px] font-bold text-slate-400 mb-1">ยอดขายรวม (ใบเสร็จ)</p>
             <p className="text-2xl font-black text-slate-800 tabular-nums">฿{fmtMoney(costProfitSummary.totalRevenue)}</p>
-            <p className="text-[11px] text-slate-400 mt-1">{filtered.filter(d => d.type === 'invoice').length} ใบ {(dateFrom || dateTo) ? '(ตามช่วงที่เลือก)' : '(ทั้งหมด)'}</p>
+            <p className="text-[11px] text-slate-400 mt-1">{pagination.invoiceCount} ใบ {(dateFrom || dateTo) ? '(ตามช่วงที่เลือก)' : '(ทั้งหมด)'}</p>
           </div>
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5">
             <p className="text-[12px] font-bold text-slate-400 mb-1">ต้นทุนรวม</p>
@@ -408,20 +414,20 @@ export function DocumentsClient({
             <input
               type="text"
               value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={e => setSearch(e.target.value)}
               placeholder="ค้นหาเลขที่เอกสาร, ชื่อลูกค้า, ทะเบียนรถ, เบอร์โทร, ยอดเงิน..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-medium"
             />
           </div>
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-1.5">
-              <DatePicker value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); setPage(1); }} className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white" />
+              <DatePicker value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); navigateWithFilters({ dateFrom: e.target.value, page: 1 }); }} className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white" />
               <span className="text-slate-400 text-sm">–</span>
-              <DatePicker value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); setPage(1); }} className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white" />
+              <DatePicker value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); navigateWithFilters({ dateTo: e.target.value, page: 1 }); }} className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white" />
             </div>
             <select
               value={typeFilter}
-              onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
+              onChange={e => { setTypeFilter(e.target.value); navigateWithFilters({ type: e.target.value, page: 1 }); }}
               className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
             >
               <option value="">ทุกประเภท</option>
@@ -434,7 +440,7 @@ export function DocumentsClient({
             </select>
             <select
               value={statFilter}
-              onChange={e => { setStatFilter(e.target.value); setPage(1); }}
+              onChange={e => { setStatFilter(e.target.value); navigateWithFilters({ status: e.target.value, page: 1 }); }}
               className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
             >
               <option value="">ทุกสถานะ</option>
@@ -449,7 +455,7 @@ export function DocumentsClient({
             </select>
             <select
               value={vatFilter}
-              onChange={e => { setVatFilter(e.target.value); setPage(1); }}
+              onChange={e => { setVatFilter(e.target.value); navigateWithFilters({ vat: e.target.value, page: 1 }); }}
               className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 focus:outline-none focus:border-blue-400 bg-white"
             >
               <option value="">VAT: ทั้งหมด</option>
@@ -683,13 +689,13 @@ export function DocumentsClient({
         {totalPages > 0 && (
           <div className="p-4 sm:px-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
             <p className="text-[13px] text-slate-500 font-medium">
-              แสดง <span className="font-bold text-slate-700">{filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}</span> ถึง <span className="font-bold text-slate-700">{Math.min(page * PAGE_SIZE, filtered.length)}</span> จากทั้งหมด <span className="font-bold text-slate-700">{filtered.length}</span> รายการ
+              แสดง <span className="font-bold text-slate-700">{pagination.totalItems === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1}</span> ถึง <span className="font-bold text-slate-700">{Math.min(pagination.page * pagination.pageSize, pagination.totalItems)}</span> จากทั้งหมด <span className="font-bold text-slate-700">{pagination.totalItems}</span> รายการ
             </p>
             
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page <= 1}
+                onClick={() => navigateWithFilters({ page: Math.max(1, pagination.page - 1) })}
+                disabled={pagination.page <= 1}
                 className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -697,13 +703,13 @@ export function DocumentsClient({
               
               <div className="flex items-center">
                 <span className="text-[13px] font-bold text-slate-700 px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm">
-                  หน้า {page} / {totalPages}
+                   หน้า {pagination.page} / {totalPages}
                 </span>
               </div>
 
               <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
+                onClick={() => navigateWithFilters({ page: Math.min(totalPages, pagination.page + 1) })}
+                disabled={pagination.page >= totalPages}
                 className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
               >
                 <ChevronRight className="w-4 h-4" />

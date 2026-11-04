@@ -4,8 +4,31 @@ import { revalidatePath } from 'next/cache';
 import connectDB from '@/lib/mongodb';
 import { Product } from '@/models/Product';
 import { StockMovement } from '@/models/StockMovement';
+import { Brand } from '@/models/Brand';
+import { getStockMovements, MIN_STOCK, type MovementRow, type StockItem } from '@/lib/warehouse';
 
 type MoveResult = { error?: string };
+
+export async function loadWarehouseMovements(limit = 300): Promise<MovementRow[]> {
+  return getStockMovements(limit);
+}
+
+export async function searchWarehouseProducts(search = ''): Promise<StockItem[]> {
+  await connectDB();
+  const rx = search.trim() ? new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') : undefined;
+  const query = rx ? { $or: [{ brand: rx }, { model: rx }, { size: rx }] } : {};
+  const [docs, brands] = await Promise.all([
+    Product.find(query, { brand: 1, model: 1, size: 1, stock: 1, priceCash: 1, image: 1 }).sort({ brand: 1, model: 1, size: 1 }).limit(30).lean(),
+    Brand.find({}).select('name logo').lean(),
+  ]);
+  const brandMap = new Map(brands.map((b) => [String(b.name).toUpperCase(), b.logo as string]));
+  return docs.map((d) => {
+    const stock = d.stock ?? 0;
+    const item: StockItem = { id: String(d._id), label: `${d.brand ?? ''} ${d.model ?? ''} ${d.size ?? ''}`.trim(), brand: d.brand ?? '', model: d.model ?? '', size: d.size ?? '', stock, priceCash: d.priceCash ?? 0, stockValue: stock * (d.priceCash ?? 0), image: d.image ?? '/yang.png', isLow: stock < MIN_STOCK };
+    const logo = brandMap.get(item.brand.toUpperCase());
+    return logo ? { ...item, brandLogo: logo } : item;
+  });
+}
 
 async function createMovement(
   productId: string,

@@ -64,7 +64,10 @@ export async function getSupplierPartners(): Promise<UnifiedCustomerRow[]> {
   const { PurchaseOrder } = await import('@/models/PurchaseOrder');
 
   const [suppliers, poDocs] = await Promise.all([
-    Supplier.find({}).sort({ name: 1 }).lean(),
+    Supplier.find({})
+      .select('name address contact phone email taxId')
+      .sort({ name: 1 })
+      .lean(),
     PurchaseOrder.find({ status: { $ne: 'cancelled' } })
       .select('supplierId poNumber status grandTotal createdAt')
       .sort({ createdAt: -1 })

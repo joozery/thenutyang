@@ -60,4 +60,6 @@ const purchaseOrderSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+purchaseOrderSchema.index({ status: 1, paymentStatus: 1, paymentDate: 1 });
+
 export const PurchaseOrder = models.PurchaseOrder || model('PurchaseOrder', purchaseOrderSchema);

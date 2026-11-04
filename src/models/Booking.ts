@@ -80,4 +80,7 @@ const BookingSchema = new Schema<IBooking>({
   createdAt:       { type: Date, default: Date.now },
 });
 
+BookingSchema.index({ status: 1, createdAt: -1 });
+BookingSchema.index({ createdAt: -1 });
+
 export const Booking = models.Booking ?? model<IBooking>('Booking', BookingSchema);

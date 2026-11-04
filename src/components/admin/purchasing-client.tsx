@@ -590,20 +590,23 @@ function ReturnsTab({ returns, onMarkReceived }: { returns: StockReturnRow[]; on
 
 const ITEMS_PER_PAGE = 10;
 
-export function PurchasingClient({ initialOrders, initialReturns }: {
+export function PurchasingClient({ initialOrders, initialReturns, pagination, summary, initialFilters }: {
   initialOrders: PORow[];
   initialReturns: StockReturnRow[];
+  pagination: { page: number; pageSize: number; totalItems: number };
+  summary: { pending: number; received: number; totalValue: number; suppliers: number };
+  initialFilters: { search: string; status: string; dateFrom: string; dateTo: string };
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [orders, setOrders] = useState(initialOrders);
   const [returns, setReturns] = useState(initialReturns);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState(initialFilters.search);
+  const [statusFilter, setStatusFilter] = useState(initialFilters.status);
+  const [dateFrom, setDateFrom] = useState(initialFilters.dateFrom);
+  const [dateTo, setDateTo] = useState(initialFilters.dateTo);
+  const page = pagination.page;
   const [selectedOrder, setSelectedOrder] = useState<PORow | null>(null);
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PORow | null>(null);
@@ -645,15 +648,29 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
     [dateFiltered, statusFilter],
   );
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const paged = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(pagination.totalItems / pagination.pageSize));
+  const paged = orders;
 
-  const stats = useMemo(() => ({
+  const navigate = (overrides: Record<string, string | number | undefined> = {}) => {
+    const values = { page, search, status: statusFilter, dateFrom, dateTo, ...overrides };
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== '' && !(key === 'status' && value === 'ทั้งหมด')) params.set(key, String(value));
+    router.replace(`/admin/purchasing${params.toString() ? `?${params.toString()}` : ''}`);
+  };
+
+  useEffect(() => {
+    if (search === initialFilters.search) return;
+    const timer = window.setTimeout(() => navigate({ search, page: 1 }), 350);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const localStats = useMemo(() => ({
     pending:    dateFiltered.filter(o => o.status === 'รอรับสินค้า').length,
     received:   dateFiltered.filter(o => o.status === 'รับสินค้าแล้ว').length,
     totalValue: dateFiltered.filter(o => o.status !== 'ยกเลิก').reduce((s, o) => s + o.grandTotal, 0),
     suppliers:  new Set(dateFiltered.map(o => o.supplier)).size,
   }), [dateFiltered]);
+  const stats = summary;
 
   const handleReceive = (id: string) => {
     setOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'รับสินค้าแล้ว' as POStatusThai } : o));
@@ -715,8 +732,8 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
     router.refresh();
   };
 
-  const startItem = filtered.length === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
-  const endItem = Math.min(page * ITEMS_PER_PAGE, filtered.length);
+  const startItem = pagination.totalItems === 0 ? 0 : (page - 1) * pagination.pageSize + 1;
+  const endItem = Math.min(page * pagination.pageSize, pagination.totalItems);
   const pendingRefunds = returns.filter(r => r.refundStatus === 'pending' && r.refundAmount > 0).length;
 
   return (
@@ -726,7 +743,7 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900">จัดซื้อ</h1>
-            <p className="text-sm text-slate-500 mt-1">ใบสั่งซื้อทั้งหมด {orders.length} รายการ</p>
+            <p className="text-sm text-slate-500 mt-1">ใบสั่งซื้อทั้งหมด {pagination.totalItems} รายการ</p>
           </div>
           <Link href="/admin/purchasing/new" className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-colors w-fit">
             <Plus size={16} /> สร้างใบสั่งซื้อ
@@ -788,14 +805,14 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
                 <input
                   type="text"
                   value={search}
-                  onChange={e => { setSearch(e.target.value); setPage(1); }}
+                  onChange={e => setSearch(e.target.value)}
                   placeholder="ค้นหาเลขที่ PO, ซัพพลายเออร์..."
                   className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"
                 />
               </div>
               <select
                 value={statusFilter}
-                onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+                onChange={e => { setStatusFilter(e.target.value); navigate({ status: e.target.value, page: 1 }); }}
                 className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400"
               >
                 {['ทั้งหมด', 'ร่าง', 'รอรับสินค้า', 'รับสินค้าแล้ว', 'ยกเลิก'].map(t => (
@@ -803,9 +820,9 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
                 ))}
               </select>
               <div className="flex items-center gap-1.5">
-                <DatePicker value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400" />
+                <DatePicker value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); navigate({ dateFrom: e.target.value, page: 1 }); }} className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400" />
                 <span className="text-slate-400 text-sm">–</span>
-                <DatePicker value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); setPage(1); }} className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400" />
+                <DatePicker value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); navigate({ dateTo: e.target.value, page: 1 }); }} className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400" />
               </div>
             </div>
 
@@ -870,22 +887,22 @@ export function PurchasingClient({ initialOrders, initialReturns }: {
             </div>
 
             <div className="p-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-400">แสดง {startItem}–{endItem} จาก {filtered.length} รายการ</span>
+              <span className="text-xs text-slate-400">แสดง {startItem}–{endItem} จาก {pagination.totalItems} รายการ</span>
               <div className="flex gap-1">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                <button onClick={() => navigate({ page: Math.max(1, page - 1) })} disabled={page === 1}
                   className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40">
                   <ChevronLeft size={14} />
                 </button>
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                   const n = totalPages <= 5 ? i + 1 : Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
                   return (
-                    <button key={n} onClick={() => setPage(n)}
+                    <button key={n} onClick={() => navigate({ page: n })}
                       className={`w-8 h-8 rounded-lg text-sm font-medium ${n === page ? 'bg-green-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                       {n}
                     </button>
                   );
                 })}
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                <button onClick={() => navigate({ page: Math.min(totalPages, page + 1) })} disabled={page === totalPages}
                   className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40">
                   <ChevronRight size={14} />
                 </button>

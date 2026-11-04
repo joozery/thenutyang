@@ -9,7 +9,7 @@ import {
   Tag, Download, Upload, TrendingUp, ArrowUpDown
 } from 'lucide-react';
 import type { StockItem, MovementRow, WarehouseStats } from '@/lib/warehouse';
-import { receiveStock, disburseStock, adjustStock, lookupPOItems, moveStockBulk, getProductMovements } from '@/app/actions/warehouse';
+import { receiveStock, disburseStock, adjustStock, lookupPOItems, moveStockBulk, getProductMovements, searchWarehouseProducts, loadWarehouseMovements } from '@/app/actions/warehouse';
 import { DatePicker } from "@/components/ui/date-picker";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -60,8 +60,20 @@ function MoveModal({
   const [poItems, setPoItems] = useState<{ productId: string; productName: string; qty: number }[] | null>(null);
   const [poLookupPending, setPoLookupPending] = useState(false);
   const [poMsg, setPoMsg] = useState('');
+  const [remoteProducts, setRemoteProducts] = useState<StockItem[]>([]);
 
-  const stockById = useMemo(() => new Map(products.map(p => [p.id, p.stock])), [products]);
+  useEffect(() => {
+    if (type === 'adjust') return;
+    const timer = window.setTimeout(async () => {
+      const results = await searchWarehouseProducts(search);
+      setRemoteProducts(results);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [search, type]);
+
+  const availableProducts = type === 'adjust' ? products : (remoteProducts.length ? remoteProducts : products);
+
+  const stockById = useMemo(() => new Map(availableProducts.map(p => [p.id, p.stock])), [availableProducts]);
 
   const handlePullFromPO = async () => {
     if (!refNo.trim()) return;
@@ -76,18 +88,18 @@ function MoveModal({
     setPoMsg(res.skipped?.length ? `ข้าม ${res.skipped.length} รายการที่ไม่ได้ผูกสินค้า: ${res.skipped.join(', ')}` : '');
   };
 
-  const selected = products.find(p => p.id === productId);
+  const selected = availableProducts.find(p => p.id === productId);
 
   const filteredProducts = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return products;
+    if (!q) return availableProducts;
     const normalizeTire = (s: string) => s.replace(/[\/rR\s]/g, '');
     const qNorm = normalizeTire(q);
-    return products.filter(p => {
+    return availableProducts.filter(p => {
       const label = p.label.toLowerCase();
       return label.includes(q) || normalizeTire(label).includes(qNorm);
     });
-  }, [products, search]);
+  }, [availableProducts, search]);
 
   const TITLES: Record<MoveType, string> = {
     in:     'รับสินค้าเข้าคลัง',
@@ -488,43 +500,34 @@ function ProductHistoryModal({
 
 // ── Stock Table ───────────────────────────────────────────────────────────────
 
-function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdjust: (id: string) => void; onHistory: (id: string) => void }) {
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'low' | 'ok'>('all');
-  const [stockSort, setStockSort] = useState<'none' | 'desc' | 'asc'>('none');
+function StockTable({ items, pagination, initialFilters, lowCount, onAdjust, onHistory }: { items: StockItem[]; pagination: { page: number; pageSize: number; totalItems: number }; initialFilters: { search: string; filter: 'all' | 'low' | 'ok'; sort: 'none' | 'desc' | 'asc' }; lowCount: number; onAdjust: (id: string) => void; onHistory: (id: string) => void }) {
+  const router = useRouter();
+  const [search, setSearch] = useState(initialFilters.search);
+  const [filter, setFilter] = useState<'all' | 'low' | 'ok'>(initialFilters.filter);
+  const [stockSort, setStockSort] = useState<'none' | 'desc' | 'asc'>(initialFilters.sort);
+  const page = pagination.page;
+  const pageSize = pagination.pageSize;
+  const paginated = items;
+  const totalPages = Math.ceil(pagination.totalItems / pageSize) || 1;
 
-  const lowCount = items.filter(p => p.isLow).length;
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    // normalize tire size: "215/55R17", "215/55r17", "215/55/17", "2155517" → "2155517"
-    const normalizeTire = (s: string) => s.replace(/[\/rR\s]/g, '');
-    const qNorm = normalizeTire(q);
-    const base = items.filter(p => {
-      if (!q) return filter === 'all' || (filter === 'low' ? p.isLow : !p.isLow);
-      const label = p.label.toLowerCase();
-      const matchSearch =
-        label.includes(q) ||
-        p.brand.toLowerCase().includes(q) ||
-        p.model.toLowerCase().includes(q) ||
-        normalizeTire(label).includes(qNorm);
-      const matchFilter = filter === 'all' || (filter === 'low' ? p.isLow : !p.isLow);
-      return matchSearch && matchFilter;
-    });
-    if (stockSort === 'desc') return [...base].sort((a, b) => b.stock - a.stock);
-    if (stockSort === 'asc')  return [...base].sort((a, b) => a.stock - b.stock);
-    return base;
-  }, [items, search, filter, stockSort]);
-
-  const cycleStockSort = () => {
-    setStockSort(s => s === 'none' ? 'desc' : s === 'desc' ? 'asc' : 'none');
-    setPage(1);
+  const navigate = (overrides: Record<string, string | number | undefined> = {}) => {
+    const values = { page, search, filter, sort: stockSort, ...overrides };
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== '' && !(key === 'filter' && value === 'all') && !(key === 'sort' && value === 'none')) params.set(key, String(value));
+    router.replace(`/admin/warehouse${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
-  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  useEffect(() => {
+    if (search === initialFilters.search) return;
+    const timer = window.setTimeout(() => navigate({ search, page: 1 }), 350);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const cycleStockSort = () => {
+    const next = stockSort === 'none' ? 'desc' : stockSort === 'desc' ? 'asc' : 'none';
+    setStockSort(next);
+    navigate({ sort: next, page: 1 });
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -533,26 +536,26 @@ function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdju
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => setSearch(e.target.value)}
             placeholder="ค้นหาสินค้า, SKU, บาร์โค้ด..."
             className="w-full pl-10 pr-4 py-2.5 rounded-md border border-slate-200 text-[13px] text-slate-700 focus:outline-none focus:border-[#008a44] transition-colors"
           />
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar shrink-0">
           <button
-            onClick={() => { setFilter('all'); setPage(1); }}
+            onClick={() => { setFilter('all'); navigate({ filter: 'all', page: 1 }); }}
             className={`px-5 py-2.5 rounded-md text-[13px] font-bold whitespace-nowrap transition-colors ${filter === 'all' ? 'bg-[#008a44] text-white shadow-sm ' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
           >
             ทั้งหมด
           </button>
           <button
-            onClick={() => { setFilter('low'); setPage(1); }}
+            onClick={() => { setFilter('low'); navigate({ filter: 'low', page: 1 }); }}
             className={`px-4 py-2.5 rounded-md text-[13px] font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${filter === 'low' ? 'bg-[#008a44] text-white shadow-sm ' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
           >
             <span className={`text-xs ${filter === 'low' ? 'text-white/80' : 'text-slate-400'}`}>{lowCount}</span> ใกล้หมด
           </button>
           <button
-            onClick={() => { setFilter('ok'); setPage(1); }}
+            onClick={() => { setFilter('ok'); navigate({ filter: 'ok', page: 1 }); }}
             className={`px-5 py-2.5 rounded-md text-[13px] font-bold whitespace-nowrap transition-colors ${filter === 'ok' ? 'bg-[#008a44] text-white shadow-sm ' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
           >
             ปกติ
@@ -653,19 +656,19 @@ function StockTable({ items, onAdjust, onHistory }: { items: StockItem[]; onAdju
       {/* Pagination */}
       <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="text-[12px] font-medium text-slate-400">
-          แสดง {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, filtered.length)} จาก {filtered.length} รายการ
+          แสดง {pagination.totalItems === 0 ? 0 : (page - 1) * pageSize + 1}-{Math.min(page * pageSize, pagination.totalItems)} จาก {pagination.totalItems} รายการ
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&lt;</button>
+          <button onClick={() => navigate({ page: Math.max(1, page - 1) })} disabled={page === 1} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&lt;</button>
           
           <button className="w-8 h-8 flex items-center justify-center rounded-md bg-[#008a44] text-white font-bold text-[13px]">{page}</button>
-          {page < totalPages && <button onClick={() => setPage(page + 1)} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 1}</button>}
-          {page + 1 < totalPages && <button onClick={() => setPage(page + 2)} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 2}</button>}
+          {page < totalPages && <button onClick={() => navigate({ page: page + 1 })} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 1}</button>}
+          {page + 1 < totalPages && <button onClick={() => navigate({ page: page + 2 })} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{page + 2}</button>}
           
           {totalPages > 3 && page + 2 < totalPages && <span className="px-2 text-slate-400 text-xs">...</span>}
-          {totalPages > 3 && page + 2 < totalPages && <button onClick={() => setPage(totalPages)} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{totalPages}</button>}
+          {totalPages > 3 && page + 2 < totalPages && <button onClick={() => navigate({ page: totalPages })} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors text-[13px] font-semibold">{totalPages}</button>}
           
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&gt;</button>
+          <button onClick={() => navigate({ page: Math.min(totalPages, page + 1) })} disabled={page === totalPages} className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-200 text-slate-400 hover:bg-slate-50 disabled:opacity-50 transition-colors">&gt;</button>
         </div>
         <div className="flex items-center gap-2 border border-slate-200 rounded-md px-3 py-2 hover:bg-slate-50 cursor-pointer transition-colors">
           <span className="text-[12px] font-bold text-slate-500">10 / หน้า</span>
@@ -830,12 +833,18 @@ function MovementLog({ movements, onHistory }: { movements: MovementRow[]; onHis
 
 export function WarehouseClient({
   stockItems,
+  lowStockItems,
   movements,
   stats,
+  pagination,
+  initialStockFilters,
 }: {
   stockItems: StockItem[];
+  lowStockItems: StockItem[];
   movements: MovementRow[];
   stats: WarehouseStats;
+  pagination: { page: number; pageSize: number; totalItems: number };
+  initialStockFilters: { search: string; filter: 'all' | 'low' | 'ok'; sort: 'none' | 'desc' | 'asc' };
 }) {
   const router = useRouter();
   const [modal, setModal] = useState<'in' | 'out' | 'adjust' | null>(null);
@@ -843,6 +852,17 @@ export function WarehouseClient({
   const [historyProductId, setHistoryProductId] = useState<string | null>(null);
   const [tab, setTab] = useState<'stock' | 'movements'>('stock');
   const [toast, setToast] = useState('');
+  const [movementRows, setMovementRows] = useState<MovementRow[]>(movements);
+  const [movementLoaded, setMovementLoaded] = useState(false);
+  const [movementLoading, setMovementLoading] = useState(false);
+
+  useEffect(() => {
+    if (tab !== 'movements' || movementLoaded || movementLoading) return;
+    setMovementLoading(true);
+    loadWarehouseMovements(300)
+      .then(rows => { setMovementRows(rows); setMovementLoaded(true); })
+      .finally(() => setMovementLoading(false));
+  }, [tab, movementLoaded, movementLoading]);
 
   const handleAdjust = (id: string) => {
     setAdjustProductId(id);
@@ -855,7 +875,7 @@ export function WarehouseClient({
     setTimeout(() => setToast(''), 2500);
   };
 
-  const lowItems = stockItems.filter(p => p.isLow);
+  const lowItems = lowStockItems;
 
   return (
     <>
@@ -864,7 +884,7 @@ export function WarehouseClient({
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900">คลังสินค้า</h1>
-            <p className="text-sm text-slate-500 mt-1">ติดตามการเคลื่อนไหวสต๊อก · {stockItems.length} รายการ</p>
+            <p className="text-sm text-slate-500 mt-1">ติดตามการเคลื่อนไหวสต๊อก · {pagination.totalItems} รายการ</p>
           </div>
           <div className="flex gap-2 items-center">
             {toast && (
@@ -916,8 +936,8 @@ export function WarehouseClient({
             {/* Tab bar */}
             <div className="flex border-b border-slate-100 px-2 pt-2">
               {([
-                { key: 'stock',     label: `สต๊อกสินค้า (${stockItems.length})` },
-                { key: 'movements', label: `ประวัติการเคลื่อนไหว (${movements.length})` },
+                { key: 'stock',     label: `สต๊อกสินค้า (${pagination.totalItems})` },
+                { key: 'movements', label: `ประวัติการเคลื่อนไหว${movementLoaded ? ` (${movementRows.length})` : ''}` },
               ] as const).map(t => (
                 <button
                   key={t.key}
@@ -934,8 +954,10 @@ export function WarehouseClient({
             </div>
 
             {tab === 'stock'
-              ? <StockTable items={stockItems} onAdjust={handleAdjust} onHistory={setHistoryProductId} />
-              : <MovementLog movements={movements} onHistory={setHistoryProductId} />
+              ? <StockTable items={stockItems} pagination={pagination} initialFilters={initialStockFilters} lowCount={stats.lowStockCount} onAdjust={handleAdjust} onHistory={setHistoryProductId} />
+              : movementLoading
+                ? <div className="flex-1 flex items-center justify-center text-sm text-slate-400">กำลังโหลดประวัติ...</div>
+                : <MovementLog movements={movementRows} onHistory={setHistoryProductId} />
             }
           </div>
 

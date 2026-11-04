@@ -63,6 +63,23 @@ export type SupplierRow = {
   taxId:   string;
 };
 
+export type PurchaseListOptions = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
+export type PurchaseListResult = {
+  orders: PORow[];
+  totalItems: number;
+  page: number;
+  pageSize: number;
+  summary: { pending: number; received: number; totalValue: number; suppliers: number };
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeDoc(d: any): PORow {
   const snap = d.supplierSnapshot ?? {};
@@ -127,6 +144,72 @@ export async function getPurchaseOrders(): Promise<PORow[]> {
   await connectDB();
   const docs = await PurchaseOrder.find().sort({ createdAt: -1 }).lean();
   return attachRefDocs(docs.map(normalizeDoc));
+}
+
+export async function getPurchaseOrdersPage(options: PurchaseListOptions = {}): Promise<PurchaseListResult> {
+  await connectDB();
+  const pageSize = Math.max(1, Math.min(options.pageSize ?? 10, 50));
+  const requestedPage = Math.max(1, options.page ?? 1);
+  const query: Record<string, unknown> = {};
+  const conditions: Record<string, unknown>[] = [];
+  const search = options.search?.trim();
+
+  if (search) {
+    const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const amount = Number(search.replace(/[,฿\s]/g, ''));
+    const searchFields: Record<string, unknown>[] = [
+      { poNumber: rx },
+      { 'supplierSnapshot.name': rx },
+      { reference: rx },
+    ];
+    if (Number.isFinite(amount)) searchFields.push({ grandTotal: amount });
+    conditions.push({ $or: searchFields });
+  }
+  const date: Record<string, Date> = {};
+  if (options.dateFrom) date.$gte = new Date(`${options.dateFrom}T00:00:00`);
+  if (options.dateTo) date.$lte = new Date(`${options.dateTo}T23:59:59.999`);
+  if (Object.keys(date).length) query.createdAt = date;
+  if (options.status && options.status !== 'ทั้งหมด') {
+    const rawStatus = Object.entries(STATUS_MAP).find(([, label]) => label === options.status)?.[0];
+    if (rawStatus) query.status = rawStatus;
+  }
+  if (conditions.length) query.$and = conditions;
+
+  const projection = 'poNumber poType supplierSnapshot reference dueDate items paymentTerm paymentMethod notes subtotal totalDiscount vat grandTotal vatType paymentStatus amountPaid paymentDate status createdAt';
+  const [totalItems, docs, aggregate] = await Promise.all([
+    PurchaseOrder.countDocuments(query),
+    PurchaseOrder.find(query).select(projection).sort({ createdAt: -1 }).skip((requestedPage - 1) * pageSize).limit(pageSize).lean(),
+    PurchaseOrder.aggregate([
+      { $match: query },
+      { $group: {
+        _id: null,
+        pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+        received: { $sum: { $cond: [{ $eq: ['$status', 'received'] }, 1, 0] } },
+        totalValue: { $sum: { $cond: [{ $ne: ['$status', 'cancelled'] }, { $ifNull: ['$grandTotal', 0] }, 0] } },
+        suppliers: { $addToSet: '$supplierSnapshot.name' },
+      } },
+    ]),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const pageDocs = page === requestedPage
+    ? docs
+    : await PurchaseOrder.find(query).select(projection).sort({ createdAt: -1 }).skip((page - 1) * pageSize).limit(pageSize).lean();
+  const rows = await attachRefDocs(pageDocs.map(normalizeDoc));
+  const summary = aggregate[0] ?? {};
+  return {
+    orders: rows,
+    totalItems,
+    page,
+    pageSize,
+    summary: {
+      pending: summary.pending ?? 0,
+      received: summary.received ?? 0,
+      totalValue: summary.totalValue ?? 0,
+      suppliers: Array.isArray(summary.suppliers) ? summary.suppliers.filter(Boolean).length : 0,
+    },
+  };
 }
 
 export async function getPurchaseOrderById(id: string): Promise<PORow | null> {

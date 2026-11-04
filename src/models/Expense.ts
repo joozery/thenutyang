@@ -18,4 +18,6 @@ const ExpenseSchema = new Schema<IExpense>({
   createdAt:   { type: Date, default: Date.now },
 });
 
+ExpenseSchema.index({ expenseDate: 1, category: 1 });
+
 export const Expense = models.Expense ?? model<IExpense>('Expense', ExpenseSchema);

@@ -1,8 +1,5 @@
-import { getCustomers, mergeCustomerSources } from '@/lib/customers';
-import { getCustomerDirectory } from '@/lib/customer-directory';
-import { getAllProductsAdmin } from '@/lib/products';
-import { getServiceItems } from '@/lib/service-items';
 import { getDocumentById } from '@/lib/documents';
+import { getServiceItems } from '@/lib/service-items';
 import type { DocType } from '@/lib/documents';
 import { getActiveEmployees } from '@/lib/employees';
 import { getCarBrands, getCarModels } from '@/app/actions/car-data';
@@ -27,18 +24,13 @@ export default async function NewDocumentPage({
 }) {
   const { from, type, deposit } = await searchParams;
 
-  const [bookingCustomers, directoryCustomers, products, serviceItems, sourceDoc, employees, carBrands, carModels] = await Promise.all([
-    getCustomers(),
-    getCustomerDirectory(),
-    getAllProductsAdmin(),
-    getServiceItems(),
+  const [sourceDoc, serviceItems, employees, carBrands, carModels] = await Promise.all([
     from ? getDocumentById(from) : Promise.resolve(null),
+    getServiceItems(),
     getActiveEmployees(),
     getCarBrands(),
     getCarModels(),
   ]);
-  const customers = mergeCustomerSources(bookingCustomers, directoryCustomers);
-
   let prefill: DocPrefill | undefined;
   if (sourceDoc) {
     const lineDiscTotal = sourceDoc.items.reduce((sum, i) => {
@@ -97,5 +89,5 @@ export default async function NewDocumentPage({
     }
   }
 
-  return <NewDocumentClient customers={customers} products={products} serviceItems={serviceItems} employees={employees} prefill={prefill} carBrands={carBrands} carModels={carModels} />;
+  return <NewDocumentClient customers={[]} products={[]} serviceItems={serviceItems} employees={employees} prefill={prefill} carBrands={carBrands} carModels={carModels} />;
 }

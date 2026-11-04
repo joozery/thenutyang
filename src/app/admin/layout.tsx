@@ -15,7 +15,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // Fetch real user data
   await connectDB();
-  const user = await AdminUser.findOne({ username: session.username }).lean();
+  const user = await AdminUser.findOne({ username: session.username })
+    .select('displayName username role avatar')
+    .lean();
 
   const adminUser = user ? {
     displayName: user.displayName,

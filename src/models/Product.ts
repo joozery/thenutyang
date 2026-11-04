@@ -58,4 +58,10 @@ const ProductSchema = new Schema<IProduct>({
   createdAt: { type: Date, default: Date.now },
 });
 
+ProductSchema.index({ productType: 1, brand: 1, size: 1, model: 1 });
+ProductSchema.index({ productType: 1, category: 1 });
+ProductSchema.index({ productType: 1, size: 1 });
+ProductSchema.index({ brand: 1, model: 1, size: 1 });
+ProductSchema.index({ stock: 1, brand: 1 });
+
 export const Product = models.Product ?? model<IProduct>('Product', ProductSchema);

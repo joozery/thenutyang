@@ -41,5 +41,6 @@ const payslipSchema = new Schema({
 });
 
 payslipSchema.index({ employeeId: 1, period: 1 }, { unique: true });
+payslipSchema.index({ status: 1, paidAt: 1 });
 
 export const Payslip = models.Payslip || model('Payslip', payslipSchema);

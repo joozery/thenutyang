@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 
 export function PickerModal<T>({
-  title, placeholder, items, filterFn, renderItem, onSelect, onClose, footer,
+  title, placeholder, items, filterFn, renderItem, onSelect, onClose, footer, remoteSearch,
 }: {
   title: string;
   placeholder: string;
@@ -14,12 +14,25 @@ export function PickerModal<T>({
   onSelect: (item: T) => void;
   onClose: () => void;
   footer?: React.ReactNode;
+  remoteSearch?: (query: string, page: number) => Promise<T[]>;
 }) {
   const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [remoteItems, setRemoteItems] = useState<T[]>(items);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!remoteSearch) return;
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      remoteSearch(query, page).then(setRemoteItems).finally(() => setLoading(false));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [query, page, remoteSearch]);
   const filtered = useMemo(() => {
+    if (remoteSearch) return remoteItems;
     const q = query.trim().toLowerCase();
     return (q ? items.filter((i) => filterFn(i, q)) : items).slice(0, 200);
-  }, [items, query, filterFn]);
+  }, [items, remoteItems, remoteSearch, query, filterFn]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -35,14 +48,16 @@ export function PickerModal<T>({
             <input
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); setPage(1); }}
               placeholder={placeholder}
               className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-500/10"
             />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="py-12 text-center text-slate-400 text-sm">กำลังค้นหา...</div>
+          ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-slate-400 text-sm">ไม่พบข้อมูล</div>
           ) : (
             filtered.map((item, idx) => (
@@ -55,6 +70,13 @@ export function PickerModal<T>({
             ))
           )}
         </div>
+        {remoteSearch && (
+          <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2 text-xs text-slate-500">
+            <button type="button" disabled={page === 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-3 py-1 rounded border disabled:opacity-40">ก่อนหน้า</button>
+            <span>หน้า {page}</span>
+            <button type="button" disabled={filtered.length < 20 || loading} onClick={() => setPage((p) => p + 1)} className="px-3 py-1 rounded border disabled:opacity-40">ถัดไป</button>
+          </div>
+        )}
         {footer && <div className="border-t border-slate-100 p-3 shrink-0">{footer}</div>}
       </div>
     </div>

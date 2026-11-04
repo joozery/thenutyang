@@ -4,8 +4,7 @@ import { Search, Menu, Truck, ShieldCheck, CreditCard, Phone, LogOut } from "luc
 import { cookies } from "next/headers";
 import { verifyCustomerToken, CUSTOMER_COOKIE } from "@/lib/customer-session";
 import { logoutCustomer } from "@/app/actions/customer-auth";
-import connectDB from "@/lib/mongodb";
-import ContactSettings from "@/models/ContactSettings";
+import { getContactSettings } from "@/lib/contact-settings";
 
 import { MobileMenu } from "./mobile-menu";
 import { CartBadge } from "./cart-badge";
@@ -16,8 +15,7 @@ export async function Header() {
   const token = jar.get(CUSTOMER_COOKIE)?.value;
   const customer = token ? await verifyCustomerToken(token) : null;
 
-  await connectDB();
-  const settings = await ContactSettings.findOne() || {
+  const settings = await getContactSettings() || {
     phoneMain: '099-999-9999',
     workingDays: 'จันทร์ - อาทิตย์',
     workingHours: '08:00 - 18:00 น.'
