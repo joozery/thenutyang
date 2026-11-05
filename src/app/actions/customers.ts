@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { invalidateCustomerListCache } from '@/lib/customer-list';
 import connectDB from '@/lib/mongodb';
 import { Customer } from '@/models/Customer';
 
@@ -183,6 +184,7 @@ export async function createCustomer(
              }
            }
            
+           invalidateCustomerListCache();
            revalidatePath('/admin/customers');
            
            // คำนวณชื่อที่จะส่งกลับไปอัปเดตหน้า UI
@@ -216,6 +218,7 @@ export async function createCustomer(
     if (plateError) return { error: plateError };
 
     const doc = await Customer.create({ ...input, source: 'walkin' });
+    invalidateCustomerListCache();
     revalidatePath('/admin/customers');
     const name = input.customerType === 'corporate' && input.companyName.trim()
       ? input.companyName.trim()
@@ -288,6 +291,7 @@ export async function updateCustomer(id: string, input: CustomerFormInput): Prom
       revalidatePath('/admin/documents');
     }
 
+    invalidateCustomerListCache();
     revalidatePath('/admin/customers');
     return { ok: true };
   } catch (err) {
@@ -329,6 +333,7 @@ export async function upsertCustomerFromBooking(input: {
       },
       { upsert: true },
     );
+    invalidateCustomerListCache();
     revalidatePath('/admin/customers');
   } catch (err) {
     console.error('[upsertCustomerFromBooking]', err);
@@ -354,6 +359,7 @@ export async function addVehicleToCustomer(
         await Customer.findByIdAndUpdate(customerId, {
           $set: { [`vehicles.${idx}`]: vehicle, updatedAt: new Date() },
         });
+        invalidateCustomerListCache();
         revalidatePath('/admin/customers');
         return { ok: true, updated: true };
       }
@@ -367,6 +373,7 @@ export async function addVehicleToCustomer(
       $push: { vehicles: vehicle },
       $set:  { updatedAt: new Date() },
     });
+    invalidateCustomerListCache();
     revalidatePath('/admin/customers');
     return { ok: true };
   } catch (err) {
@@ -379,6 +386,7 @@ export async function deleteCustomer(id: string): Promise<ActionResult> {
   try {
     await connectDB();
     await Customer.findByIdAndDelete(id);
+    invalidateCustomerListCache();
     revalidatePath('/admin/customers');
     return { ok: true };
   } catch (err) {

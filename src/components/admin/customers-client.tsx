@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   Search, Phone, FileText, ChevronLeft, ChevronRight, Crown, UserCheck, Sparkles,
   Download, Filter, Plus, X, Pencil, Trash2, Building2, Mail, MapPin, Hash, Car, Gauge, ChevronDown, Check, Handshake,
 } from 'lucide-react';
 import type { UnifiedCustomerRow } from '@/lib/customers';
+import type { CustomerListResult } from '@/lib/customer-list';
 import { createCustomer, updateCustomer, deleteCustomer, type CustomerFormInput, type ExistingCustomerMatch, type VehicleEntry } from '@/app/actions/customers';
 import { updateSupplier } from '@/app/actions/suppliers';
 import { createCarBrand, createCarModel } from '@/app/actions/car-data';
@@ -30,7 +31,6 @@ function formatLastVisit(iso: string): string {
   return `${Math.floor(days / 365)} ปีที่แล้ว`;
 }
 
-const PAGE_SIZE = 15;
 
 const TAG_STYLE: Record<string, string> = {
   VIP:  'bg-amber-100/50 text-amber-700 border-amber-200',
@@ -619,12 +619,18 @@ function SupplierEditModal({ row, onClose, onSaved }: {
   );
 }
 
-export function CustomersClient({ customers, carBrands = [], carModels = [] }: { customers: UnifiedCustomerRow[]; carBrands?: CarBrandRow[]; carModels?: CarModelRow[] }) {
-  const [search, setSearch]       = useState('');
-  const [tagFilter, setTagFilter] = useState('ทั้งหมด');
-  const [sourceFilter, setSourceFilter] = useState('ทั้งหมด');
-  const [relationFilter, setRelationFilter] = useState('ทั้งหมด');
-  const [page, setPage]           = useState(1);
+export function CustomersClient({ list, filters, carBrands = [], carModels = [] }: {
+  list: CustomerListResult;
+  filters: { q: string; tag: string; source: string; relation: string };
+  carBrands?: CarBrandRow[];
+  carModels?: CarModelRow[];
+}) {
+  // ตัวกรอง/หน้าอยู่ใน URL — server กรองและส่งมาเฉพาะแถวของหน้านี้ (ไม่ส่งลูกค้าทั้งหมดมาที่เบราว์เซอร์)
+  const [search, setSearch]       = useState(filters.q);
+  const tagFilter      = filters.tag;
+  const sourceFilter   = filters.source;
+  const relationFilter = filters.relation;
+  const page           = list.page;
   const [modal, setModal]         = useState<'add' | EditableCustomer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<EditableCustomer | null>(null);
   // popup รายการใบสั่งซื้อ (PO) ของคู่ค้า
@@ -632,50 +638,38 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
   // แก้ไขคู่ค้าที่มาจากหน้าจัดซื้อ (ข้อมูล Supplier ตัวจริง)
   const [supplierEditTarget, setSupplierEditTarget] = useState<UnifiedCustomerRow | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isNavigating, startNavigation] = useTransition();
   const router = useRouter();
+  const pathname = usePathname();
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return customers.filter(c => {
-      let matchSearch = true;
-      if (q) {
-        const plates  = c.vehicles.map(v => v.licensePlate.toLowerCase()).join(' ');
-        const brands  = c.vehicles.map(v => v.carBrand.toLowerCase()).join(' ');
-        const models  = c.vehicles.map(v => v.carModel.toLowerCase()).join(' ');
-        const carInfo = (c.carInfo ?? '').toLowerCase();
-        matchSearch =
-          c.name.toLowerCase().includes(q) ||
-          c.phone.includes(q) ||
-          plates.includes(q) ||
-          brands.includes(q) ||
-          models.includes(q) ||
-          carInfo.includes(q) ||
-          (c.address ?? '').toLowerCase().includes(q) ||
-          (c.taxId ?? '').includes(q) ||
-          (c.companyName ?? '').toLowerCase().includes(q) ||
-          (c.searchKeywords ?? []).some(k => k.toLowerCase().includes(q));
-      }
-      const matchTag    = tagFilter === 'ทั้งหมด' || c.tag === tagFilter;
-      const matchSource = sourceFilter === 'ทั้งหมด'
-        || (sourceFilter === 'ออนไลน์' && c.source === 'online')
-        || (sourceFilter === 'หน้าร้าน' && c.source === 'walkin');
-      const matchRelation = relationFilter === 'ทั้งหมด'
-        || (relationFilter === 'ลูกค้า' && c.relationType !== 'partner')
-        || (relationFilter === 'คู่ค้า' && (c.relationType === 'partner' || !!c.supplierId));
-      return matchSearch && matchTag && matchSource && matchRelation;
-    });
-  }, [customers, search, tagFilter, sourceFilter, relationFilter]);
+  function navigate(next: Partial<{ q: string; tag: string; source: string; relation: string; page: number }>) {
+    const merged = { q: search, tag: tagFilter, source: sourceFilter, relation: relationFilter, page: 1, ...next };
+    const params = new URLSearchParams();
+    if (merged.q.trim()) params.set('q', merged.q.trim());
+    if (merged.tag !== 'ทั้งหมด') params.set('tag', merged.tag);
+    if (merged.source !== 'ทั้งหมด') params.set('source', merged.source);
+    if (merged.relation !== 'ทั้งหมด') params.set('relation', merged.relation);
+    if (merged.page > 1) params.set('page', String(merged.page));
+    const qs = params.toString();
+    startNavigation(() => router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false }));
+  }
+  const setPage = (n: number | ((p: number) => number)) => navigate({ page: typeof n === 'function' ? n(page) : n });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // ค้นหาแบบหน่วงเวลา — ไม่ยิง server ทุกตัวอักษร
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    if (search === filters.q) return;
+    const timer = window.setTimeout(() => navigate({ q: search, page: 1 }), 300);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
-  const vipCount   = customers.filter(c => c.tag === 'VIP').length;
-  const newCount   = customers.filter(c => c.tag === 'ใหม่').length;
-  // แยกยอดลูกค้า (เงินเข้า — ยอดขาย) ออกจากคู่ค้า (เงินออก — ยอดสั่งซื้อ) ไม่เอามาบวกรวมกัน
-  const customerRows  = customers.filter(c => c.relationType !== 'partner');
-  const partnerRows   = customers.filter(c => c.relationType === 'partner');
-  const customerSpent = customerRows.reduce((s, c) => s + c.totalSpent, 0);
-  const partnerSpent  = partnerRows.reduce((s, c) => s + c.totalSpent, 0);
+  const paginated  = list.rows;
+  const totalItems = list.totalItems;
+  const totalPages = list.totalPages;
+  const PAGE_SIZE  = list.pageSize;
+  const { vipCount, newCount, customerSpent, partnerSpent } = list.stats;
 
   function handleDelete() {
     if (!deleteTarget) return;
@@ -693,7 +687,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">ลูกค้า / คู่ค้า</h1>
           <p className="text-slate-500 mt-2 flex items-center gap-2">
-            จัดการและดูข้อมูลลูกค้าและคู่ค้าของคุณ <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span> {customers.length} รายการ
+            จัดการและดูข้อมูลลูกค้าและคู่ค้าของคุณ <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span> {list.stats.total.toLocaleString()} รายการ
           </p>
         </div>
         <div className="flex gap-3">
@@ -717,7 +711,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
             <p className="text-2xl font-black drop-shadow-sm tracking-tight">฿{customerSpent.toLocaleString()}</p>
             <div className="mt-3 flex items-center justify-between gap-2 text-[10px]">
               <span className="inline-flex items-center gap-1.5 bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
-                ลูกค้า {customerRows.length.toLocaleString()} ราย
+                ลูกค้า {list.stats.customerCount.toLocaleString()} ราย
               </span>
               <span className="inline-flex items-center gap-1 bg-black/15 px-2 py-0.5 rounded-full backdrop-blur-sm" title="ยอดสั่งซื้อจากซัพพลายเออร์ — เงินออก ไม่ถูกนำมารวมกับยอดขาย">
                 <Handshake size={9} /> ยอดซื้อคู่ค้า ฿{partnerSpent.toLocaleString()}
@@ -727,7 +721,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
         </div>
 
         {[
-          { label: 'ลูกค้าทั้งหมด', value: customerRows.length.toString(), sub: `คู่ค้า ${partnerRows.length} ราย`, icon: <UserCheck className="w-5 h-5 text-blue-500" />, bg: 'bg-blue-50' },
+          { label: 'ลูกค้าทั้งหมด', value: list.stats.customerCount.toString(), sub: `คู่ค้า ${list.stats.partnerCount} ราย`, icon: <UserCheck className="w-5 h-5 text-blue-500" />, bg: 'bg-blue-50' },
           { label: 'ลูกค้า VIP',    value: vipCount.toString(),         sub: 'ยอดซื้อ ≥ 50,000', icon: <Crown className="w-5 h-5 text-amber-500" />, bg: 'bg-amber-50' },
           { label: 'ลูกค้าใหม่ (เดือนนี้)', value: newCount.toString(),  sub: 'จองครั้งแรก', icon: <Sparkles className="w-5 h-5 text-green-500" />, bg: 'bg-green-50' },
         ].map(s => (
@@ -756,7 +750,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
               type="text"
               placeholder="ค้นหาชื่อ, เบอร์โทรศัพท์..."
               value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={e => setSearch(e.target.value)}
               className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all shadow-sm"
             />
           </div>
@@ -765,7 +759,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
               <Filter size={14} className="text-slate-400" />
               <select
                 value={relationFilter}
-                onChange={e => { setRelationFilter(e.target.value); setPage(1); }}
+                onChange={e => navigate({ relation: e.target.value })}
                 className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer"
               >
                 {['ทั้งหมด', 'ลูกค้า', 'คู่ค้า'].map(t => <option key={t} value={t}>ประเภท: {t}</option>)}
@@ -775,7 +769,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
               <Filter size={14} className="text-slate-400" />
               <select
                 value={sourceFilter}
-                onChange={e => { setSourceFilter(e.target.value); setPage(1); }}
+                onChange={e => navigate({ source: e.target.value })}
                 className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer"
               >
                 {['ทั้งหมด', 'ออนไลน์', 'หน้าร้าน'].map(t => <option key={t} value={t}>ที่มา: {t}</option>)}
@@ -785,7 +779,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
               <Filter size={14} className="text-slate-400" />
               <select
                 value={tagFilter}
-                onChange={e => { setTagFilter(e.target.value); setPage(1); }}
+                onChange={e => navigate({ tag: e.target.value })}
                 className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer"
               >
                 {['ทั้งหมด', 'VIP', 'ปกติ', 'ใหม่'].map(t => <option key={t} value={t}>สถานะ: {t}</option>)}
@@ -809,7 +803,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
                 <th className="px-4 py-3 w-20"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className={`divide-y divide-slate-100 transition-opacity ${isNavigating ? 'opacity-50' : ''}`}>
               {paginated.length === 0 ? (
                 <tr><td colSpan={8} className="py-16 text-center text-slate-400 text-sm font-medium">ไม่พบข้อมูลลูกค้าที่คุณค้นหา</td></tr>
               ) : paginated.map((c, i) => (
@@ -925,7 +919,7 @@ export function CustomersClient({ customers, carBrands = [], carModels = [] }: {
         {/* Pagination */}
         <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
           <span className="text-sm font-medium text-slate-500">
-            แสดง <span className="text-slate-900 font-bold">{filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}</span> จากทั้งหมด <span className="text-slate-900 font-bold">{filtered.length}</span> รายการ
+            แสดง <span className="text-slate-900 font-bold">{totalItems === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalItems)}</span> จากทั้งหมด <span className="text-slate-900 font-bold">{totalItems}</span> รายการ
           </span>
           <div className="flex gap-1.5">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { invalidateCustomerListCache } from '@/lib/customer-list';
 import connectDB from '@/lib/mongodb';
 import { Supplier } from '@/models/Supplier';
 
@@ -44,6 +45,7 @@ export async function updateSupplier(
     await connectDB();
     await Supplier.findByIdAndUpdate(id, input);
     revalidatePath('/admin/purchasing');
+    invalidateCustomerListCache();
     revalidatePath('/admin/customers');
     return {};
   } catch (e) {
