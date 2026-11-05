@@ -69,7 +69,7 @@ export function fmtMoney(n: number) {
 export function StatusBadge({ status }: { status: string }) {
   const st = STATUS_STYLE[status] || { label: status, className: 'bg-slate-50 text-slate-500 border-slate-200/50', dot: 'bg-slate-400' };
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold px-3 py-1.5 rounded-full border ${st.className}`}>
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-bold px-3 py-1.5 rounded-full border ${st.className}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`}></span>
       {STATUS_LABEL[status] ?? status}
     </span>

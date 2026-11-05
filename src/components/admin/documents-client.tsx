@@ -4,11 +4,9 @@ import { useState, useEffect, useTransition, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Search, Plus, FileText, Download, Eye, Clock, CheckCircle,
-  XCircle, MoreHorizontal, ChevronLeft, ChevronRight,
-  Import, X, Printer, CreditCard, Banknote, ArrowRightLeft,
-  AlertCircle, FileEdit, LayoutGrid, Calendar, Phone, Car, Tag,
-  Receipt, FileMinus, FileClock, Wallet, History, TrendingUp, ArrowRight, Settings, Wrench, Pencil, BookMarked,
+  Search, Plus, FileText, Download, Eye, Clock, ChevronLeft, ChevronRight,
+  Import, Printer, AlertCircle, LayoutGrid, Phone, Car,
+  FileClock, Wallet, TrendingUp, ArrowRight, Settings, Wrench, Pencil,
 } from 'lucide-react';
 import type { DocRow, DocStats, PaymentMethod } from '@/lib/documents';
 import { isDocEditable } from '@/lib/doc-editable';
@@ -17,9 +15,8 @@ import type { ProductCostRow } from '@/lib/products';
 import { updateDocStatus, importFromBookings, deleteDocument, recordPartialPayment, updateDocCost, getDocumentsForExport, loadDocumentOverview } from '@/app/actions/documents';
 import { DatePicker } from "@/components/ui/date-picker";
 
-import { TYPE_LABEL, TYPE_STYLE, STATUS_LABEL, STATUS_STYLE, PAYMENT_LABEL, fmtDate, fmtMoney, StatusBadge } from './documents/shared';
+import { TYPE_LABEL, TYPE_STYLE, STATUS_LABEL, fmtDate, fmtMoney, StatusBadge } from './documents/shared';
 
-import { RecordPaymentForm } from './documents/RecordPaymentForm';
 
 // ── ViewModal ─────────────────────────────────────────────────────────────────
 import { ViewModal } from './documents/ViewModal';
@@ -27,6 +24,7 @@ import { ViewModal } from './documents/ViewModal';
 // ── ImportResultToast ─────────────────────────────────────────────────────────
 
 import { Toast } from './documents/Toast';
+import { RowMenu } from './documents/RowMenu';
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function DocumentsClient({
@@ -126,7 +124,6 @@ export function DocumentsClient({
     setTimeout(() => setToast(null), 4000);
   };
 
-  const filtered = docs;
   const paginated = docs;
   const totalPages = Math.max(1, Math.ceil(pagination.totalItems / pagination.pageSize));
 
@@ -255,6 +252,100 @@ export function DocumentsClient({
     }
   };
 
+  // ── ค่าที่คำนวณต่อแถว (ใช้ทั้งตารางและการ์ดบนมือถือ) ──
+  const rows = paginated.map((d) => {
+    const rowCost = d.type === 'invoice'
+      ? (d.costPrice != null
+        ? d.costPrice
+        : d.items.reduce((sum, item) => sum + (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty, 0))
+      : null;
+    const rowProfit = rowCost !== null ? d.grandTotal - rowCost : null;
+    const margin = rowProfit !== null && d.grandTotal > 0 ? (rowProfit / d.grandTotal) * 100 : null;
+    const bs = d.bookingRef ? bookingStatusMap[d.bookingRef] : undefined;
+    const bookingBadge = bs
+      ? bs.balanceStatus === 'paid'
+        ? { label: 'จ่ายครบแล้ว', cls: 'bg-emerald-50 text-emerald-600' }
+        : bs.depositStatus === 'verified'
+        ? { label: `มัดจำแล้ว ฿${bs.depositAmount.toLocaleString()}`, cls: 'bg-emerald-50 text-emerald-600' }
+        : bs.depositStatus === 'submitted'
+        ? { label: 'รอตรวจสอบมัดจำ', cls: 'bg-amber-50 text-amber-600' }
+        : bs.depositStatus === 'not_required'
+        ? null
+        : { label: 'ยังไม่มัดจำ', cls: 'bg-slate-100 text-slate-500' }
+      : d.source === 'booking'
+      ? { label: 'BOOKING', cls: 'bg-indigo-50 text-indigo-500' }
+      : null;
+    return { d, rowCost, rowProfit, margin, bookingBadge };
+  });
+
+  // เลขหน้า: 1 … (p-1) p (p+1) … last
+  const pageNumbers: (number | null)[] = (() => {
+    const cur = pagination.page;
+    const set = new Set([1, totalPages, cur - 1, cur, cur + 1].filter((n) => n >= 1 && n <= totalPages));
+    const sorted = [...set].sort((x, y) => x - y);
+    const out: (number | null)[] = [];
+    sorted.forEach((n, i) => { if (i > 0 && n - sorted[i - 1] > 1) out.push(null); out.push(n); });
+    return out;
+  })();
+
+  const emptyState = (
+    <div className="px-6 py-20 text-center">
+      <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <FileText className="w-8 h-8 text-slate-300" />
+      </div>
+      <p className="text-slate-700 font-bold mb-1">ไม่พบเอกสาร</p>
+      <p className="text-slate-400 text-sm">ลองเปลี่ยนเงื่อนไขการค้นหาใหม่</p>
+    </div>
+  );
+
+  // ต้นทุน — คลิกเพื่อกรอกเอง (ราคายางเปลี่ยนได้)
+  const renderCostCell = (id: string, rowCost: number | null) => {
+    if (rowCost === null) return <span className="text-sm text-slate-300">—</span>;
+    if (editingCostId === id) {
+      return (
+        <input
+          type="number" min={0} step="any" autoFocus
+          value={costDraft}
+          onChange={e => setCostDraft(e.target.value)}
+          onBlur={() => handleSaveCost(id, rowCost)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') handleSaveCost(id, rowCost);
+            if (e.key === 'Escape') setEditingCostId(null);
+          }}
+          className="w-28 px-2 py-1 text-sm text-right font-semibold tabular-nums border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+        />
+      );
+    }
+    return (
+      <button
+        onClick={() => { setEditingCostId(id); setCostDraft(rowCost > 0 ? String(rowCost) : ''); }}
+        title="คลิกเพื่อกรอกต้นทุนเอง"
+        className="inline-flex items-center gap-1.5 text-sm font-medium tabular-nums text-slate-500 hover:text-blue-600 rounded px-1 -mx-1 hover:bg-blue-50 group/cost whitespace-nowrap"
+      >
+        ฿{fmtMoney(rowCost)}
+        <Pencil size={11} className="text-slate-300 group-hover/cost:text-blue-500" />
+      </button>
+    );
+  };
+
+  const iconBtn = 'p-2 rounded-lg text-slate-400 transition-colors';
+  const renderRowActions = (d: DocRow) => (
+    <div className="flex items-center justify-end gap-0.5">
+      <button onClick={() => setViewDoc(d)} title="ดูรายละเอียด" className={`${iconBtn} hover:bg-blue-50 hover:text-blue-600`}>
+        <Eye size={16} />
+      </button>
+      {isDocEditable(d.type, d.status) && (
+        <Link href={`/admin/documents/${d.id}/edit`} title="แก้ไขเอกสาร" className={`${iconBtn} hover:bg-amber-50 hover:text-amber-600`}>
+          <Pencil size={16} />
+        </Link>
+      )}
+      <button onClick={() => handleDirectPrint(d.id)} title="พิมพ์เอกสาร" className={`${iconBtn} hover:bg-emerald-50 hover:text-emerald-600`}>
+        <Printer size={16} />
+      </button>
+      <RowMenu doc={d} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+    </div>
+  );
+
   return (
     <div className="w-full space-y-6">
       {/* Header Section */}
@@ -272,7 +363,7 @@ export function DocumentsClient({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-2.5">
             <LayoutGrid className="w-4 h-4 text-slate-500" />
-            <span className="text-[13px] font-bold text-slate-600">ทั้งหมด <span className="text-blue-600 font-black ml-1">{docs.length}</span> <span className="font-medium text-slate-500">ฉบับ</span></span>
+            <span className="text-[13px] font-bold text-slate-600">ทั้งหมด <span className="text-blue-600 font-black ml-1">{pagination.totalItems.toLocaleString()}</span> <span className="font-medium text-slate-500">ฉบับ</span></span>
           </div>
           <Link
             href="/admin/documents/settings"
@@ -465,258 +556,160 @@ export function DocumentsClient({
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto pb-32 min-h-[300px]">
-          <table className="w-full min-w-[960px] text-left border-collapse whitespace-nowrap md:whitespace-normal table-fixed">
-            <colgroup>
-              <col className="w-[21%]" />
-              <col className="w-[18%]" />
-              <col className="w-[11%]" />
-              <col className="w-[12%]" />
-              <col className="w-[12%]" />
-              <col className="w-[13%]" />
-              <col className="w-[13%]" />
-            </colgroup>
+        {/* Table (desktop) */}
+        <div className={isPending ? 'hidden md:block overflow-x-auto transition-opacity opacity-60' : 'hidden md:block overflow-x-auto transition-opacity'}>
+          <table className="w-full min-w-[980px] text-left border-collapse">
             <thead>
-              <tr className="bg-white border-b border-slate-100">
-                <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">เอกสาร</th>
-                <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">ลูกค้า</th>
-                <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell text-right">ยอดเงิน</th>
-                <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell text-right">ต้นทุน</th>
-                <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden md:table-cell text-right">กำไร</th>
-                <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">สถานะ</th>
-                <th className="px-5 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">จัดการ</th>
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                <th className="pl-5 pr-3 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-[112px]">วันที่</th>
+                <th className="px-3 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">เลขที่เอกสาร</th>
+                <th className="px-3 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">ลูกค้า</th>
+                <th className="px-3 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right w-[130px]">ยอดเงิน</th>
+                <th className="px-3 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right w-[130px]">ต้นทุน</th>
+                <th className="px-3 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right w-[130px]">กำไร</th>
+                <th className="px-3 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center w-[140px]">สถานะ</th>
+                <th className="pl-3 pr-5 py-3 w-[150px] text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
-              {paginated.length === 0 ? (
+            <tbody className="divide-y divide-slate-100">
+              {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-24 text-center">
-                    <div className="w-20 h-20 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm">
-                      <FileText className="w-10 h-10 text-slate-300" />
-                    </div>
-                    <p className="text-slate-600 font-bold text-lg mb-1">ไม่พบเอกสาร</p>
-                    <p className="text-slate-400 text-sm">ลองเปลี่ยนเงื่อนไขการค้นหาใหม่</p>
-                  </td>
+                  <td colSpan={8}>{emptyState}</td>
                 </tr>
-              ) : paginated.map(d => {
-                const rowCost = d.type === 'invoice'
-                  ? (d.costPrice != null
-                    ? d.costPrice
-                    : d.items.reduce((sum, item) => sum + (costMap.get(item.description.trim().toLowerCase()) ?? 0) * item.qty, 0))
-                  : null;
-                const rowProfit = rowCost !== null ? d.grandTotal - rowCost : null;
-                const bs = d.bookingRef ? bookingStatusMap[d.bookingRef] : undefined;
-                const bookingBadge = bs
-                  ? bs.balanceStatus === 'paid'
-                    ? { label: 'จ่ายครบแล้ว', cls: 'bg-emerald-50 text-emerald-600' }
-                    : bs.depositStatus === 'verified'
-                    ? { label: `มัดจำแล้ว ฿${bs.depositAmount.toLocaleString()}`, cls: 'bg-emerald-50 text-emerald-600' }
-                    : bs.depositStatus === 'submitted'
-                    ? { label: 'รอตรวจสอบมัดจำ', cls: 'bg-amber-50 text-amber-600' }
-                    : bs.depositStatus === 'not_required'
-                    ? null
-                    : { label: 'ยังไม่มัดจำ', cls: 'bg-slate-100 text-slate-500' }
-                  : d.source === 'booking'
-                  ? { label: 'BOOKING', cls: 'bg-indigo-50 text-indigo-500' }
-                  : null;
-                return (
+              ) : rows.map(({ d, rowCost, rowProfit, margin, bookingBadge }) => (
                 <tr
                   key={d.id}
-                  className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                  className={d.status === 'cancelled' ? 'group cursor-pointer transition-colors hover:bg-emerald-50/40 opacity-60' : 'group cursor-pointer transition-colors hover:bg-emerald-50/40'}
                   onClick={() => setViewDoc(d)}
                 >
-                  <td className="px-5 py-3">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[12px] text-slate-800 font-bold bg-slate-100/80 px-2 py-0.5 rounded-md w-fit border border-slate-200/50 truncate">{d.docNumber}</span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 ${TYPE_STYLE[d.type] ?? 'bg-slate-100 text-slate-500'}`}>
-                          {TYPE_LABEL[d.type]}
+                  <td className="pl-5 pr-3 py-3 align-top">
+                    <p className="text-[13px] font-semibold text-slate-700 tabular-nums whitespace-nowrap">{fmtDate(d.issuedAt)}</p>
+                  </td>
+                  <td className="px-3 py-3 align-top">
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <span className="font-mono text-[13px] font-bold text-slate-900 truncate group-hover:text-emerald-700 transition-colors">{d.docNumber}</span>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${TYPE_STYLE[d.type] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                          {TYPE_LABEL[d.type] ?? d.type}
                         </span>
+                        {d.vatRate > 0 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-slate-50 text-slate-500 border-slate-200">VAT</span>}
+                        {bookingBadge && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${bookingBadge.cls}`}>{bookingBadge.label}</span>}
                       </div>
-                      <span className="text-[11px] text-slate-400 font-medium pl-0.5 flex items-center gap-1.5 truncate">
-                        <Calendar className="w-3 h-3 shrink-0" />
-                        {fmtDate(d.issuedAt)}
-                        {bookingBadge && (
-                           <span className={`text-[9px] px-1.5 rounded-sm font-bold tracking-wider shrink-0 ${bookingBadge.cls}`}>{bookingBadge.label}</span>
-                        )}
-                      </span>
                     </div>
                   </td>
-                  <td className="px-5 py-3">
-                    <div className="flex flex-col min-w-0">
-                      <p className="text-sm font-bold text-slate-800 truncate">{d.customerName}</p>
-                      {d.customerCar && <p className="text-[12px] text-slate-500 flex items-center gap-1.5 mt-0.5 truncate"><Car className="w-3.5 h-3.5 text-slate-400 shrink-0" /><span className="truncate">{d.customerCar}</span></p>}
+                  <td className="px-3 py-3 align-top">
+                    <div className="min-w-0 max-w-[280px]">
+                      <p className="text-sm font-semibold text-slate-800 truncate">{d.customerName || <span className="text-slate-400 font-normal">ไม่ระบุชื่อ</span>}</p>
+                      <div className="flex items-center gap-3 mt-0.5 text-[12px] text-slate-500 min-w-0">
+                        {d.customerPhone && <span className="inline-flex items-center gap-1 shrink-0 tabular-nums"><Phone className="w-3 h-3 text-slate-400" />{d.customerPhone}</span>}
+                        {d.customerCar && <span className="inline-flex items-center gap-1 min-w-0"><Car className="w-3 h-3 text-slate-400 shrink-0" /><span className="truncate">{d.customerCar}</span></span>}
+                      </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3 hidden md:table-cell text-right">
-                    <p className={`text-sm font-black tabular-nums ${d.grandTotal < 0 ? 'text-orange-600' : 'text-slate-800'}`}>
+                  <td className="px-3 py-3 align-top text-right">
+                    <p className={`text-sm font-bold tabular-nums whitespace-nowrap ${d.grandTotal < 0 ? 'text-orange-600' : 'text-slate-900'}`}>
                       {d.grandTotal < 0 ? `-฿${fmtMoney(Math.abs(d.grandTotal))}` : `฿${fmtMoney(d.grandTotal)}`}
                     </p>
                   </td>
-                  <td className="px-5 py-3 hidden md:table-cell text-right" onClick={e => e.stopPropagation()}>
-                    {rowCost !== null
-                      ? editingCostId === d.id
-                        ? (
-                          <input
-                            type="number" min={0} step="any" autoFocus
-                            value={costDraft}
-                            onChange={e => setCostDraft(e.target.value)}
-                            onBlur={() => handleSaveCost(d.id, rowCost)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') handleSaveCost(d.id, rowCost);
-                              if (e.key === 'Escape') setEditingCostId(null);
-                            }}
-                            className="w-24 px-2 py-1 text-sm text-right font-semibold tabular-nums border border-blue-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white"
-                          />
-                        )
-                        : (
-                          <button
-                            onClick={() => { setEditingCostId(d.id); setCostDraft(rowCost > 0 ? String(rowCost) : ''); }}
-                            title="คลิกเพื่อกรอกต้นทุนเอง"
-                            className="inline-flex items-center gap-1.5 text-sm font-semibold tabular-nums text-slate-500 hover:text-blue-600 group/cost"
-                          >
-                            ฿{fmtMoney(rowCost)}
-                            <Pencil size={11} className="text-slate-300 group-hover/cost:text-blue-500" />
-                          </button>
-                        )
-                      : <p className="text-sm text-slate-300">—</p>}
+                  <td className="px-3 py-3 align-top text-right" onClick={e => e.stopPropagation()}>
+                    {renderCostCell(d.id, rowCost)}
                   </td>
-                  <td className="px-5 py-3 hidden md:table-cell text-right">
-                    {rowProfit !== null
-                      ? <p className={`text-sm font-bold tabular-nums ${rowProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>฿{fmtMoney(rowProfit)}</p>
-                      : <p className="text-sm text-slate-300">—</p>}
+                  <td className="px-3 py-3 align-top text-right">
+                    {rowProfit !== null ? (
+                      <>
+                        <p className={`text-sm font-bold tabular-nums whitespace-nowrap ${rowProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {rowProfit < 0 ? '-' : ''}฿{fmtMoney(Math.abs(rowProfit))}
+                        </p>
+                        {margin !== null && <p className="text-[11px] text-slate-400 tabular-nums">{margin.toFixed(1)}%</p>}
+                      </>
+                    ) : <span className="text-sm text-slate-300">—</span>}
                   </td>
-                  <td className="px-5 py-3 text-center" onClick={e => e.stopPropagation()}>
+                  <td className="px-3 py-3 align-top text-center" onClick={e => e.stopPropagation()}>
                     <StatusBadge status={d.status} />
                   </td>
-                  <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => setViewDoc(d)}
-                        className="p-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-100/60 hover:bg-blue-600 hover:text-white hover:border-transparent transition-all duration-200"
-                        title="ดูรายละเอียด"
-                      >
-                        <Eye size={15} />
-                      </button>
-                      {isDocEditable(d.type, d.status) && (
-                        <Link
-                          href={`/admin/documents/${d.id}/edit`}
-                          className="p-2 rounded-lg bg-amber-50 text-amber-600 border border-amber-100/60 hover:bg-amber-600 hover:text-white hover:border-transparent transition-all duration-200"
-                          title="แก้ไขเอกสาร"
-                        >
-                          <Pencil size={15} />
-                        </Link>
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDirectPrint(d.id); }}
-                        className="p-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100/60 hover:bg-emerald-600 hover:text-white hover:border-transparent transition-all duration-200"
-                        title="พิมพ์เอกสาร"
-                      >
-                        <Printer size={15} />
-                      </button>
-                      <div className="relative group/menu">
-                        <button className="p-2 rounded-lg bg-slate-50 text-slate-400 border border-slate-100 hover:bg-slate-200 hover:text-slate-700 transition-all duration-200">
-                          <MoreHorizontal size={15} />
-                        </button>
-                        <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-200/60 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] z-10 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all origin-top-right scale-95 group-hover/menu:scale-100 p-1.5 flex flex-col gap-0.5">
-                          {d.type === 'invoice' && d.status === 'unpaid' && (
-                            <button
-                              onClick={() => handleStatusChange(d.id, 'paid')}
-                              className="w-full text-left px-3 py-2.5 text-[13px] text-emerald-600 hover:bg-emerald-50 rounded-lg font-bold flex items-center gap-2.5 transition-colors"
-                            >
-                              <CheckCircle size={15} /> รับชำระแล้ว
-                            </button>
-                          )}
-                          {d.type === 'quote' && d.status === 'pending_approval' && (
-                            <>
-                              <button
-                                onClick={() => handleStatusChange(d.id, 'accepted')}
-                                className="w-full text-left px-3 py-2.5 text-[13px] text-blue-600 hover:bg-blue-50 rounded-lg font-bold flex items-center gap-2.5 transition-colors"
-                              >
-                                <CheckCircle size={15} /> อนุมัติใบเสนอราคา
-                              </button>
-                              <button
-                                onClick={() => handleStatusChange(d.id, 'expired')}
-                                className="w-full text-left px-3 py-2.5 text-[13px] text-slate-600 hover:bg-slate-100 rounded-lg font-bold flex items-center gap-2.5 transition-colors"
-                              >
-                                <Clock size={15} /> หมดอายุ
-                              </button>
-                            </>
-                          )}
-                          {d.type === 'quote' && (
-                            <>
-                              <div className="h-[1px] bg-slate-100 my-1 mx-2"></div>
-                              <Link
-                                href={`/admin/documents/new?from=${d.id}&type=billing_note`}
-                                className="w-full text-left px-3 py-2.5 text-[13px] text-amber-600 hover:bg-amber-50 rounded-lg font-bold flex items-center gap-2.5 transition-colors"
-                              >
-                                <FileClock size={15} /> สร้างใบแจ้งหนี้อ้างอิงใบนี้
-                              </Link>
-                              <Link
-                                href={`/admin/documents/new?from=${d.id}&type=invoice`}
-                                className="w-full text-left px-3 py-2.5 text-[13px] text-blue-600 hover:bg-blue-50 rounded-lg font-bold flex items-center gap-2.5 transition-colors"
-                              >
-                                <Receipt size={15} /> สร้างใบเสร็จอ้างอิงใบนี้
-                              </Link>
-                              <Link
-                                href={`/admin/documents/new?from=${d.id}&type=credit_note`}
-                                className="w-full text-left px-3 py-2.5 text-[13px] text-orange-600 hover:bg-orange-50 rounded-lg font-bold flex items-center gap-2.5 transition-colors"
-                              >
-                                <FileMinus size={15} /> สร้างใบลดหนี้อ้างอิงใบนี้
-                              </Link>
-                            </>
-                          )}
-                          <div className="h-[1px] bg-slate-100 my-1 mx-2"></div>
-                          <button
-                            onClick={() => handleDelete(d.id)}
-                            className="w-full text-left px-3 py-2.5 text-[13px] text-red-600 hover:bg-red-50 rounded-lg font-bold flex items-center gap-2.5 transition-colors"
-                          >
-                            <XCircle size={15} /> ลบเอกสารนี้
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                  <td className="pl-3 pr-5 py-3 align-top" onClick={e => e.stopPropagation()}>
+                    {renderRowActions(d)}
                   </td>
                 </tr>
-                );
-              })}
+              ))}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 0 && (
-          <div className="p-4 sm:px-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
-            <p className="text-[13px] text-slate-500 font-medium">
-              แสดง <span className="font-bold text-slate-700">{pagination.totalItems === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1}</span> ถึง <span className="font-bold text-slate-700">{Math.min(pagination.page * pagination.pageSize, pagination.totalItems)}</span> จากทั้งหมด <span className="font-bold text-slate-700">{pagination.totalItems}</span> รายการ
-            </p>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigateWithFilters({ page: Math.max(1, pagination.page - 1) })}
-                disabled={pagination.page <= 1}
-                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <div className="flex items-center">
-                <span className="text-[13px] font-bold text-slate-700 px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm">
-                   หน้า {pagination.page} / {totalPages}
-                </span>
+        {/* Cards (mobile) */}
+        <div className={isPending ? 'md:hidden divide-y divide-slate-100 transition-opacity opacity-60' : 'md:hidden divide-y divide-slate-100 transition-opacity'}>
+          {rows.length === 0 ? emptyState : rows.map(({ d, rowCost, rowProfit, bookingBadge }) => (
+            <div key={d.id} onClick={() => setViewDoc(d)} className={d.status === 'cancelled' ? 'p-4 active:bg-slate-50 opacity-60' : 'p-4 active:bg-slate-50'}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-mono text-[13px] font-bold text-slate-900">{d.docNumber}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${TYPE_STYLE[d.type] ?? 'bg-slate-100 text-slate-500 border-slate-200'}`}>{TYPE_LABEL[d.type] ?? d.type}</span>
+                  </div>
+                  <p className="text-[12px] text-slate-400 mt-0.5">{fmtDate(d.issuedAt)}</p>
+                </div>
+                <div onClick={e => e.stopPropagation()} className="shrink-0"><StatusBadge status={d.status} /></div>
               </div>
-
-              <button
-                onClick={() => navigateWithFilters({ page: Math.min(totalPages, pagination.page + 1) })}
-                disabled={pagination.page >= totalPages}
-                className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              <div className="mt-2.5 flex items-end justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{d.customerName || 'ไม่ระบุชื่อ'}</p>
+                  {(d.customerCar || d.customerPhone) && <p className="text-[12px] text-slate-500 truncate">{[d.customerCar, d.customerPhone].filter(Boolean).join(' · ')}</p>}
+                  {bookingBadge && <span className={`inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${bookingBadge.cls}`}>{bookingBadge.label}</span>}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={`text-base font-bold tabular-nums ${d.grandTotal < 0 ? 'text-orange-600' : 'text-slate-900'}`}>
+                    {d.grandTotal < 0 ? `-฿${fmtMoney(Math.abs(d.grandTotal))}` : `฿${fmtMoney(d.grandTotal)}`}
+                  </p>
+                  {rowProfit !== null && (
+                    <p className="text-[11px] text-slate-400 tabular-nums">
+                      ต้นทุน ฿{fmtMoney(rowCost ?? 0)} · <span className={rowProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}>กำไร {rowProfit < 0 ? '-' : ''}฿{fmtMoney(Math.abs(rowProfit))}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-2 flex justify-end" onClick={e => e.stopPropagation()}>
+                {renderRowActions(d)}
+              </div>
             </div>
+          ))}
+        </div>
+
+        {/* Pagination */}
+        <div className="px-4 sm:px-5 py-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50 rounded-b-2xl">
+          <p className="text-[13px] text-slate-500">
+            แสดง <span className="font-bold text-slate-700 tabular-nums">{pagination.totalItems === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1}–{Math.min(pagination.page * pagination.pageSize, pagination.totalItems)}</span> จาก <span className="font-bold text-slate-700 tabular-nums">{pagination.totalItems.toLocaleString()}</span> รายการ
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => navigateWithFilters({ page: Math.max(1, pagination.page - 1) })}
+              disabled={pagination.page <= 1}
+              aria-label="หน้าก่อนหน้า"
+              className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {pageNumbers.map((n, i) => n === null ? (
+              <span key={`gap-${i}`} className="w-8 text-center text-slate-400 text-sm">…</span>
+            ) : (
+              <button
+                key={n}
+                onClick={() => navigateWithFilters({ page: n })}
+                aria-current={n === pagination.page ? 'page' : undefined}
+                className={`min-w-8 h-8 px-2 rounded-lg text-[13px] font-bold tabular-nums transition-colors ${n === pagination.page ? 'bg-emerald-600 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+              >
+                {n}
+              </button>
+            ))}
+            <button
+              onClick={() => navigateWithFilters({ page: Math.min(totalPages, pagination.page + 1) })}
+              disabled={pagination.page >= totalPages}
+              aria-label="หน้าถัดไป"
+              className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* View Modal */}
