@@ -38,8 +38,14 @@ export async function GET(req: Request) {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-    // ─── ยอดขายในช่วงที่เลือก (+ เมื่อเลือกวันเดียว เทียบกับวันก่อนหน้า) ───
-    const [rangeDocs, prevDayDocs, monthDocs] = await Promise.all([
+    // ─── ยิงทุก query พร้อมกัน (ไม่ขึ้นต่อกัน) — ลด round-trip ไป Atlas จาก ~11 รอบต่อเนื่องเหลือ 1 รอบ ───
+    const [
+      rangeDocs, prevDayDocs, monthDocs,
+      monthIncomes, monthExpenses, monthPO, monthPayslip,
+      lowStock, pendingBookings, rangeBookings, recentInvoices,
+      chartRows, categoryData, totalProducts, totalStock,
+    ] = await Promise.all([
+      // ยอดขายในช่วงที่เลือก (+ เมื่อเลือกวันเดียว เทียบกับวันก่อนหน้า)
       FinancialDocument.find({
         type: 'invoice',
         issuedAt: { $gte: rangeStart, $lte: rangeEnd },
@@ -48,19 +54,10 @@ export async function GET(req: Request) {
         type: 'invoice',
         issuedAt: { $gte: prevDayStart, $lt: rangeStart },
       }).select('status grandTotal').lean(),
-      FinancialDocument.find({
-        type: 'invoice',
-        issuedAt: { $gte: monthStart, $lt: nextMonthStart },
-      }).select('status grandTotal').lean(),
-    ]);
-
-    const rangeRevenue = rangeDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
-    const rangeBills = rangeDocs.length;
-    const prevDayRevenue = prevDayDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
-    const prevDayBills = prevDayDocs.length;
-    const monthRevenue = monthDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
-
-    const [monthIncomes, monthExpenses, monthPO, monthPayslip] = await Promise.all([
+      FinancialDocument.aggregate<{ total: number }>([
+        { $match: { type: 'invoice', status: 'paid', issuedAt: { $gte: monthStart, $lt: nextMonthStart } } },
+        { $group: { _id: null, total: { $sum: '$grandTotal' } } },
+      ]),
       Income.aggregate([
         { $match: { incomeDate: { $gte: monthStart, $lt: nextMonthStart } } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
@@ -79,7 +76,42 @@ export async function GET(req: Request) {
         { $match: { status: 'paid', paidAt: { $gte: monthStart, $lt: nextMonthStart } } },
         { $group: { _id: null, total: { $sum: '$netPay' } } }
       ]),
+      // Low stock products
+      Product.find({ stock: { $lt: 5 }, published: true })
+        .select('brand model size stock category')
+        .sort({ stock: 1 })
+        .limit(5)
+        .lean(),
+      // Pending bookings
+      Booking.countDocuments({ status: 'pending' }),
+      Booking.countDocuments({ createdAt: { $gte: rangeStart, $lte: rangeEnd } }),
+      // Recent invoices (ในช่วงที่เลือก)
+      FinancialDocument.find({ type: 'invoice', issuedAt: { $gte: rangeStart, $lte: rangeEnd } })
+        .select('docNumber customerName grandTotal status paymentMethod createdAt')
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .lean(),
+      // Monthly chart data (last 6 months)
+      FinancialDocument.aggregate([
+        { $match: { type: 'invoice', status: 'paid', issuedAt: { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1), $lt: nextMonthStart } } },
+        { $group: { _id: { year: { $year: '$issuedAt' }, month: { $month: '$issuedAt' } }, revenue: { $sum: '$grandTotal' }, count: { $sum: 1 } } },
+      ]),
+      // Category breakdown
+      Product.aggregate([
+        { $group: { _id: '$category', count: { $sum: 1 }, stock: { $sum: '$stock' } } }
+      ]),
+      Product.countDocuments({ published: true }),
+      Product.aggregate([
+        { $group: { _id: null, total: { $sum: '$stock' } } }
+      ]),
     ]);
+
+    const rangeRevenue = rangeDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
+    const rangeBills = rangeDocs.length;
+    const prevDayRevenue = prevDayDocs.filter(d => d.status === 'paid').reduce((s, d) => s + d.grandTotal, 0);
+    const prevDayBills = prevDayDocs.length;
+    const monthRevenue = monthDocs[0]?.total ?? 0;
+
     const totalIncomeMonth = monthIncomes[0]?.total ?? 0;
     const totalExpenseMonth = (monthExpenses[0]?.total ?? 0) + (monthPO[0]?.total ?? 0) + (monthPayslip[0]?.total ?? 0);
 
@@ -89,31 +121,6 @@ export async function GET(req: Request) {
       : null;
     const billTrend = isRange ? null : rangeBills - prevDayBills;
 
-    // ─── Low stock products ──────────────────────────────────────
-    const lowStock = await Product.find({ stock: { $lt: 5 }, published: true })
-      .select('brand model size stock category')
-      .sort({ stock: 1 })
-      .limit(5)
-      .lean();
-
-    // ─── Pending bookings ────────────────────────────────────────
-    const [pendingBookings, rangeBookings] = await Promise.all([
-      Booking.countDocuments({ status: 'pending' }),
-      Booking.countDocuments({ createdAt: { $gte: rangeStart, $lte: rangeEnd } }),
-    ]);
-
-    // ─── Recent invoices (ในช่วงที่เลือก) ─────────────────────────
-    const recentInvoices = await FinancialDocument.find({ type: 'invoice', issuedAt: { $gte: rangeStart, $lte: rangeEnd } })
-      .select('docNumber customerName grandTotal status paymentMethod createdAt')
-      .sort({ createdAt: -1 })
-      .limit(8)
-      .lean();
-
-    // ─── Monthly chart data (last 6 months) ──────────────────────
-    const chartRows = await FinancialDocument.aggregate([
-      { $match: { type: 'invoice', status: 'paid', issuedAt: { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1), $lt: nextMonthStart } } },
-      { $group: { _id: { year: { $year: '$issuedAt' }, month: { $month: '$issuedAt' } }, revenue: { $sum: '$grandTotal' }, count: { $sum: 1 } } },
-    ]);
     const chartMap = new Map(chartRows.map((row) => [`${row._id.year}-${row._id.month}`, row]));
     const chartData = [];
     for (let i = 5; i >= 0; i--) {
@@ -123,17 +130,6 @@ export async function GET(req: Request) {
       const thMonths = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
       chartData.push({ month: thMonths[mStart.getMonth()], revenue: total, count: row?.count ?? 0 });
     }
-
-    // ─── Category breakdown ───────────────────────────────────────
-    const categoryData = await Product.aggregate([
-      { $group: { _id: '$category', count: { $sum: 1 }, stock: { $sum: '$stock' } } }
-    ]);
-
-    // ─── Top products by stock sold (approximate from invoices) ──
-    const totalProducts = await Product.countDocuments({ published: true });
-    const totalStock = await Product.aggregate([
-      { $group: { _id: null, total: { $sum: '$stock' } } }
-    ]);
 
     return NextResponse.json({
       summary: {

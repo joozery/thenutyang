@@ -332,3 +332,40 @@ export function rimFromSize(size: string): number {
   const m = size.match(/R(\d+)$/i);
   return m ? Number(m[1]) : 15;
 }
+
+export type ProductPickerRow = Pick<ProductRow, 'id' | 'brand' | 'model' | 'size' | 'costPrice' | 'priceCash' | 'stock' | 'year'>;
+
+/**
+ * ค้นหาสินค้าสำหรับ picker แบบแบ่งหน้า — ดึงเฉพาะฟิลด์ที่ต้องใช้
+ * (ห้ามโหลดสินค้าทั้งหมดไปฝั่ง client: ~6k รายการ = หลาย MB และช้ามากบน Atlas)
+ * ค้นได้หลายคำ แต่ละคำต้องเจอใน ยี่ห้อ/รุ่น/ขนาด เช่น "michelin 205/55"
+ */
+export async function searchProductsForPicker(search = '', page = 1, pageSize = 20): Promise<ProductPickerRow[]> {
+  await connectDB();
+  const tokens = search.trim().split(/\s+/).filter(Boolean).slice(0, 5);
+  const query = tokens.length
+    ? {
+        $and: tokens.map((token) => {
+          const rx = new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+          return { $or: [{ brand: rx }, { model: rx }, { size: rx }] };
+        }),
+      }
+    : {};
+  const size = Math.max(1, Math.min(pageSize, 50));
+  const docs = await Product.find(query)
+    .select('brand model size costPrice priceCash stock year')
+    .sort({ brand: 1, model: 1, size: 1, _id: 1 })
+    .skip((Math.max(1, page) - 1) * size)
+    .limit(size)
+    .lean();
+  return docs.map((d) => ({
+    id: String(d._id),
+    brand: d.brand ?? '',
+    model: d.model ?? '',
+    size: d.size ?? '',
+    costPrice: d.costPrice ?? 0,
+    priceCash: d.priceCash ?? 0,
+    stock: d.stock ?? 0,
+    year: d.year,
+  }));
+}

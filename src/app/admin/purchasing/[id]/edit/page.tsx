@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import { getPurchaseOrderById, getSuppliers } from '@/lib/purchasing';
-import { getAllProductsAdmin } from '@/lib/products';
 import { NewPurchasingClient } from '@/components/admin/new-purchasing-client';
 
 export const dynamic = 'force-dynamic';
@@ -8,10 +7,9 @@ export const metadata = { title: 'แก้ไขใบสั่งซื้อ 
 
 export default async function EditPurchasingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [po, suppliers, products] = await Promise.all([
+  const [po, suppliers] = await Promise.all([
     getPurchaseOrderById(id),
     getSuppliers(),
-    getAllProductsAdmin(),
   ]);
 
   if (!po) notFound();
@@ -19,7 +17,6 @@ export default async function EditPurchasingPage({ params }: { params: Promise<{
   return (
     <NewPurchasingClient
       suppliers={suppliers}
-      products={products}
       initialData={po}
       poId={id}
     />

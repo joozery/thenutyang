@@ -5,6 +5,7 @@ import connectDB from '@/lib/mongodb';
 import { PurchaseOrder } from '@/models/PurchaseOrder';
 import { Expense } from '@/models/Expense';
 import { generatePONumber } from '@/lib/purchasing';
+import { searchProductsForPicker, type ProductPickerRow } from '@/lib/products';
 
 export type POFormPayload = {
   supplierId: string;
@@ -391,4 +392,8 @@ export async function updatePOPayment(
     console.error('[updatePOPayment]', err);
     return { error: 'ไม่สามารถบันทึกการชำระเงินได้' };
   }
+}
+
+export async function searchPurchasingProducts(search = '', page = 1): Promise<ProductPickerRow[]> {
+  return searchProductsForPicker(search, page, 20);
 }

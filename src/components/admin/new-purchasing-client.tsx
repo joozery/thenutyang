@@ -10,8 +10,8 @@ import {
   Search, X,
 } from 'lucide-react';
 import type { SupplierRow } from '@/lib/purchasing';
-import type { ProductRow } from '@/lib/products';
-import { createPO, saveDraftPO, updatePO } from '@/app/actions/purchasing';
+import type { ProductPickerRow } from '@/lib/products';
+import { createPO, saveDraftPO, updatePO, searchPurchasingProducts } from '@/app/actions/purchasing';
 import type { POFormPayload } from '@/app/actions/purchasing';
 import type { PORow } from '@/lib/purchasing';
 import { createSupplier, type SupplierFormInput } from '@/app/actions/suppliers';
@@ -158,12 +158,10 @@ function SupplierModal({
 
 export function NewPurchasingClient({
   suppliers,
-  products = [],
   initialData,
   poId,
 }: {
   suppliers: SupplierRow[];
-  products?: ProductRow[];
   initialData?: PORow;
   poId?: string;
 }) {
@@ -221,7 +219,7 @@ export function NewPurchasingClient({
   );
   const [productPickerLineKey, setProductPickerLineKey] = useState<number | null>(null);
 
-  function selectProduct(key: number, p: ProductRow) {
+  function selectProduct(key: number, p: ProductPickerRow) {
     setLines(prev => prev.map(l => l.key === key
       ? { ...l, productId: p.id, productName: `${p.brand} ${p.model} ${p.size}`, unitPrice: p.costPrice || l.unitPrice, year: p.year || l.year }
       : l));
@@ -873,8 +871,9 @@ export function NewPurchasingClient({
         <PickerModal
           title="เลือกสินค้า / ยาง"
           placeholder="ค้นหายี่ห้อ รุ่น หรือขนาดยาง..."
-          items={products}
+          items={[] as ProductPickerRow[]}
           filterFn={(p, q) => `${p.brand} ${p.model} ${p.size}`.toLowerCase().includes(q)}
+          remoteSearch={searchPurchasingProducts}
           renderItem={(p) => (
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
