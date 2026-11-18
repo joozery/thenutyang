@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import mongoose from 'mongoose';
 import connectDB from '@/lib/mongodb';
 import { PurchaseOrder } from '@/models/PurchaseOrder';
 import { Expense } from '@/models/Expense';
@@ -35,6 +36,42 @@ export type POFormPayload = {
   isReceived?:     boolean;
   orderDate?:      string;
 };
+
+function validatePOPayload(data: POFormPayload): string | null {
+  if (!data.supplierId || !mongoose.isValidObjectId(data.supplierId)) {
+    return 'กรุณาเลือกซัพพลายเออร์จากรายการ';
+  }
+  if (!data.dueDate || Number.isNaN(new Date(data.dueDate).getTime())) {
+    return 'กรุณาระบุกำหนดรับสินค้าให้ถูกต้อง';
+  }
+  if (!Array.isArray(data.items) || data.items.length === 0) {
+    return 'กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ';
+  }
+  const invalidItem = data.items.find((item) => (
+    !item.productName?.trim()
+    || !Number.isFinite(item.qty) || item.qty <= 0
+    || !Number.isFinite(item.unitPrice) || item.unitPrice <= 0
+    || !Number.isFinite(item.discount) || item.discount < 0
+    || !Number.isFinite(item.lineTotal) || item.lineTotal < 0
+    || (item.productId !== undefined && item.productId !== '' && !mongoose.isValidObjectId(item.productId))
+  ));
+  if (invalidItem) {
+    return 'ข้อมูลรายการสินค้าไม่ครบถ้วนหรือไม่ถูกต้อง';
+  }
+  if (!['cash', '30', '45', '60'].includes(data.paymentTerm)) {
+    return 'เงื่อนไขการชำระเงินไม่ถูกต้อง';
+  }
+  if (!['transfer', 'check', 'cash'].includes(data.paymentMethod)) {
+    return 'วิธีการชำระเงินไม่ถูกต้อง';
+  }
+  if (!['included', 'excluded', 'none'].includes(data.vatType)) {
+    return 'รูปแบบ VAT ไม่ถูกต้อง';
+  }
+  if (![data.subtotal, data.totalDiscount, data.vat, data.grandTotal].every(Number.isFinite)) {
+    return 'ยอดรวมใบสั่งซื้อไม่ถูกต้อง';
+  }
+  return null;
+}
 
 async function savePO(data: POFormPayload, status: 'pending' | 'draft') {
   await connectDB();
@@ -71,6 +108,9 @@ export async function createPO(
   data: POFormPayload,
 ): Promise<{ success: boolean; poNumber?: string; error?: string }> {
   try {
+    const validationError = validatePOPayload(data);
+    if (validationError) return { success: false, error: validationError };
+
     const { poNumber, id } = await savePO(data, 'pending');
     if (data.isReceived) {
       await receivePO(id);
@@ -78,7 +118,17 @@ export async function createPO(
     return { success: true, poNumber };
   } catch (err) {
     console.error('[createPO]', err);
-    return { success: false, error: 'ไม่สามารถสร้างใบสั่งซื้อได้ กรุณาลองใหม่' };
+    if (err instanceof mongoose.Error.ValidationError) {
+      const firstError = Object.values(err.errors)[0]?.message;
+      return { success: false, error: firstError ?? 'ข้อมูลใบสั่งซื้อไม่ถูกต้อง' };
+    }
+    if (err instanceof mongoose.Error.CastError) {
+      return { success: false, error: 'ข้อมูลซัพพลายเออร์หรือสินค้าไม่ถูกต้อง กรุณาเลือกจากรายการอีกครั้ง' };
+    }
+    if (typeof err === 'object' && err !== null && 'code' in err && (err as { code?: unknown }).code === 11000) {
+      return { success: false, error: 'เลขที่ใบสั่งซื้อซ้ำ กรุณากดบันทึกอีกครั้ง' };
+    }
+    return { success: false, error: 'ไม่สามารถเชื่อมต่อฐานข้อมูลหรือสร้างใบสั่งซื้อได้ กรุณาลองใหม่' };
   }
 }
 
