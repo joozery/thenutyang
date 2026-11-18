@@ -242,12 +242,26 @@ export async function getSuppliers(): Promise<SupplierRow[]> {
 export async function generatePONumber(): Promise<string> {
   const year = new Date().getFullYear();
   const prefix = `PO-${year}-`;
-  const latest = await PurchaseOrder.findOne(
-    { poNumber: { $regex: `^${prefix}` } },
-    { poNumber: 1 },
-  ).sort({ poNumber: -1 }).lean() as { poNumber?: string } | null;
+  // Sort the sequence numerically. String sorting makes PO-...-999 appear
+  // greater than PO-...-1000, which causes 1000 to be generated repeatedly.
+  const latest = await PurchaseOrder.aggregate<{ seq: number }>([
+    { $match: { poNumber: { $regex: `^${prefix}` } } },
+    {
+      $project: {
+        seq: {
+          $convert: {
+            input: { $arrayElemAt: [{ $split: ['$poNumber', '-'] }, 2] },
+            to: 'int',
+            onError: 0,
+            onNull: 0,
+          },
+        },
+      },
+    },
+    { $sort: { seq: -1 } },
+    { $limit: 1 },
+  ]);
 
-  if (!latest) return `${prefix}001`;
-  const seq = parseInt(latest.poNumber?.split('-')[2] ?? '0', 10);
+  const seq = latest[0]?.seq ?? 0;
   return `${prefix}${String(seq + 1).padStart(3, '0')}`;
 }
