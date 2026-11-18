@@ -75,33 +75,46 @@ function validatePOPayload(data: POFormPayload): string | null {
 
 async function savePO(data: POFormPayload, status: 'pending' | 'draft') {
   await connectDB();
-  const poNumber = await generatePONumber();
+  // Multiple server instances can read the same latest number at the same time.
+  // The unique index is the final guard; when it wins the race, generate a new
+  // number and retry instead of asking the user to submit the same form again.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const poNumber = await generatePONumber();
 
-  const po = await PurchaseOrder.create({
-    poNumber,
-    poType: data.poType,
-    supplierId: data.supplierId || undefined,
-    supplierSnapshot: data.supplierSnapshot,
-    reference:  data.reference ?? '',
-    createdAt: data.orderDate ? new Date(data.orderDate) : new Date(),
-    dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-    items: data.items,
-    paymentTerm:     data.paymentTerm,
-    paymentDate:     data.paymentDate ? new Date(data.paymentDate) : undefined,
-    paymentMethod:   data.paymentMethod,
-    shippingAddress: data.shippingAddress,
-    notes:           data.notes,
-    specialTerms:    data.specialTerms,
-    subtotal:        data.subtotal,
-    totalDiscount:   data.totalDiscount,
-    vat:             data.vat,
-    grandTotal:      data.grandTotal,
-    vatType:         data.vatType,
-    status,
-  });
+    try {
+      const po = await PurchaseOrder.create({
+        poNumber,
+        poType: data.poType,
+        supplierId: data.supplierId || undefined,
+        supplierSnapshot: data.supplierSnapshot,
+        reference:  data.reference ?? '',
+        createdAt: data.orderDate ? new Date(data.orderDate) : new Date(),
+        dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+        items: data.items,
+        paymentTerm:     data.paymentTerm,
+        paymentDate:     data.paymentDate ? new Date(data.paymentDate) : undefined,
+        paymentMethod:   data.paymentMethod,
+        shippingAddress: data.shippingAddress,
+        notes:           data.notes,
+        specialTerms:    data.specialTerms,
+        subtotal:        data.subtotal,
+        totalDiscount:   data.totalDiscount,
+        vat:             data.vat,
+        grandTotal:      data.grandTotal,
+        vatType:         data.vatType,
+        status,
+      });
 
-  revalidatePath('/admin/purchasing');
-  return { poNumber, id: String(po._id) };
+      revalidatePath('/admin/purchasing');
+      return { poNumber, id: String(po._id) };
+    } catch (err) {
+      const isDuplicate = typeof err === 'object' && err !== null
+        && 'code' in err && (err as { code?: unknown }).code === 11000;
+      if (!isDuplicate || attempt === 4) throw err;
+    }
+  }
+
+  throw new Error('Unable to allocate a purchase order number');
 }
 
 export async function createPO(
