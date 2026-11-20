@@ -68,6 +68,7 @@ export type PurchaseListOptions = {
   pageSize?: number;
   search?: string;
   status?: string;
+  paymentStatus?: string;
   dateFrom?: string;
   dateTo?: string;
 };
@@ -172,6 +173,9 @@ export async function getPurchaseOrdersPage(options: PurchaseListOptions = {}): 
   if (options.status && options.status !== 'ทั้งหมด') {
     const rawStatus = Object.entries(STATUS_MAP).find(([, label]) => label === options.status)?.[0];
     if (rawStatus) query.status = rawStatus;
+  }
+  if (options.paymentStatus && options.paymentStatus !== 'all' && ['unpaid', 'partial', 'paid'].includes(options.paymentStatus)) {
+    query.paymentStatus = options.paymentStatus;
   }
   if (conditions.length) query.$and = conditions;
 

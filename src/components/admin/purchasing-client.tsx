@@ -595,7 +595,7 @@ export function PurchasingClient({ initialOrders, initialReturns, pagination, su
   initialReturns: StockReturnRow[];
   pagination: { page: number; pageSize: number; totalItems: number };
   summary: { pending: number; received: number; totalValue: number; suppliers: number };
-  initialFilters: { search: string; status: string; dateFrom: string; dateTo: string };
+  initialFilters: { search: string; status: string; paymentStatus: string; dateFrom: string; dateTo: string };
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -604,6 +604,7 @@ export function PurchasingClient({ initialOrders, initialReturns, pagination, su
   const [returns, setReturns] = useState(initialReturns);
   const [search, setSearch] = useState(initialFilters.search);
   const [statusFilter, setStatusFilter] = useState(initialFilters.status);
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState(initialFilters.paymentStatus);
   const [dateFrom, setDateFrom] = useState(initialFilters.dateFrom);
   const [dateTo, setDateTo] = useState(initialFilters.dateTo);
   const page = pagination.page;
@@ -652,9 +653,9 @@ export function PurchasingClient({ initialOrders, initialReturns, pagination, su
   const paged = orders;
 
   const navigate = (overrides: Record<string, string | number | undefined> = {}) => {
-    const values = { page, search, status: statusFilter, dateFrom, dateTo, ...overrides };
+    const values = { page, search, status: statusFilter, paymentStatus: paymentStatusFilter, dateFrom, dateTo, ...overrides };
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== '' && !(key === 'status' && value === 'ทั้งหมด')) params.set(key, String(value));
+    for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== '' && !(key === 'status' && value === 'ทั้งหมด') && !(key === 'paymentStatus' && value === 'all')) params.set(key, String(value));
     router.replace(`/admin/purchasing${params.toString() ? `?${params.toString()}` : ''}`);
   };
 
@@ -818,6 +819,16 @@ export function PurchasingClient({ initialOrders, initialReturns, pagination, su
                 {['ทั้งหมด', 'ร่าง', 'รอรับสินค้า', 'รับสินค้าแล้ว', 'ยกเลิก'].map(t => (
                   <option key={t} value={t}>{t === 'ทั้งหมด' ? 'สถานะ: ทั้งหมด' : t}</option>
                 ))}
+              </select>
+              <select
+                value={paymentStatusFilter}
+                onChange={e => { setPaymentStatusFilter(e.target.value); navigate({ paymentStatus: e.target.value, page: 1 }); }}
+                className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400"
+              >
+                <option value="all">การชำระเงิน: ทั้งหมด</option>
+                <option value="unpaid">ยังไม่ชำระ</option>
+                <option value="partial">ชำระบางส่วน</option>
+                <option value="paid">ชำระแล้ว</option>
               </select>
               <div className="flex items-center gap-1.5">
                 <DatePicker value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); navigate({ dateFrom: e.target.value, page: 1 }); }} className="px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-600 focus:outline-none focus:border-green-400" />
